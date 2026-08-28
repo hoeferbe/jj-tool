@@ -1,0 +1,19 @@
+{
+  "name": "jj-tool",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Jagdgruppen-App mit Ionic Vue und Hono API",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=@jj-tool/api",
+    "dev:app": "npm run dev --workspace=@jj-tool/app",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10"
+  }
+}
