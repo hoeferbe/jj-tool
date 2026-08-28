@@ -36,6 +36,38 @@ Das primaere Einsatzgebiet ist die Gemeinde mit rund 14,5 Quadratkilometern. Off
 - Mehrere Bilder je Abschuss, nachtraegliches Ergaenzen und eine komprimierte Bilduebertragung.
 - Auswertungen der Strecke nach Zeitraum, Wildart und Verwertungsweg.
 
+## Aktueller Umsetzungsstand
+
+### Bereits umgesetzt
+
+- npm-Workspace mit Ionic Vue als App und Hono mit TypeScript als API angelegt.
+- Lokale Entwicklungsbefehle fuer App und API sowie Produktions-Build und Typecheck eingerichtet.
+- Hono-API mit Gesundheitsendpunkt unter `/health` erstellt.
+- JSON-basierter Auth-Speicher mit atomischem Schreiben und serialisierten Schreibzugriffen implementiert.
+- Registrierung mit Name, Benutzername und E-Mail-Adresse implementiert; neue Konten erhalten den Status `pending`.
+- Lokale Anmeldung mit Benutzername oder E-Mail-Adresse, Argon2id-Passwort-Hash und 15 Minuten gueltigem Zugriffstoken implementiert.
+- Passwort setzen und Passwort vergessen ueber einen einmaligen, eine Stunde gueltigen Link implementiert.
+- E-Mail-Versand per SMTP eingerichtet; ohne SMTP-Konfiguration wird der Passwort-Link nur in der lokalen Entwicklung protokolliert.
+- Ein initiales Administratorkonto kann aus einer nicht eingecheckten Umgebungsdatei erzeugt oder mit dem Befehl `npm run reset-admin -- <benutzername> <e-mail> <anzeigename>` neu gesetzt werden.
+- CORS fuer die lokalen Entwicklungsadressen `localhost:5173` und `127.0.0.1:5173` eingerichtet.
+- Globale Ionic-Farbpalette von Blau auf Oliv umgestellt.
+
+### Als Naechstes umzusetzen
+
+- Geschuetzte App-Ansicht nach erfolgreicher Anmeldung statt der bloßen Erfolgsmeldung.
+- Admin-Oberflaeche zum Anzeigen und Freigeben registrierter Mitglieder.
+- Reviermodell und Revier anlegen.
+- Leaflet-Karte, Gemeindegrenze als GeoJSON und aktuelle Position.
+- Streckeneintrag mit Ort, Datum und Wildart.
+
+### Noch nicht umgesetzt
+
+- Refresh-Tokens, Abmeldung und Token-Widerruf.
+- Rollenpruefung an geschuetzten API-Routen, Mitgliederfreigabe und Admin-Verwaltung.
+- Karten, Offline-Karten, Jagdeinrichtungen, Streckeneintraege, Bilder und Synchronisation.
+- Capacitor-Android-Integration, PWA-Service-Worker, Cloudflare Tunnel und Raspberry-Pi-Betrieb.
+- Telegram, Firebase Cloud Messaging, Nachsuche und Faehrtenaufzeichnung.
+
 ## Technische Zielarchitektur
 
 | Bereich | Entscheidung |
@@ -85,7 +117,7 @@ Fotos werden vom Client vor dem Upload in eine praxistaugliche Groesse komprimie
 
 Fuer den MVP werden Benutzerkonten lokal im Backend gefuehrt. Interessenten registrieren sich mit Benutzername und Passwort; ihr Konto bleibt bis zur Freigabe durch einen Administrator gesperrt. Das erste Administratorkonto wird beim Einrichten des Backends einmalig aus einer nicht eingecheckten Konfiguration erzeugt. Das Backend speichert niemals Klartextpasswoerter: Passwoerter werden mit Argon2id gehasht und die Anmeldung wird gegen Rate-Limits geschuetzt.
 
-Nach erfolgreicher Anmeldung erhaelt die App ein kurzlebiges Zugriffstoken. Ein erneuerbares Refresh-Token liegt als `HttpOnly`, `Secure` und `SameSite` geschuetztes Cookie vor; die App kann es nicht per JavaScript auslesen. Abmeldung, Passwortaenderung und Zuruecksetzen durch den Betreiber widerrufen alle aktiven Refresh-Tokens des Kontos. Das Token- und Benutzerformat wird von den Hono-Routen getrennt gehalten, damit ein Wechsel zu Auth0 oder einem anderen Identitaetsdienst spaeter moeglich bleibt.
+Nach erfolgreicher Anmeldung erhaelt die App derzeit ein 15 Minuten gueltiges Zugriffstoken. Erneuerbare Refresh-Tokens als `HttpOnly`, `Secure` und `SameSite` geschuetzte Cookies sowie Abmeldung und Token-Widerruf sind als naechster Sicherheitsausbau vorgesehen. Das Token- und Benutzerformat wird von den Hono-Routen getrennt gehalten, damit ein Wechsel zu Auth0 oder einem anderen Identitaetsdienst spaeter moeglich bleibt.
 
 Waehrend der Entwicklung laeuft dieselbe Hono-API auf dem Mac mini mit lokalen Testdaten. Vor der Umstellung auf den Raspberry Pi werden keine echten Zugangsdaten oder produktiven Standortdaten in der Entwicklungsumgebung verwendet.
 
