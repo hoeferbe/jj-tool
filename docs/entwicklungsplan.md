@@ -51,19 +51,30 @@ Das primaere Einsatzgebiet ist die Gemeinde mit rund 14,5 Quadratkilometern. Off
 - Ein initiales Administratorkonto kann aus einer nicht eingecheckten Umgebungsdatei erzeugt oder mit dem Befehl `npm run reset-admin -- <benutzername> <e-mail> <anzeigename>` neu gesetzt werden.
 - CORS fuer die lokalen Entwicklungsadressen `localhost:5173` und `127.0.0.1:5173` eingerichtet.
 - Globale Ionic-Farbpalette von Blau auf Oliv umgestellt.
+- Vue Router mit drei Routen (`/`, `/dashboard`, `/welcome`) und Navigationsguard eingerichtet; unauthentifizierte Aufrufe werden auf die Anmeldeseite umgeleitet.
+- Zugriffstoken auf 7 Tage Laufzeit mit Sliding-Window-Erneuerung umgestellt: beim App-Start wird der Token still über `/auth/refresh` verlängert, sodass Nutzer dauerhaft angemeldet bleiben, solange die App innerhalb von 7 Tagen geöffnet wird.
+- Registrierungsablauf entkoppelt: beim Registrieren wird keine E-Mail versendet; der Passwort-Link geht erst nach expliziter Admin-Freigabe raus.
+- Admin-Dashboard mit zwei auf- und zuklappbaren Abschnitten implementiert: ausstehende Registrierungen und aktive Mitglieder.
+- Rollen- und Berechtigungssystem eingeführt: Rollen `guest`, `paechter`, `bgs`, `admin`; Positionen `Revierleiter`, `Kassenwart`, `Schriftführer`; separates `isAdmin`-Flag für Mitglieder mit Admin-Dashboard-Zugriff ohne die Rolle `admin`.
+- Registrierungsfreigabe mit Rollen- und Positionswahl; Ablehnen löscht den Account endgültig.
+- Inline-Bearbeitung von Rolle, Position und Admin-Flag direkt in der Mitgliederliste.
+- Session-Tracking: Login erzeugt eine Session in `auth.json`; Logout löscht alle Sessions des Nutzers serverseitig; Dashboard zeigt Online-Status (gefüllter grüner Kreis / leerer Kreis).
+- Mitglieder-Willkommensseite mit Anzeige des letzten Login-Zeitstempels.
+- AppLayout-Komponente mit Header-Navigation: Admins wechseln zwischen Dashboard und persönlicher Seite; Abmelden-Button räumt localStorage und Session auf.
+- JSDoc-Kommentare und einzeilige Ablauf-Kommentare in allen Quelldateien (API und Frontend) ergänzt.
 
 ### Als Naechstes umzusetzen
 
-- Geschuetzte App-Ansicht nach erfolgreicher Anmeldung statt der bloßen Erfolgsmeldung.
-- Admin-Oberflaeche zum Anzeigen und Freigeben registrierter Mitglieder.
-- Reviermodell und Revier anlegen.
-- Leaflet-Karte, Gemeindegrenze als GeoJSON und aktuelle Position.
-- Streckeneintrag mit Ort, Datum und Wildart.
+- Revierdatenmodell anlegen und erste geschuetzte API-Routen für Revier, Jagdeinrichtungen und Streckeneintraege erstellen.
+- Leaflet-Karte einbinden, Gemeindegrenze als GeoJSON darstellen und aktuelle GPS-Position anzeigen.
+- Streckeneintrag mit voreingestellter aktueller Position, Datum und Wildart erfassen.
+- Capacitor fuer Android konfigurieren; PWA-Manifest und Service-Worker fuer iOS pruefen.
+- Tailwind CSS als Ergaenzung zu Ionic integrieren (fuer eigene Layouts ausserhalb der Ionic-Komponenten).
 
 ### Noch nicht umgesetzt
 
-- Refresh-Tokens, Abmeldung und Token-Widerruf.
-- Rollenpruefung an geschuetzten API-Routen, Mitgliederfreigabe und Admin-Verwaltung.
+- Refresh-Tokens als `HttpOnly`-Cookies und Token-Widerruf (aktuell: JWT in localStorage mit 7-Tage-Sliding-Window).
+- Rollenpruefung an geschuetzten API-Routen fuer Revier, Strecke und Jagdeinrichtungen.
 - Karten, Offline-Karten, Jagdeinrichtungen, Streckeneintraege, Bilder und Synchronisation.
 - Capacitor-Android-Integration, PWA-Service-Worker, Cloudflare Tunnel und Raspberry-Pi-Betrieb.
 - Telegram, Firebase Cloud Messaging, Nachsuche und Faehrtenaufzeichnung.
@@ -73,6 +84,7 @@ Das primaere Einsatzgebiet ist die Gemeinde mit rund 14,5 Quadratkilometern. Off
 | Bereich | Entscheidung |
 | --- | --- |
 | Benutzeroberflaeche | Ionic mit Vue 3 und TypeScript |
+| CSS-Utilities | Tailwind CSS als Ergaenzung zu Ionic (geplant) |
 | Mobile Android | Capacitor, signierte APK ausserhalb des Play Store |
 | Mobile iOS | PWA ueber Safari; optional spaeter Capacitor/iOS, falls die Verteilung und Apple-Voraussetzungen akzeptiert werden |
 | Karten | Leaflet mit OpenStreetMap-kompatiblen Kartenquellen |
@@ -117,7 +129,7 @@ Fotos werden vom Client vor dem Upload in eine praxistaugliche Groesse komprimie
 
 Fuer den MVP werden Benutzerkonten lokal im Backend gefuehrt. Interessenten registrieren sich mit Benutzername und Passwort; ihr Konto bleibt bis zur Freigabe durch einen Administrator gesperrt. Das erste Administratorkonto wird beim Einrichten des Backends einmalig aus einer nicht eingecheckten Konfiguration erzeugt. Das Backend speichert niemals Klartextpasswoerter: Passwoerter werden mit Argon2id gehasht und die Anmeldung wird gegen Rate-Limits geschuetzt.
 
-Nach erfolgreicher Anmeldung erhaelt die App derzeit ein 15 Minuten gueltiges Zugriffstoken. Erneuerbare Refresh-Tokens als `HttpOnly`, `Secure` und `SameSite` geschuetzte Cookies sowie Abmeldung und Token-Widerruf sind als naechster Sicherheitsausbau vorgesehen. Das Token- und Benutzerformat wird von den Hono-Routen getrennt gehalten, damit ein Wechsel zu Auth0 oder einem anderen Identitaetsdienst spaeter moeglich bleibt.
+Nach erfolgreicher Anmeldung erhaelt die App ein 7 Tage gueltiges Zugriffstoken, das beim naechsten App-Start still erneuert wird (Sliding Window). Solange die App innerhalb von 7 Tagen geoeffnet wird, bleibt der Nutzer dauerhaft angemeldet. Logout loescht alle serverseitigen Sessions des Nutzers. Erneuerbare Refresh-Tokens als `HttpOnly`, `Secure` und `SameSite` geschuetzte Cookies sowie Token-Widerruf sind als naechster Sicherheitsausbau vorgesehen. Das Token- und Benutzerformat wird von den Hono-Routen getrennt gehalten, damit ein Wechsel zu Auth0 oder einem anderen Identitaetsdienst spaeter moeglich bleibt.
 
 Waehrend der Entwicklung laeuft dieselbe Hono-API auf dem Mac mini mit lokalen Testdaten. Vor der Umstellung auf den Raspberry Pi werden keine echten Zugangsdaten oder produktiven Standortdaten in der Entwicklungsumgebung verwendet.
 

@@ -1,1 +1,1 @@
-{"root":["./src/main.ts","./src/vite-env.d.ts","./src/app.vue"],"version":"5.9.3"}
+{"root":["./src/main.ts","./src/vite-env.d.ts","./src/app.vue","./src/components/applayout.vue","./src/views/admindashboard.vue","./src/views/authview.vue","./src/views/memberwelcome.vue"],"version":"5.9.3"}
