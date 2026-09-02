@@ -1,30 +1,43 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { IonButton, IonButtons, IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonList, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
+import { chevronDownOutline, logOutOutline, mapOutline, peopleOutline, settingsOutline } from 'ionicons/icons'
 
-const route = useRoute()
 const router = useRouter()
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 const displayName = localStorage.getItem('displayName') ?? ''
+const userMenuTriggerId = `user-menu-trigger-${crypto.randomUUID()}`
 
 /**
  * Reads role and isAdmin out of the JWT payload stored in localStorage.
  * No signature verification – used only to decide which nav items to show.
  */
-function decodeTokenInfo(): { role: string; isAdmin?: boolean } | null {
+function decodeTokenInfo(): { accountType: string; hasRevierAdminAccess?: boolean } | null {
   const token = localStorage.getItem('accessToken')
   if (!token) return null
   try {
-    return JSON.parse(atob(token.split('.')[1])) as { role: string; isAdmin?: boolean }
+    return JSON.parse(atob(token.split('.')[1])) as { accountType: string; hasRevierAdminAccess?: boolean }
   } catch { return null }
 }
 
-const tokenInfo = decodeTokenInfo()
+const tokenInfo = ref(decodeTokenInfo())
 // Show the dashboard navigation link for users with full admin access.
-const isAdmin = tokenInfo ? (tokenInfo.role === 'admin' || tokenInfo.isAdmin === true) : false
-// Used to swap the header button between 'Dashboard' and 'Meine Seite'.
-const onDashboard = computed(() => route.path === '/dashboard')
+const isAdmin = computed(() => tokenInfo.value
+  ? tokenInfo.value.accountType === 'systemAdmin' || tokenInfo.value.hasRevierAdminAccess === true
+  : false)
+
+function refreshTokenInfo() {
+  tokenInfo.value = decodeTokenInfo()
+}
+
+onMounted(() => window.addEventListener('auth-changed', refreshTokenInfo))
+onBeforeUnmount(() => window.removeEventListener('auth-changed', refreshTokenInfo))
+async function navigate(path: string) {
+  await router.push(path)
+  const hash = path.split('#')[1]
+  if (hash) requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' }))
+}
 
 /**
  * Logs the user out: sends the JWT to the server to delete all sessions,
@@ -51,13 +64,32 @@ async function logout() {
       <IonToolbar>
         <IonTitle>Jagdgruppe</IonTitle>
         <IonButtons slot="end">
-          <template v-if="isAdmin">
-            <IonButton v-if="onDashboard" fill="clear" @click="router.push('/welcome')">Meine Seite</IonButton>
-            <IonButton v-else fill="clear" @click="router.push('/dashboard')">Dashboard</IonButton>
-          </template>
-          <IonButton @click="logout">{{ displayName }} · Abmelden</IonButton>
+          <IonButton :id="userMenuTriggerId" aria-label="Benutzermenü">
+            {{ displayName || 'Menü' }}
+            <IonIcon slot="end" :icon="chevronDownOutline" />
+          </IonButton>
         </IonButtons>
       </IonToolbar>
+      <IonPopover :trigger="userMenuTriggerId" trigger-action="click" dismiss-on-select>
+        <IonList lines="none">
+          <IonItem button @click="navigate('/reviere/karte')">
+            <IonIcon slot="start" :icon="mapOutline" />
+            Revierkarte
+          </IonItem>
+          <IonItem button @click="navigate('/reviere/mitglieder')">
+            <IonIcon slot="start" :icon="peopleOutline" />
+            Reviermitglieder
+          </IonItem>
+          <IonItem v-if="isAdmin" button @click="navigate('/dashboard')">
+            <IonIcon slot="start" :icon="settingsOutline" />
+            Administration
+          </IonItem>
+          <IonItem button @click="logout">
+            <IonIcon slot="start" :icon="logOutOutline" />
+            Abmelden
+          </IonItem>
+        </IonList>
+      </IonPopover>
     </IonHeader>
     <IonContent>
       <slot />

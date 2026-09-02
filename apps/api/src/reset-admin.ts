@@ -20,8 +20,8 @@ await authStore.initialize()
 
 const existingUser = authStore.findUser(username)
 const admin = existingUser
-  ? await authStore.updateUser(existingUser.id, { username, email, displayName, role: 'admin', status: 'active' })
-  : await authStore.createUser({ username, email, displayName, role: 'admin', status: 'active' })
+  ? await authStore.updateUser(existingUser.id, { username, email, displayName, accountType: 'systemAdmin', status: 'active' })
+  : await authStore.createUser({ username, email, displayName, accountType: 'systemAdmin', status: 'active' })
 const token = await authStore.createPasswordToken(admin.id)
 const passwordLink = `${appOrigin}/?set-password=${encodeURIComponent(token)}`
 

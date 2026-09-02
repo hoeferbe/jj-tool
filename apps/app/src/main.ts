@@ -6,6 +6,7 @@ import AuthView from './views/AuthView.vue';
 import AdminDashboard from './views/AdminDashboard.vue';
 import MemberWelcome from './views/MemberWelcome.vue';
 
+import 'leaflet/dist/leaflet.css';
 import '@ionic/vue/css/core.css';
 import '@ionic/vue/css/normalize.css';
 import '@ionic/vue/css/structure.css';
@@ -24,9 +25,9 @@ function getTokenPayload() {
    if (!token) return null;
    try {
       return JSON.parse(atob(token.split('.')[1])) as {
-         role: string;
+         accountType: 'systemAdmin' | 'member';
          exp: number;
-         isAdmin?: boolean;
+         hasRevierAdminAccess?: boolean;
       };
    } catch {
       return null;
@@ -66,15 +67,22 @@ const router = createRouter({
       {
          path: '/dashboard',
          component: AdminDashboard,
-         // Only users with role 'admin' or the isAdmin flag can access the dashboard.
+         // Systemadmins and users with at least one Revieradmin membership can access it.
          meta: { requiresRole: 'admin' },
       },
       {
-         path: '/welcome',
+         path: '/reviere/karte',
          component: MemberWelcome,
-         // Any authenticated user (guest, paechter, bgs) can access the welcome page.
+         props: { section: 'map' },
          meta: { requiresAuth: true },
       },
+      {
+         path: '/reviere/mitglieder',
+         component: MemberWelcome,
+         props: { section: 'members' },
+         meta: { requiresAuth: true },
+      },
+      { path: '/welcome', redirect: '/reviere/karte' },
    ],
 });
 
@@ -82,18 +90,18 @@ const router = createRouter({
  * Global navigation guard.
  * - Redirects authenticated users away from '/' to their home route.
  * - Blocks unauthenticated/expired users from protected routes.
- * - Admin dashboard requires role === 'admin' OR isAdmin flag.
+ * - Admin dashboard requires a system account or an active Revieradmin membership.
  */
 router.beforeEach((to) => {
    const requiresRole = to.meta.requiresRole as string | undefined;
    const requiresAuth = to.meta.requiresAuth as boolean | undefined;
    const payload = getTokenPayload();
    const isAdminUser = payload
-      ? payload.role === 'admin' || payload.isAdmin === true
+      ? payload.accountType === 'systemAdmin' || payload.hasRevierAdminAccess === true
       : false;
    // Redirect already-authenticated users away from the auth page.
    if (to.path === '/' && payload && Date.now() / 1000 < payload.exp) {
-      return isAdminUser ? '/dashboard' : '/welcome';
+      return isAdminUser ? '/dashboard' : '/reviere/karte';
    }
    if (requiresRole === 'admin') {
       if (!payload || Date.now() / 1000 > payload.exp) return '/';

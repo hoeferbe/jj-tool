@@ -40,33 +40,57 @@ Das primaere Einsatzgebiet ist die Gemeinde mit rund 14,5 Quadratkilometern. Off
 
 ### Bereits umgesetzt
 
-- npm-Workspace mit Ionic Vue als App und Hono mit TypeScript als API angelegt.
-- Lokale Entwicklungsbefehle fuer App und API sowie Produktions-Build und Typecheck eingerichtet.
-- Hono-API mit Gesundheitsendpunkt unter `/health` erstellt.
-- JSON-basierter Auth-Speicher mit atomischem Schreiben und serialisierten Schreibzugriffen implementiert.
-- Registrierung mit Name, Benutzername und E-Mail-Adresse implementiert; neue Konten erhalten den Status `pending`.
-- Lokale Anmeldung mit Benutzername oder E-Mail-Adresse, Argon2id-Passwort-Hash und 15 Minuten gueltigem Zugriffstoken implementiert.
-- Passwort setzen und Passwort vergessen ueber einen einmaligen, eine Stunde gueltigen Link implementiert.
-- E-Mail-Versand per SMTP eingerichtet; ohne SMTP-Konfiguration wird der Passwort-Link nur in der lokalen Entwicklung protokolliert.
-- Ein initiales Administratorkonto kann aus einer nicht eingecheckten Umgebungsdatei erzeugt oder mit dem Befehl `npm run reset-admin -- <benutzername> <e-mail> <anzeigename>` neu gesetzt werden.
-- CORS fuer die lokalen Entwicklungsadressen `localhost:5173` und `127.0.0.1:5173` eingerichtet.
-- Globale Ionic-Farbpalette von Blau auf Oliv umgestellt.
-- Vue Router mit drei Routen (`/`, `/dashboard`, `/welcome`) und Navigationsguard eingerichtet; unauthentifizierte Aufrufe werden auf die Anmeldeseite umgeleitet.
-- Zugriffstoken auf 7 Tage Laufzeit mit Sliding-Window-Erneuerung umgestellt: beim App-Start wird der Token still über `/auth/refresh` verlängert, sodass Nutzer dauerhaft angemeldet bleiben, solange die App innerhalb von 7 Tagen geöffnet wird.
-- Registrierungsablauf entkoppelt: beim Registrieren wird keine E-Mail versendet; der Passwort-Link geht erst nach expliziter Admin-Freigabe raus.
-- Admin-Dashboard mit zwei auf- und zuklappbaren Abschnitten implementiert: ausstehende Registrierungen und aktive Mitglieder.
-- Rollen- und Berechtigungssystem eingeführt: Rollen `guest`, `paechter`, `bgs`, `admin`; Positionen `Revierleiter`, `Kassenwart`, `Schriftführer`; separates `isAdmin`-Flag für Mitglieder mit Admin-Dashboard-Zugriff ohne die Rolle `admin`.
-- Registrierungsfreigabe mit Rollen- und Positionswahl; Ablehnen löscht den Account endgültig.
-- Inline-Bearbeitung von Rolle, Position und Admin-Flag direkt in der Mitgliederliste.
-- Session-Tracking: Login erzeugt eine Session in `auth.json`; Logout löscht alle Sessions des Nutzers serverseitig; Dashboard zeigt Online-Status (gefüllter grüner Kreis / leerer Kreis).
-- Mitglieder-Willkommensseite mit Anzeige des letzten Login-Zeitstempels.
-- AppLayout-Komponente mit Header-Navigation: Admins wechseln zwischen Dashboard und persönlicher Seite; Abmelden-Button räumt localStorage und Session auf.
-- JSDoc-Kommentare und einzeilige Ablauf-Kommentare in allen Quelldateien (API und Frontend) ergänzt.
+#### Projekt- und Auth-Grundlage
+
+- npm-Workspace mit Ionic Vue, Hono und TypeScript sowie Entwicklungs-, Test-, Typecheck- und Produktions-Build-Befehlen eingerichtet.
+- JSON-basierter Auth-Speicher mit atomischem Schreiben, serialisierten Schreibzugriffen, Argon2id-Passwort-Hashes und Session-Tracking umgesetzt.
+- Registrierung, Anmeldung, Passwort setzen/vergessen und sieben Tage gueltige Zugriffstokens mit Sliding-Window-Erneuerung implementiert.
+- Initialer Systemadministrator per nicht eingecheckter Umgebungskonfiguration beziehungsweise `reset-admin` sowie SMTP-Versand mit sichtbarem Absendernamen „Jagd-App“ eingerichtet.
+- Routing und Zugriffsschutz fuer Anmeldung, Revierkarte, Reviermitglieder und Administration umgesetzt.
+
+#### Seit Commit `297a65e` (`admin dashboard`)
+
+**Reviere und Karten**
+
+- Mehr-Revier-Speicher mit automatischer Migration des bisherigen Single-Revier-Formats, atomischer Persistenz und CRUD-Routen implementiert.
+- Gemeindegrenzen werden ueber den serverseitigen BKG-WFS-Proxy (`wfs_vg25`) per Name oder Kartenposition geladen; Punktabfragen verwenden Bounding Box und Point-in-Polygon-Pruefung.
+- Revier-Neuanlage fuer alle aktiven Mitglieder mit Deutschland-Fallback, Web-Geolocation, Bundesland-Sprung, Gemeindesuche sowie Strg-/Command-Klick beziehungsweise Fadenkreuzmodus umgesetzt.
+- Revierersteller werden im eigenen Revier initial und bei Altdaten nachtraeglich als Paechter und Revieradmin gefuehrt. Das letzte Revieradmin-Recht kann erst nach Ernennung eines Nachfolgers entzogen werden.
+- Arbeitskarte mit OpenStreetMap-/Satellitenebene, abgedunkeltem Aussenbereich, Revierauswahl und 90 Prozent Viewporthoehe umgesetzt.
+- Administration zeigt zum ausgewaehlten Revier eine kompakte, fixierte Kartenvorschau mit Hintergrund und Grenzumriss, jedoch ohne Zoom, Verschieben oder Layerwechsel.
+- Leaflet-Lifecycle im Ionic-Modal stabilisiert; Vue veraendert keine Leaflet-Laufzeitklassen mehr und Kartenkacheln bleiben nach Gemeindeauswahl sichtbar.
+- Sichtbarer Quellenvermerk fuer jede BKG-Grenzdarstellung eingebaut: „© BKG (Bezugsjahr) CC BY 4.0“ mit Links zu BKG, Lizenz und VG25-Datenquellen.
+
+**Konten, Mitgliedschaften und Rechte**
+
+- Berechtigungsmodell in globale Systemadministratoren und revierbezogene Mitgliedschaften aufgeteilt. Mitgliedstyp, optionale Funktion und Revieradmin-Recht gelten unabhaengig pro Revier.
+- Bestehende `auth.json`-Daten werden mit Backup sicher migriert; unspezifische alte Adminflags werden nicht zu globalen Systemrechten hochgestuft.
+- Systemadministratoren verwalten alle Konten und Reviere. Revieradmins sehen und bearbeiten ausschliesslich Mitgliedschaften ihrer administrierten Reviere; Policies lesen immer den aktuellen Store-Zustand.
+- Konten koennen durch Systemadministratoren gesperrt, entsperrt und geloescht werden. Sperren widerruft laufende Sessions; Selbstsperre und Verlust des letzten Systemadministrators werden verhindert.
+- Mitglieder erhalten ueber die API nur aktive zugeordnete Reviere. Gemeinsame Reviermitglieder werden datensparsam mit Name, Typ und Funktion ausgeliefert; Gaeste sehen nur „Mitglied“ oder „Gast“.
+
+**Registrierung und Einladung**
+
+- Hybridregistrierung mit optionaler Revierauswahl umgesetzt. Antraege mit Revier gehen an dessen Revieradmins, freie Antraege an Systemadministratoren.
+- Revieradmins koennen fuer ihre Reviere gehashte, einmalige und sieben Tage gueltige Einladungslinks per E-Mail versenden und revierbezogene Antraege freigeben.
+- Nach erfolgreicher Registrierung erscheint eine Postfach-/Passwortlink-Anweisung; der Passwort-Link wird nach Freigabe versendet. Neue Registrierungen werden Systemadministratoren per E-Mail gemeldet.
+
+**Oberflaeche und Navigation**
+
+- Administrationsansicht mit Akkordeons fuer ausstehende Registrierungen, Mitglieder und Reviere sowie responsiven Datenrastern, Rollen-/Funktionssteuerung und Revierzuordnungen umgesetzt.
+- Eigenstaendige Routen `/reviere/karte`, `/reviere/mitglieder` und `/dashboard` eingefuehrt; das Nutzer-Popover navigiert zwischen Karte, Mitgliederliste, optionaler Administration und Abmelden.
+- Popover-Trigger pro gerouteter Ionic-Seite eindeutig gemacht, damit zurueckgehaltene Seiteninstanzen das aktive Menue nicht mehr abfangen.
+- Wiederverwendbare Komponenten fuer Revierkarte, Neuanlage-Dialog und BKG-Quellenvermerk erstellt.
+
+**Qualitaetssicherung**
+
+- Store-Tests fuer Mehr-Revier-Persistenz, Migration, Mitgliedschaften, Rechtescopes, Einladungen sowie System-/Revieradmin-Kontinuitaet ergaenzt.
+- Aktueller Stand: acht automatisierte API-Tests sowie erfolgreiche Workspace-Typechecks und Produktionsbuilds.
 
 ### Als Naechstes umzusetzen
 
-- Revierdatenmodell anlegen und erste geschuetzte API-Routen für Revier, Jagdeinrichtungen und Streckeneintraege erstellen.
-- Leaflet-Karte einbinden, Gemeindegrenze als GeoJSON darstellen und aktuelle GPS-Position anzeigen.
+- Erste geschützte API-Routen für Jagdeinrichtungen und Streckeneintraege erstellen.
+- Aktuelle GPS-Position in der Karte anzeigen.
 - Streckeneintrag mit voreingestellter aktueller Position, Datum und Wildart erfassen.
 - Capacitor fuer Android konfigurieren; PWA-Manifest und Service-Worker fuer iOS pruefen.
 - Tailwind CSS als Ergaenzung zu Ionic integrieren (fuer eigene Layouts ausserhalb der Ionic-Komponenten).
@@ -74,8 +98,8 @@ Das primaere Einsatzgebiet ist die Gemeinde mit rund 14,5 Quadratkilometern. Off
 ### Noch nicht umgesetzt
 
 - Refresh-Tokens als `HttpOnly`-Cookies und Token-Widerruf (aktuell: JWT in localStorage mit 7-Tage-Sliding-Window).
-- Rollenpruefung an geschuetzten API-Routen fuer Revier, Strecke und Jagdeinrichtungen.
-- Karten, Offline-Karten, Jagdeinrichtungen, Streckeneintraege, Bilder und Synchronisation.
+- Jagdeinrichtungen, Streckeneintraege und deren objektbezogene Berechtigungspruefungen.
+- Offline-Karten, Jagdeinrichtungen, Streckeneintraege, Bilder und Synchronisation.
 - Capacitor-Android-Integration, PWA-Service-Worker, Cloudflare Tunnel und Raspberry-Pi-Betrieb.
 - Telegram, Firebase Cloud Messaging, Nachsuche und Faehrtenaufzeichnung.
 
@@ -100,8 +124,8 @@ Das primaere Einsatzgebiet ist die Gemeinde mit rund 14,5 Quadratkilometern. Off
 
 | Objekt | Wesentliche Informationen |
 | --- | --- |
-| Revier | Name, Gemeinde, Gemeindegrenze als GeoJSON-Linie oder -Flaeche, Ersteller |
-| Mitglied | Benutzername, Anzeigename, Status ausstehend oder freigegeben, Rolle Mitglied oder Administrator |
+| Revier | ID, Name, Gemeinde, Gemeindegrenze als GeoJSON-Linie oder -Flaeche, Mittelpunkt, Ersteller |
+| Mitglied | Benutzername, Anzeigename, globaler Kontostatus und revierbezogene Mitgliedschaften mit Typ, Funktion und Revieradmin-Recht |
 | Jagdeinrichtung | Bezeichnung, Typ, Koordinaten, Status, Notiz, Foto optional |
 | Abschuss / Streckeneintrag | Datum und Uhrzeit, Koordinaten, Wildart, Gewicht, Verwertung, Notiz, Bilder, erfassende Person |
 | Verwertung | Selbstverbrauch, Vermarktung innerhalb der Gemeinde, Vermarktung ausserhalb der Gemeinde; bei Bedarf erweiterbar |
@@ -121,13 +145,13 @@ Fotos werden vom Client vor dem Upload in eine praxistaugliche Groesse komprimie
 - Das Backend laeuft auf einem Raspberry Pi 4 mit 4 GB Arbeitsspeicher und SSD-Speicher auf zwei Laufwerken im RAID. Der Betreiber verwaltet Cloudflare-Domain, Tunnel-Zugang und Server-Geheimnisse.
 - Als erste Kartenquelle wird OpenStreetMap verwendet. Der Offline-Kartenumfang wird vor der Freigabe anhand der Nutzungsbedingungen und eines Praxistests festgelegt.
 - Die anfänglichen Typen fuer Jagdeinrichtungen sind Kanzel, Bock, Leiter, Roehrenfalle und Kirrung.
-- Interessenten registrieren sich mit Benutzername und Passwort. Sie erhalten erst nach Freigabe durch einen Administrator Zugang zum Revier. Ein initiales Administratorkonto wird beim Einrichten des Backends durch eine einmalige, nicht eingecheckte Konfiguration angelegt.
+- Interessenten registrieren sich mit Name, Benutzername und E-Mail-Adresse sowie optionaler Revierauswahl oder ueber einen Einladungslink. Sie erhalten erst nach Freigabe und Setzen des Passworts Zugang. Ein initiales Systemadministratorkonto wird beim Einrichten des Backends durch eine einmalige, nicht eingecheckte Konfiguration angelegt.
 - Die vollstaendige Gemeinde mit rund 14,5 Quadratkilometern kann als Offline-Kartenbereich auf das Geraet geladen werden. Der Download ist freiwillig, jederzeit in den Einstellungen loeschbar und zeigt vorab den Speicherbedarf an.
 - Ohne heruntergeladenen Offline-Kartenbereich und ohne Netzverbindung stehen Kartenansicht, Standortanzeige auf der Karte und kartenbasierte Eingaben nicht zur Verfuegung. Bereits lokal erfasste Daten bleiben erhalten und werden bei einer Verbindung synchronisiert.
 
 ## Lokale Anmeldung
 
-Fuer den MVP werden Benutzerkonten lokal im Backend gefuehrt. Interessenten registrieren sich mit Benutzername und Passwort; ihr Konto bleibt bis zur Freigabe durch einen Administrator gesperrt. Das erste Administratorkonto wird beim Einrichten des Backends einmalig aus einer nicht eingecheckten Konfiguration erzeugt. Das Backend speichert niemals Klartextpasswoerter: Passwoerter werden mit Argon2id gehasht und die Anmeldung wird gegen Rate-Limits geschuetzt.
+Fuer den MVP werden Benutzerkonten lokal im Backend gefuehrt. Interessenten registrieren sich mit Name, Benutzername und E-Mail-Adresse; ihr Konto beziehungsweise die beantragte Reviermitgliedschaft bleibt bis zur Freigabe ausstehend. Anschliessend setzen sie das Passwort ueber einen einmaligen E-Mail-Link. Das erste Systemadministratorkonto wird beim Einrichten des Backends einmalig aus einer nicht eingecheckten Konfiguration erzeugt. Das Backend speichert niemals Klartextpasswoerter: Passwoerter werden mit Argon2id gehasht.
 
 Nach erfolgreicher Anmeldung erhaelt die App ein 7 Tage gueltiges Zugriffstoken, das beim naechsten App-Start still erneuert wird (Sliding Window). Solange die App innerhalb von 7 Tagen geoeffnet wird, bleibt der Nutzer dauerhaft angemeldet. Logout loescht alle serverseitigen Sessions des Nutzers. Erneuerbare Refresh-Tokens als `HttpOnly`, `Secure` und `SameSite` geschuetzte Cookies sowie Token-Widerruf sind als naechster Sicherheitsausbau vorgesehen. Das Token- und Benutzerformat wird von den Hono-Routen getrennt gehalten, damit ein Wechsel zu Auth0 oder einem anderen Identitaetsdienst spaeter moeglich bleibt.
 
