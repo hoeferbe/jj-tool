@@ -130,13 +130,16 @@ onMounted(loadReviere)
 
 <template>
   <AppLayout>
-    <div class="page-content">
-      <div class="page-heading">
-        <div><h1>Reviereinrichtungen</h1><p v-if="selectedRevier">{{ selectedRevier.name }} · {{ selectedRevier.municipalityName }}</p></div>
-        <IonSelect v-if="reviere.length > 1" :value="selectedRevierId" label="Revier" label-placement="stacked" interface="popover" @ion-change="selectRevier($event.detail.value)">
-          <IonSelectOption v-for="revier in reviere" :key="revier.id" :value="revier.id">{{ revier.name }}</IonSelectOption>
-        </IonSelect>
-      </div>
+    <div class="facilities-page">
+      <section class="page-banner">
+        <div class="page-banner-inner">
+          <div><h1>Reviereinrichtungen</h1><p v-if="selectedRevier">{{ selectedRevier.name }} · {{ selectedRevier.municipalityName }}</p></div>
+          <IonSelect v-if="reviere.length > 1" :value="selectedRevierId" label="Revier" label-placement="stacked" interface="popover" @ion-change="selectRevier($event.detail.value)">
+            <IonSelectOption v-for="revier in reviere" :key="revier.id" :value="revier.id">{{ revier.name }}</IonSelectOption>
+          </IonSelect>
+        </div>
+      </section>
+      <main class="page-content">
       <IonNote v-if="loading">Einrichtungen werden geladen...</IonNote>
       <p v-else-if="errorMessage" class="error-message">{{ errorMessage }}</p>
       <IonNote v-else-if="!facilities.length">Noch keine Jagdeinrichtungen angelegt.</IonNote>
@@ -164,14 +167,21 @@ onMounted(loadReviere)
       <IonModal :is-open="Boolean(taskFacility)" @did-dismiss="taskFacility = null">
         <div class="task-dialog"><h2>Neue Aufgabe für {{ taskFacility?.name }}</h2><IonInput v-model="taskTitle" label="Aufgabe" label-placement="stacked" placeholder="z. B. Leiter instand setzen" /><IonTextarea v-model="taskDescription" label="Beschreibung" label-placement="stacked" :auto-grow="true" /><IonSelect v-model="taskAssignee" label="Zuweisen an" label-placement="stacked" interface="popover"><IonSelectOption value="">Für alle Mitglieder</IonSelectOption><IonSelectOption v-for="member in members" :key="member.id" :value="member.id">{{ member.displayName }}</IonSelectOption></IonSelect><div class="dialog-actions"><IonButton fill="clear" @click="taskFacility = null">Abbrechen</IonButton><IonButton :disabled="taskSaving || taskTitle.trim().length < 2" @click="createTask">Speichern</IonButton></div></div>
       </IonModal>
+      </main>
     </div>
   </AppLayout>
 </template>
 
 <style scoped>
-.page-content { padding: 20px; }
-.page-heading, .facility-header, .reservation, .task-heading, .dialog-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.page-heading h1, .page-heading p, .facility-header h2, .facility-header p { margin: 0 0 4px; }
+.facilities-page { min-height: 100%; }
+.page-banner { background: #e8eddc; border-bottom: 1px solid #c5cfb3; }
+.page-banner-inner, .page-content { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+.page-banner-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px 0; }
+.page-banner h1, .page-banner p, .facility-header h2, .facility-header p { margin: 0 0 4px; }
+.page-banner h1 { color: #2e3b22; }
+.page-banner p { color: #536142; }
+.page-content { padding: 24px 0 36px; }
+.facility-header, .reservation, .task-heading, .dialog-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .facility-list { display: grid; gap: 16px; }
 .facility-entry { border: 1px solid var(--ion-color-light-shade); border-radius: 8px; padding: 16px; }
 .condition { margin: 12px 0 4px; }
@@ -180,5 +190,10 @@ onMounted(loadReviere)
 .task-dialog { padding: 20px; }
 .task-dialog h2 { margin-top: 0; }
 .error-message { color: var(--ion-color-danger); }
-@media (max-width: 600px) { .page-heading { align-items: stretch; flex-direction: column; } .facility-header { align-items: flex-start; } }
+@media (min-width: 980px) { .facility-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+  .page-banner-inner, .page-content { width: min(100% - 28px, 1120px); }
+  .page-banner-inner { align-items: stretch; flex-direction: column; padding: 16px 0; }
+  .facility-header { align-items: flex-start; }
+}
 </style>

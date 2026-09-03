@@ -97,8 +97,8 @@ function handleCreatedRevier(revier: Revier) {
   selectRevier(revier.id)
 }
 
-function handleCreatedFacility(facility: Jagdeinrichtung) {
-  facilities.value = [...facilities.value, facility]
+async function handleCreatedFacility() {
+  await selectRevier(selectedRevierId.value)
 }
 
 function handleUpdatedFacility(facility: Jagdeinrichtung) {

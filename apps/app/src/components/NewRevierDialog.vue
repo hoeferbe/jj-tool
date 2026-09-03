@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 import * as L from 'leaflet'
-import { IonButton, IonInput, IonModal, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
+import { IonButton, IonContent, IonInput, IonModal, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
 import BkgAttribution from './BkgAttribution.vue'
 
 interface Boundary {
@@ -223,35 +223,38 @@ function close() {
 </script>
 
 <template>
-  <IonModal :is-open="props.isOpen" @did-present="initializeMap" @did-dismiss="close">
-    <div class="dialog-content">
+  <IonModal class="revier-modal" :is-open="props.isOpen" @did-present="initializeMap" @did-dismiss="close">
+    <IonContent class="dialog-scroll">
+      <div class="dialog-content">
       <div class="dialog-heading">
         <h2>Neues Revier</h2>
         <IonButton fill="clear" @click="close">Schließen</IonButton>
       </div>
-      <IonInput v-model="name" label="Reviername" label-placement="stacked" placeholder="z. B. Nordrevier" />
-      <IonNote>Als Ersteller wirst du in diesem Revier Pächter und Revieradmin.</IonNote>
-      <div class="location-controls">
-        <IonSelect :value="state" label="Bundesland" label-placement="stacked" interface="popover" placeholder="Deutschland" @ion-change="selectState($event.detail.value)">
-          <IonSelectOption value="">Deutschland</IonSelectOption>
-          <IonSelectOption v-for="entry in states" :key="entry[0]" :value="entry[0]">{{ entry[0] }}</IonSelectOption>
-        </IonSelect>
-        <IonButton fill="outline" :disabled="locating" @click="locateUser">{{ locating ? 'Standort...' : 'Mein Standort' }}</IonButton>
-      </div>
-      <div class="search-controls">
-        <IonInput v-model="query" label="Gemeinde suchen" label-placement="stacked" placeholder="Name der Gemeinde" @keyup.enter="searchByName" />
-        <IonButton :disabled="searching || !query.trim()" @click="searchByName">{{ searching ? 'Suche...' : 'Suchen' }}</IonButton>
-      </div>
-      <IonNote>Klicke alternativ auf die Karte, um die Gemeinde an dieser Position zu übernehmen.</IonNote>
-      <div class="map-mode-row">
-        <IonButton
-          size="small"
-          :fill="selectionMode ? 'solid' : 'outline'"
-          :color="selectionMode ? 'success' : 'primary'"
-          @click="setSelectionMode(!selectionMode)"
-        >{{ selectionMode ? 'Auswahl aktiv' : 'Gemeinde auf Karte wählen' }}</IonButton>
-        <IonNote>{{ selectionMode ? 'Klicke jetzt auf den gewünschten Punkt.' : 'Alternativ: Strg-/⌘-Klick auf die Karte.' }}</IonNote>
-      </div>
+      <section class="form-section">
+        <IonInput v-model="name" label="Reviername" label-placement="stacked" placeholder="z. B. Nordrevier" />
+        <IonNote>Als Ersteller wirst du in diesem Revier Pächter und Revieradmin.</IonNote>
+      </section>
+      <section class="form-section">
+        <h3>Standort</h3>
+        <div class="location-controls">
+          <IonSelect :value="state" label="Bundesland" label-placement="stacked" interface="popover" placeholder="Deutschland" @ion-change="selectState($event.detail.value)">
+            <IonSelectOption value="">Deutschland</IonSelectOption>
+            <IonSelectOption v-for="entry in states" :key="entry[0]" :value="entry[0]">{{ entry[0] }}</IonSelectOption>
+          </IonSelect>
+          <IonButton fill="outline" :disabled="locating" @click="locateUser">{{ locating ? 'Standort...' : 'Mein Standort' }}</IonButton>
+        </div>
+        <div class="search-controls">
+          <IonInput v-model="query" label="Gemeinde suchen" label-placement="stacked" placeholder="Name der Gemeinde" @keyup.enter="searchByName" />
+          <IonButton :disabled="searching || !query.trim()" @click="searchByName">{{ searching ? 'Suche...' : 'Suchen' }}</IonButton>
+        </div>
+      </section>
+      <section class="form-section map-section">
+        <div class="map-section-heading">
+          <div><h3>Gemeinde auf Karte wählen</h3><IonNote>Klicke auf die Karte, um die Gemeinde an dieser Position zu übernehmen.</IonNote></div>
+          <IonButton size="small" :fill="selectionMode ? 'solid' : 'outline'" :color="selectionMode ? 'success' : 'primary'" @click="setSelectionMode(!selectionMode)">{{ selectionMode ? 'Auswahl aktiv' : 'Auf Karte wählen' }}</IonButton>
+        </div>
+        <IonNote v-if="selectionMode">Klicke jetzt auf den gewünschten Punkt.</IonNote>
+        <IonNote v-else>Alternativ: Strg-/⌘-Klick auf die Karte.</IonNote>
       <div v-if="boundary" class="selection">
         <span>Ausgewählte Gemeinde</span>
         <strong>{{ municipalityName }}</strong>
@@ -259,29 +262,39 @@ function close() {
       </div>
       <div ref="mapContainer" class="creation-map"></div>
       <BkgAttribution v-if="boundary" :year="new Date().getFullYear()" />
+      </section>
       <p v-if="message" class="message">{{ message }}</p>
       <div class="dialog-actions">
         <IonButton fill="clear" :disabled="saving" @click="close">Abbrechen</IonButton>
         <IonButton :disabled="saving || !canCreate" @click="createRevier">{{ saving ? 'Anlegen...' : 'Revier anlegen' }}</IonButton>
       </div>
-    </div>
+      </div>
+    </IonContent>
   </IonModal>
 </template>
 
 <style scoped>
-.dialog-content { padding: 20px; overflow-y: auto; }
-.dialog-heading, .location-controls, .search-controls, .dialog-actions { display: flex; align-items: end; gap: 12px; }
+.dialog-content { display: flex; flex-direction: column; gap: 16px; min-height: 100%; box-sizing: border-box; padding: 22px; }
+.dialog-heading, .location-controls, .search-controls, .dialog-actions, .map-section-heading { display: flex; align-items: end; gap: 12px; }
 .dialog-heading { justify-content: space-between; }
-.dialog-heading h2 { margin: 0; }
-.location-controls, .search-controls { margin-top: 12px; }
+.dialog-heading h2, .form-section h3 { margin: 0; }
+.form-section { display: flex; flex-direction: column; gap: 12px; }
 .location-controls ion-select, .search-controls ion-input { flex: 1; }
-.creation-map { width: 100%; height: min(520px, 52vh); margin-top: 12px; border: 1px solid var(--ion-color-light-shade); border-radius: 8px; overflow: hidden; }
-.map-mode-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.map-section-heading { align-items: center; justify-content: space-between; }
+.creation-map { width: 100%; height: min(520px, 48vh); border: 1px solid var(--ion-color-light-shade); border-radius: 8px; overflow: hidden; }
 .creation-map.selection-mode { cursor: crosshair !important; box-shadow: 0 0 0 3px rgba(45, 211, 111, 0.35); }
 .creation-map.selection-mode :deep(.leaflet-pane) { cursor: crosshair !important; }
-.selection { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 8px 12px; margin-top: 12px; padding: 10px 12px; border-left: 3px solid var(--ion-color-success); background: rgba(63, 106, 66, 0.08); }
+.selection { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 8px 12px; padding: 10px 12px; border-left: 3px solid var(--ion-color-success); background: rgba(63, 106, 66, 0.08); }
 .selection span, .selection small { color: var(--ion-color-medium-shade); }
 .message { color: var(--ion-color-danger); }
-.dialog-actions { justify-content: flex-end; margin-top: 16px; }
-@media (max-width: 560px) { .location-controls, .search-controls { align-items: stretch; flex-direction: column; } .location-controls ion-select, .search-controls ion-input { width: 100%; } }
+.dialog-actions { justify-content: flex-end; padding-top: 4px; border-top: 1px solid var(--ion-color-light-shade); }
+:global(.revier-modal) { --width: min(900px, calc(100vw - 24px)); --height: min(900px, 94vh); --max-height: 94vh; --border-radius: 10px; }
+:global(.revier-modal ion-content) { --background: var(--ion-background-color, #f8f8f2); }
+@media (max-width: 560px) {
+  .dialog-content { padding: 18px; gap: 14px; }
+  .location-controls, .search-controls, .map-section-heading { align-items: stretch; flex-direction: column; }
+  .location-controls ion-select, .search-controls ion-input, .map-section-heading ion-button { width: 100%; }
+  .dialog-actions ion-button { flex: 1; }
+  .selection { grid-template-columns: 1fr; gap: 3px; }
+}
 </style>
