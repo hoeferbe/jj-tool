@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-export interface Streckeneintrag {
+export interface KillEntry {
    id: string;
    revierId: string;
    datum: string;
@@ -13,7 +13,7 @@ export interface Streckeneintrag {
    updatedAt: string;
 }
 
-export interface CreateStreckeneintragInput {
+export interface CreateKillEntryInput {
    revierId: string;
    datum: string;
    wildart: string;
@@ -21,14 +21,14 @@ export interface CreateStreckeneintragInput {
    createdBy: string;
 }
 
-interface StreckeneintragData {
-   streckeneintraege: Streckeneintrag[];
+interface KillEntryData {
+   streckeneintraege: KillEntry[];
 }
 
-const emptyData = (): StreckeneintragData => ({ streckeneintraege: [] });
+const emptyData = (): KillEntryData => ({ streckeneintraege: [] });
 
-export class StreckeneintragStore {
-   private data: StreckeneintragData = emptyData();
+export class KillEntryStore {
+   private data: KillEntryData = emptyData();
    private writeQueue = Promise.resolve();
    private readonly filePath: string;
 
@@ -39,7 +39,7 @@ export class StreckeneintragStore {
    async initialize() {
       await mkdir(dirname(this.filePath), { recursive: true });
       try {
-         const stored = JSON.parse(await readFile(this.filePath, 'utf8')) as Partial<StreckeneintragData>;
+         const stored = JSON.parse(await readFile(this.filePath, 'utf8')) as Partial<KillEntryData>;
          this.data = {
             streckeneintraege: Array.isArray(stored.streckeneintraege)
                ? stored.streckeneintraege
@@ -51,16 +51,16 @@ export class StreckeneintragStore {
       }
    }
 
-   async getByRevierId(revierId: string) {
+   async getByHuntingDistrictId(revierId: string) {
       return this.data.streckeneintraege
          .filter((entry) => entry.revierId === revierId)
          .sort((first, second) => second.datum.localeCompare(first.datum) || second.createdAt.localeCompare(first.createdAt));
    }
 
-   async create(input: CreateStreckeneintragInput) {
+   async create(input: CreateKillEntryInput) {
       return this.enqueue(async () => {
          const now = new Date().toISOString();
-         const entry: Streckeneintrag = {
+         const entry: KillEntry = {
             id: randomUUID(),
             ...input,
             createdAt: now,

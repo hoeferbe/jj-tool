@@ -48,7 +48,7 @@ describe('AuthStore Revier assignments', () => {
       assert.equal(store.findUserById(user.id)?.memberships[0]?.isAdmin, true);
       assert.equal(store.findUserById(user.id)?.memberships[0]?.position, 'revierleiter');
       assert.deepEqual(store.findUserById(user.id)?.memberships.map((membership) => membership.revierId), ['revier-a']);
-      assert.deepEqual(store.getAdminRevierIds(user.id), ['revier-a']);
+      assert.deepEqual(store.getAdminHuntingDistrictIds(user.id), ['revier-a']);
 
       await store.updateUserRoleAndPosition(
          user.id,
@@ -57,7 +57,7 @@ describe('AuthStore Revier assignments', () => {
          false,
          ['revier-b', 'revier-c'],
       );
-      await store.removeRevierAssignments('revier-b');
+      await store.removeHuntingDistrictAssignments('revier-b');
 
       await store.setUserBlocked(user.id, true);
       assert.equal(store.findUserById(user.id)?.status, 'blocked');
@@ -122,10 +122,10 @@ describe('AuthStore Revier assignments', () => {
       );
 
       await store.upsertMembership(successor.id, { revierId: 'revier-a', status: 'active', memberType: 'bgs', isAdmin: true });
-      assert.equal(store.countActiveRevierAdmins('revier-a'), 2);
+      assert.equal(store.countActiveHuntingDistrictAdmins('revier-a'), 2);
       await store.upsertMembership(first.id, { revierId: 'revier-a', status: 'active', memberType: 'guest', isAdmin: false });
-      assert.deepEqual(store.getAdminRevierIds(first.id), []);
-      assert.deepEqual(store.getAdminRevierIds(successor.id), ['revier-a']);
+      assert.deepEqual(store.getAdminHuntingDistrictIds(first.id), []);
+      assert.deepEqual(store.getAdminHuntingDistrictIds(successor.id), ['revier-a']);
    });
 
    it('normalizes an existing member owner to Pächter and Revieradmin', async () => {
@@ -136,7 +136,7 @@ describe('AuthStore Revier assignments', () => {
       const owner = await store.createUser({ username: 'owner', email: 'owner@example.test', displayName: 'Owner', status: 'active' });
       await store.upsertMembership(owner.id, { revierId: 'revier-a', status: 'active', memberType: 'guest', isAdmin: true });
 
-      await store.ensureRevierOwner(owner.id, 'revier-a');
+      await store.ensureHuntingDistrictOwner(owner.id, 'revier-a');
 
       assert.equal(store.findUserById(owner.id)?.memberships[0]?.memberType, 'paechter');
       assert.equal(store.findUserById(owner.id)?.memberships[0]?.isAdmin, true);
@@ -148,18 +148,18 @@ describe('AuthStore Revier assignments', () => {
       const store = new AuthStore(directory);
       await store.initialize();
 
-      const token = await store.createRevierInvitation(
+      const token = await store.createHuntingDistrictInvitation(
          'revier-a',
          'Invitee@Example.test',
          'admin-a',
       );
-      const invitation = store.getRevierInvitation(token);
+      const invitation = store.getHuntingDistrictInvitation(token);
       assert.equal(invitation?.email, 'invitee@example.test');
       assert.equal(invitation?.revierId, 'revier-a');
 
-      await store.consumeRevierInvitation(token);
-      assert.equal(store.getRevierInvitation(token), undefined);
-      await assert.rejects(() => store.consumeRevierInvitation(token), /INVITATION_INVALID/);
+      await store.consumeHuntingDistrictInvitation(token);
+      assert.equal(store.getHuntingDistrictInvitation(token), undefined);
+      await assert.rejects(() => store.consumeHuntingDistrictInvitation(token), /INVITATION_INVALID/);
    });
 
    it('migrates legacy admins safely and creates a backup', async () => {

@@ -3,23 +3,23 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { fileURLToPath } from 'node:url';
 import { AuthStore } from './auth-store.js';
-import { JagdeinrichtungStore } from './jagdeinrichtung-store.js';
-import { JagdeinrichtungAufgabenStore } from './jagdeinrichtung-aufgaben-store.js';
-import { JagdeinrichtungReservierungenStore } from './jagdeinrichtung-reservierungen-store.js';
-import { sendRegistrationNotification, sendRevierInvitation } from './mailer.js';
-import { RevierStore } from './revier-store.js';
-import { StreckeneintragStore } from './streckeneintrag-store.js';
+import { FacilityStore } from './facility-store.js';
+import { FacilityTasksStore } from './facility-tasks-store.js';
+import { FacilityReservationsStore } from './facility-reservations-store.js';
+import { sendRegistrationNotification, sendHuntingDistrictInvitation } from './mailer.js';
+import { HuntingDistrictStore } from './hunting-district-store.js';
+import { KillEntryStore } from './kill-entry-store.js';
 import { createAuthMiddleware } from './middleware/auth.middleware.js';
 import { createAuthHelpers } from './helpers/auth.helpers.js';
-import { createRevierHelpers } from './helpers/revier.helpers.js';
+import { createHuntingDistrictHelpers } from './helpers/hunting-district.helpers.js';
 import { registerPublicRoutes } from './routes/public.routes.js';
 import { registerAuthRoutes } from './routes/auth.routes.js';
-import { registerJagdeinrichtungRoutes } from './routes/jagdeinrichtungen.routes.js';
-import { registerAufgabenRoutes } from './routes/aufgaben.routes.js';
-import { registerReservierungenRoutes } from './routes/reservierungen.routes.js';
-import { registerStreckeneintragRoutes } from './routes/streckeneintraege.routes.js';
+import { registerFacilityRoutes } from './routes/facilities.routes.js';
+import { registerTaskRoutes } from './routes/tasks.routes.js';
+import { registerReservationRoutes } from './routes/reservations.routes.js';
+import { registerKillEntryRoutes } from './routes/kill-entries.routes.js';
 import { registerAdminRoutes } from './routes/admin.routes.js';
-import { registerRevierRoutes } from './routes/reviere.routes.js';
+import { registerHuntingDistrictRoutes } from './routes/hunting-districts.routes.js';
 import { bootstrapApi } from './bootstrap.js';
 
 // Load .env from the api package root.
@@ -29,11 +29,11 @@ const app = new Hono();
 const dataDirectory = process.env.DATA_DIRECTORY ?? './data';
 const appOrigin = process.env.APP_ORIGIN ?? 'http://127.0.0.1:5173';
 const authStore = new AuthStore(dataDirectory);
-const revierStore = new RevierStore(dataDirectory);
-const jagdeinrichtungStore = new JagdeinrichtungStore(dataDirectory);
-const aufgabenStore = new JagdeinrichtungAufgabenStore(dataDirectory);
-const reservierungenStore = new JagdeinrichtungReservierungenStore(dataDirectory);
-const streckeneintragStore = new StreckeneintragStore(dataDirectory);
+const huntingDistrictStore = new HuntingDistrictStore(dataDirectory);
+const facilityStore = new FacilityStore(dataDirectory);
+const taskStore = new FacilityTasksStore(dataDirectory);
+const reservationStore = new FacilityReservationsStore(dataDirectory);
+const killEntryStore = new KillEntryStore(dataDirectory);
 // Encode the secret once so every JWT sign/verify reuses the same Uint8Array.
 const authSecret = new TextEncoder().encode(
    process.env.AUTH_SECRET ?? 'development-only-secret-change-me',
@@ -42,18 +42,18 @@ const { getAuthenticatedPayload, requireAuth, requireAdmin, requireSystemAdmin }
    authStore,
    authSecret,
 });
-const { hasOnlyExistingReviere, createPasswordLink } = createAuthHelpers({
+const { hasOnlyExistingHuntingDistricts, createPasswordLink } = createAuthHelpers({
    authStore,
-   revierStore,
+   huntingDistrictStore,
    appOrigin,
 });
 const {
-   canAdministerRevier,
-   canAccessRevier,
-   canCreateJagdeinrichtung,
-   isPointInsideRevier,
-   isActiveRevierMember,
-} = createRevierHelpers({ authStore, jagdeinrichtungStore });
+   canAdministerHuntingDistrict,
+   canAccessHuntingDistrict,
+   canCreateFacility,
+   isPointInsideHuntingDistrict,
+   isActiveHuntingDistrictMember,
+} = createHuntingDistrictHelpers({ authStore, facilityStore });
 // Accept requests from the configured app origin and common local dev addresses.
 const allowedOrigins = new Set([
    appOrigin,
@@ -70,73 +70,73 @@ app.use(
    }),
 );
 
-registerPublicRoutes(app, { authStore, revierStore });
+registerPublicRoutes(app, { authStore, huntingDistrictStore });
 
 registerAuthRoutes(app, {
    authStore,
-   revierStore,
+   huntingDistrictStore,
    authSecret,
    getAuthenticatedPayload,
    requireAuth,
    createPasswordLink,
    sendRegistrationNotification,
 });
-registerJagdeinrichtungRoutes(app, {
+registerFacilityRoutes(app, {
    authStore,
-   jagdeinrichtungStore,
-   revierStore,
+   facilityStore,
+   huntingDistrictStore,
    getAuthenticatedPayload,
    requireAuth,
-   canAccessRevier,
-   canCreateJagdeinrichtung,
-   canAdministerRevier,
-   isPointInsideRevier,
+   canAccessHuntingDistrict,
+   canCreateFacility,
+   canAdministerHuntingDistrict,
+   isPointInsideHuntingDistrict,
 });
-registerAufgabenRoutes(app, {
+registerTaskRoutes(app, {
    authStore,
-   aufgabenStore,
-   jagdeinrichtungStore,
+   taskStore,
+   facilityStore,
    getAuthenticatedPayload,
    requireAuth,
-   canAccessRevier,
-   canAdministerRevier,
-   isActiveRevierMember,
+   canAccessHuntingDistrict,
+   canAdministerHuntingDistrict,
+   isActiveHuntingDistrictMember,
 });
-registerReservierungenRoutes(app, {
+registerReservationRoutes(app, {
    authStore,
-   reservierungenStore,
-   jagdeinrichtungStore,
+   reservationStore,
+   facilityStore,
    getAuthenticatedPayload,
    requireAuth,
-   canAccessRevier,
-   canAdministerRevier,
+   canAccessHuntingDistrict,
+   canAdministerHuntingDistrict,
 });
-registerStreckeneintragRoutes(app, {
+registerKillEntryRoutes(app, {
    authStore,
-   streckeneintragStore,
+   killEntryStore,
    getAuthenticatedPayload,
    requireAuth,
-   canAccessRevier,
+   canAccessHuntingDistrict,
 });
 registerAdminRoutes(app, {
    authStore,
-   revierStore,
+   huntingDistrictStore,
    appOrigin,
    getAuthenticatedPayload,
    requireAdmin,
    requireSystemAdmin,
-   canAdministerRevier,
-   hasOnlyExistingReviere,
+   canAdministerHuntingDistrict,
+   hasOnlyExistingHuntingDistricts,
    createPasswordLink,
-   sendRevierInvitation,
+   sendHuntingDistrictInvitation,
 });
-registerRevierRoutes(app, {
+registerHuntingDistrictRoutes(app, {
    authStore,
-   revierStore,
+   huntingDistrictStore,
    getAuthenticatedPayload,
    requireAuth,
    requireAdmin,
-   canAdministerRevier,
+   canAdministerHuntingDistrict,
 });
 
 const port = Number(process.env.PORT ?? 8787);
@@ -144,10 +144,10 @@ await bootstrapApi({
    app,
    port,
    authStore,
-   revierStore,
-   jagdeinrichtungStore,
-   aufgabenStore,
-   reservierungenStore,
-   streckeneintragStore,
+   huntingDistrictStore,
+   facilityStore,
+   taskStore,
+   reservationStore,
+   killEntryStore,
    createPasswordLink,
 });

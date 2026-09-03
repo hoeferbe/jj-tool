@@ -25,17 +25,17 @@ export interface GeoJsonFeatureCollection {
    features: GeoJsonFeature[];
 }
 
-export interface RevierPoint {
+export interface HuntingDistrictPoint {
    lat: number;
    lng: number;
 }
 
-export interface Revier {
+export interface HuntingDistrict {
    id: string;
    name: string;
    municipalityName: string;
    municipalityCode?: string;
-   center: RevierPoint;
+   center: HuntingDistrictPoint;
    boundary: GeoJsonFeatureCollection;
    source: 'bkg-wfs-vg25';
    createdBy: string;
@@ -43,30 +43,30 @@ export interface Revier {
    updatedAt: string;
 }
 
-export interface UpsertRevierInput {
+export interface UpsertHuntingDistrictInput {
    name: string;
    municipalityName: string;
    municipalityCode?: string;
-   center: RevierPoint;
+   center: HuntingDistrictPoint;
    boundary: GeoJsonFeatureCollection;
    source: 'bkg-wfs-vg25';
    createdBy: string;
 }
 
-interface RevierData {
-   reviere: Revier[];
+interface HuntingDistrictData {
+   reviere: HuntingDistrict[];
 }
 
-interface LegacyRevierData {
-   revier?: Revier | null;
+interface LegacyHuntingDistrictData {
+   revier?: HuntingDistrict | null;
 }
 
-const emptyData = (): RevierData => ({
+const emptyData = (): HuntingDistrictData => ({
    reviere: [],
 });
 
-export class RevierStore {
-   private data: RevierData = emptyData();
+export class HuntingDistrictStore {
+   private data: HuntingDistrictData = emptyData();
    private writeQueue = Promise.resolve();
    private readonly filePath: string;
 
@@ -77,7 +77,7 @@ export class RevierStore {
    async initialize() {
       await mkdir(dirname(this.filePath), { recursive: true });
       try {
-         const stored = JSON.parse(await readFile(this.filePath, 'utf8')) as Partial<RevierData> & LegacyRevierData;
+         const stored = JSON.parse(await readFile(this.filePath, 'utf8')) as Partial<HuntingDistrictData> & LegacyHuntingDistrictData;
          this.data = {
             reviere: Array.isArray(stored.reviere)
                ? stored.reviere
@@ -96,14 +96,14 @@ export class RevierStore {
       }
    }
 
-   async getReviere() {
+   async getHuntingDistricts() {
       return [...this.data.reviere];
    }
 
-   async createRevier(input: UpsertRevierInput) {
+   async createHuntingDistrict(input: UpsertHuntingDistrictInput) {
       return this.enqueue(async () => {
          const now = new Date().toISOString();
-         const revier: Revier = {
+         const revier: HuntingDistrict = {
             id: randomUUID(),
             ...input,
             createdAt: now,
@@ -114,13 +114,13 @@ export class RevierStore {
       });
    }
 
-   async updateRevier(id: string, input: UpsertRevierInput) {
+   async updateHuntingDistrict(id: string, input: UpsertHuntingDistrictInput) {
       return this.enqueue(async () => {
          const index = this.data.reviere.findIndex((revier) => revier.id === id);
          if (index < 0) return null;
 
          const existing = this.data.reviere[index]!;
-         const updated: Revier = {
+         const updated: HuntingDistrict = {
             ...existing,
             ...input,
             id: existing.id,
@@ -132,7 +132,7 @@ export class RevierStore {
       });
    }
 
-   async deleteRevier(id: string) {
+   async deleteHuntingDistrict(id: string) {
       return this.enqueue(async () => {
          const index = this.data.reviere.findIndex((revier) => revier.id === id);
          if (index < 0) return false;

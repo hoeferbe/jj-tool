@@ -2,25 +2,25 @@ import { zValidator } from '@hono/zod-validator';
 import type { Hono, MiddlewareHandler } from 'hono';
 import { type AuthStore, type User } from '../auth-store.js';
 import type { AuthPayload } from '../middleware/auth.middleware.js';
-import { type RevierStore } from '../revier-store.js';
+import { type HuntingDistrictStore } from '../hunting-district-store.js';
 import { approveSchema, membershipSchema, updateRoleSchema, updateUserStatusSchema } from '../schemas/auth.schemas.js';
-import { invitationSchema } from '../schemas/revier.schemas.js';
+import { invitationSchema } from '../schemas/hunting-district.schemas.js';
 
 interface AdminRouteDependencies {
    authStore: AuthStore;
-   revierStore: RevierStore;
+   huntingDistrictStore: HuntingDistrictStore;
    appOrigin: string;
    getAuthenticatedPayload: (context: import('hono').Context) => Promise<AuthPayload | null>;
    requireAdmin: MiddlewareHandler;
    requireSystemAdmin: MiddlewareHandler;
-   canAdministerRevier: (user: User, revierId: string) => boolean;
-   hasOnlyExistingReviere: (revierIds: string[] | undefined) => Promise<boolean>;
+   canAdministerHuntingDistrict: (user: User, revierId: string) => boolean;
+   hasOnlyExistingHuntingDistricts: (revierIds: string[] | undefined) => Promise<boolean>;
    createPasswordLink: (user: User) => Promise<void>;
-   sendRevierInvitation: (input: { email: string; revierName: string; inviterName: string; invitationLink: string }) => Promise<void>;
+   sendHuntingDistrictInvitation: (input: { email: string; revierName: string; inviterName: string; invitationLink: string }) => Promise<void>;
 }
 
 export function registerAdminRoutes(app: Hono, dependencies: AdminRouteDependencies) {
-   const { authStore, revierStore, appOrigin, getAuthenticatedPayload, requireAdmin, requireSystemAdmin, canAdministerRevier, hasOnlyExistingReviere, createPasswordLink, sendRevierInvitation } = dependencies;
+   const { authStore, huntingDistrictStore, appOrigin, getAuthenticatedPayload, requireAdmin, requireSystemAdmin, canAdministerHuntingDistrict, hasOnlyExistingHuntingDistricts, createPasswordLink, sendHuntingDistrictInvitation } = dependencies;
 
    app.get('/admin/users', requireAdmin, (context) => {
       context.header('Cache-Control', 'no-store');
@@ -31,12 +31,12 @@ export function registerAdminRoutes(app: Hono, dependencies: AdminRouteDependenc
       const payload = await getAuthenticatedPayload(context);
       const administrator = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
       const revierId = context.req.param('id');
-      if (!administrator || !canAdministerRevier(administrator, revierId)) return context.json({ message: 'Für dieses Revier dürfen keine Einladungen versendet werden.' }, 403);
-      const revier = (await revierStore.getReviere()).find((entry) => entry.id === revierId);
+      if (!administrator || !canAdministerHuntingDistrict(administrator, revierId)) return context.json({ message: 'Für dieses Revier dürfen keine Einladungen versendet werden.' }, 403);
+      const revier = (await huntingDistrictStore.getHuntingDistricts()).find((entry) => entry.id === revierId);
       if (!revier) return context.json({ message: 'Revier nicht gefunden.' }, 404);
       const { email } = context.req.valid('json');
-      const token = await authStore.createRevierInvitation(revier.id, email, administrator.id);
-      await sendRevierInvitation({ email, revierName: revier.name, inviterName: administrator.displayName, invitationLink: `${appOrigin}/?invite=${encodeURIComponent(token)}` });
+      const token = await authStore.createHuntingDistrictInvitation(revier.id, email, administrator.id);
+      await sendHuntingDistrictInvitation({ email, revierName: revier.name, inviterName: administrator.displayName, invitationLink: `${appOrigin}/?invite=${encodeURIComponent(token)}` });
       return context.json({ message: 'Einladung wurde versendet.' }, 201);
    });
 
@@ -46,7 +46,7 @@ export function registerAdminRoutes(app: Hono, dependencies: AdminRouteDependenc
       try {
          const target = authStore.findUserById(userId);
          if (target?.accountType === 'systemAdmin' && role !== 'admin' && authStore.countActiveSystemAdmins() <= 1) return context.json({ message: 'Der letzte Systemadministrator kann nicht herabgestuft werden.' }, 409);
-         if (!(await hasOnlyExistingReviere(revierIds))) return context.json({ message: 'Mindestens ein Revier ist nicht mehr vorhanden.' }, 400);
+         if (!(await hasOnlyExistingHuntingDistricts(revierIds))) return context.json({ message: 'Mindestens ein Revier ist nicht mehr vorhanden.' }, 400);
          const user = await authStore.approveUser(userId, role, position, isAdmin, revierIds);
          await createPasswordLink(user);
          return context.json({ message: 'Benutzer freigeschaltet. Ein Passwort-Link wurde versendet.' });
@@ -87,7 +87,7 @@ export function registerAdminRoutes(app: Hono, dependencies: AdminRouteDependenc
       const userId = context.req.param('id') ?? '';
       const { role, position, isAdmin, revierIds } = context.req.valid('json');
       try {
-         if (!(await hasOnlyExistingReviere(revierIds))) return context.json({ message: 'Mindestens ein Revier ist nicht mehr vorhanden.' }, 400);
+         if (!(await hasOnlyExistingHuntingDistricts(revierIds))) return context.json({ message: 'Mindestens ein Revier ist nicht mehr vorhanden.' }, 400);
          const user = await authStore.updateUserRoleAndPosition(userId, role, position, isAdmin, revierIds);
          return context.json({ user });
       } catch (error) {
@@ -101,7 +101,7 @@ export function registerAdminRoutes(app: Hono, dependencies: AdminRouteDependenc
       const administrator = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
       const revierId = context.req.param('revierId');
       const userId = context.req.param('userId');
-      if (!administrator || !canAdministerRevier(administrator, revierId)) return context.json({ message: 'Diese Mitgliedschaft darf nicht administriert werden.' }, 403);
+      if (!administrator || !canAdministerHuntingDistrict(administrator, revierId)) return context.json({ message: 'Diese Mitgliedschaft darf nicht administriert werden.' }, 403);
       try {
          const targetWasPending = authStore.findUserById(userId)?.status === 'pending';
          const membership = await authStore.upsertMembership(userId, { revierId, ...context.req.valid('json') });
@@ -121,7 +121,7 @@ export function registerAdminRoutes(app: Hono, dependencies: AdminRouteDependenc
       const revierId = context.req.param('revierId');
       const userId = context.req.param('userId');
       if (!revierId || !userId) return context.json({ message: 'Revier- oder Benutzer-ID fehlt.' }, 400);
-      if (!administrator || !canAdministerRevier(administrator, revierId)) return context.json({ message: 'Diese Mitgliedschaft darf nicht administriert werden.' }, 403);
+      if (!administrator || !canAdministerHuntingDistrict(administrator, revierId)) return context.json({ message: 'Diese Mitgliedschaft darf nicht administriert werden.' }, 403);
       try {
          await authStore.removeMembership(userId, revierId);
          return context.json({ message: 'Mitgliedschaft entfernt.' });

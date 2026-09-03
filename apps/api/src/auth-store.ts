@@ -3,20 +3,20 @@ import { copyFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 /** Possible membership roles within the hunting group. */
-export type MemberType = 'paechter' | 'bgs' | 'guest';
-export type UserRole = 'admin' | MemberType;
+export type MembershipType = 'paechter' | 'bgs' | 'guest';
+export type UserRole = 'admin' | MembershipType;
 /** Account lifecycle state: pending = awaiting admin approval, active = approved. */
 export type UserStatus = 'active' | 'pending' | 'blocked';
 /** Optional organisational position a member can hold. */
-export type UserPosition = 'revierleiter' | 'kassenwart' | 'schriftfuehrer';
+export type OrganizationalRole = 'revierleiter' | 'kassenwart' | 'schriftfuehrer';
 export type AccountType = 'systemAdmin' | 'member';
 export type MembershipStatus = 'active' | 'pending';
 
-export interface RevierMembership {
+export interface HuntingDistrictMembership {
    revierId: string;
    status: MembershipStatus;
-   memberType: MemberType;
-   position?: UserPosition;
+   memberType: MembershipType;
+   position?: OrganizationalRole;
    isAdmin: boolean;
    source: 'migration' | 'invitation' | 'systemAdmin';
    createdAt: string;
@@ -32,7 +32,7 @@ export interface User {
    passwordHash?: string;
    accountType: AccountType;
    status: UserStatus;
-   memberships: RevierMembership[];
+   memberships: HuntingDistrictMembership[];
    lastLoginAt?: string;
    createdAt: string;
    updatedAt: string;
@@ -53,7 +53,7 @@ interface Session {
    createdAt: string;
 }
 
-interface RevierInvitation {
+interface HuntingDistrictInvitation {
    id: string;
    revierId: string;
    email: string;
@@ -68,7 +68,7 @@ interface AuthData {
    users: User[];
    passwordTokens: PasswordToken[];
    sessions: Session[];
-   invitations: RevierInvitation[];
+   invitations: HuntingDistrictInvitation[];
 }
 
 const emptyData = (): AuthData => ({
@@ -120,12 +120,12 @@ export class AuthStore {
             for (const user of legacyUsers) {
                const legacy = user as User & {
                   role?: UserRole | 'member';
-                  position?: UserPosition;
+                  position?: OrganizationalRole;
                   isAdmin?: boolean;
                   revierIds?: string[];
                };
                const now = new Date().toISOString();
-               const memberType: MemberType = legacy.role === 'bgs' || legacy.role === 'guest'
+               const memberType: MembershipType = legacy.role === 'bgs' || legacy.role === 'guest'
                   ? legacy.role
                   : 'paechter';
                legacy.accountType = legacy.role === 'admin' ? 'systemAdmin' : 'member';
@@ -140,7 +140,7 @@ export class AuthStore {
                   updatedAt: now,
                }));
                delete (legacy as { role?: UserRole }).role;
-               delete (legacy as { position?: UserPosition }).position;
+               delete (legacy as { position?: OrganizationalRole }).position;
                delete (legacy as { isAdmin?: boolean }).isAdmin;
                delete (legacy as { revierIds?: string[] }).revierIds;
             }
@@ -233,7 +233,7 @@ export class AuthStore {
       });
    }
 
-   async createRevierInvitation(revierId: string, email: string, invitedBy: string) {
+   async createHuntingDistrictInvitation(revierId: string, email: string, invitedBy: string) {
       return this.enqueue(async () => {
          const token = randomBytes(32).toString('base64url');
          const normalizedEmail = email.trim().toLowerCase();
@@ -255,7 +255,7 @@ export class AuthStore {
       });
    }
 
-   getRevierInvitation(token: string) {
+   getHuntingDistrictInvitation(token: string) {
       const tokenHash = hashToken(token);
       return this.data.invitations.find(
          (invitation) =>
@@ -265,9 +265,9 @@ export class AuthStore {
       );
    }
 
-   async consumeRevierInvitation(token: string) {
+   async consumeHuntingDistrictInvitation(token: string) {
       return this.enqueue(async () => {
-         const invitation = this.getRevierInvitation(token);
+         const invitation = this.getHuntingDistrictInvitation(token);
          if (!invitation) throw new Error('INVITATION_INVALID');
          invitation.usedAt = new Date().toISOString();
          return invitation;
@@ -415,7 +415,7 @@ export class AuthStore {
    async approveUser(
       userId: string,
       role: UserRole,
-      position?: UserPosition,
+      position?: OrganizationalRole,
       isAdmin = false,
       revierIds: string[] = [],
    ) {
@@ -494,7 +494,7 @@ export class AuthStore {
    async updateUserRoleAndPosition(
       userId: string,
       role: UserRole,
-      position?: UserPosition,
+      position?: OrganizationalRole,
       isAdmin?: boolean,
       revierIds?: string[],
    ) {
@@ -526,7 +526,7 @@ export class AuthStore {
       });
    }
 
-   async removeRevierAssignments(revierId: string) {
+   async removeHuntingDistrictAssignments(revierId: string) {
       return this.enqueue(async () => {
          for (const user of this.data.users) {
             if (!user.memberships.some((membership) => membership.revierId === revierId)) continue;
@@ -536,13 +536,13 @@ export class AuthStore {
       });
    }
 
-   getAdminRevierIds(userId: string) {
+   getAdminHuntingDistrictIds(userId: string) {
       return this.findUserById(userId)?.memberships
          .filter((membership) => membership.status === 'active' && membership.isAdmin)
          .map((membership) => membership.revierId) ?? [];
    }
 
-   countActiveRevierAdmins(revierId: string) {
+   countActiveHuntingDistrictAdmins(revierId: string) {
       return this.data.users.filter(
          (user) =>
             user.status === 'active' &&
@@ -555,7 +555,7 @@ export class AuthStore {
       ).length;
    }
 
-   getSoleAdminRevierIds(userId: string) {
+   getSoleAdminHuntingDistrictIds(userId: string) {
       const user = this.findUserById(userId);
       if (!user) return [];
       return user.memberships
@@ -563,7 +563,7 @@ export class AuthStore {
             (membership) =>
                membership.status === 'active' &&
                membership.isAdmin &&
-               this.countActiveRevierAdmins(membership.revierId) === 1,
+               this.countActiveHuntingDistrictAdmins(membership.revierId) === 1,
          )
          .map((membership) => membership.revierId);
    }
@@ -576,8 +576,8 @@ export class AuthStore {
 
    async upsertMembership(
       userId: string,
-      input: Omit<RevierMembership, 'createdAt' | 'updatedAt' | 'source'> & {
-         source?: RevierMembership['source'];
+      input: Omit<HuntingDistrictMembership, 'createdAt' | 'updatedAt' | 'source'> & {
+         source?: HuntingDistrictMembership['source'];
       },
    ) {
       return this.enqueue(async () => {
@@ -590,11 +590,11 @@ export class AuthStore {
             existing?.status === 'active' &&
             existing.isAdmin &&
             (input.status !== 'active' || !input.isAdmin) &&
-            this.countActiveRevierAdmins(input.revierId) <= 1
+            this.countActiveHuntingDistrictAdmins(input.revierId) <= 1
          ) {
             throw new Error('LAST_REVIER_ADMIN');
          }
-         const membership: RevierMembership = {
+         const membership: HuntingDistrictMembership = {
             ...input,
             source: input.source ?? existing?.source ?? 'systemAdmin',
             createdAt: existing?.createdAt ?? now,
@@ -608,7 +608,7 @@ export class AuthStore {
       });
    }
 
-   async ensureRevierOwner(userId: string, revierId: string) {
+   async ensureHuntingDistrictOwner(userId: string, revierId: string) {
       const user = this.findUserById(userId);
       if (!user || user.accountType === 'systemAdmin') return;
       const existing = user.memberships.find((membership) => membership.revierId === revierId);
@@ -630,7 +630,7 @@ export class AuthStore {
          if (
             membership?.status === 'active' &&
             membership.isAdmin &&
-            this.countActiveRevierAdmins(revierId) <= 1
+            this.countActiveHuntingDistrictAdmins(revierId) <= 1
          ) {
             throw new Error('LAST_REVIER_ADMIN');
          }
@@ -645,7 +645,7 @@ export class AuthStore {
       const administrator = this.findUserById(userId);
       if (!administrator) return [];
       if (administrator.accountType === 'systemAdmin') return this.getAllUsers();
-      const adminRevierIds = new Set(this.getAdminRevierIds(userId));
+      const adminRevierIds = new Set(this.getAdminHuntingDistrictIds(userId));
       return this.getAllUsers().filter((user) =>
          user.id === userId ||
          user.memberships.some((membership) => adminRevierIds.has(membership.revierId)),

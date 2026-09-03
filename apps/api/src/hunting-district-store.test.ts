@@ -3,7 +3,7 @@ import { afterEach, describe, it } from 'node:test';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { RevierStore, type UpsertRevierInput } from './revier-store.js';
+import { HuntingDistrictStore, type UpsertHuntingDistrictInput } from './hunting-district-store.js';
 
 const tempDirs: string[] = [];
 
@@ -13,8 +13,8 @@ afterEach(async () => {
    );
 });
 
-describe('RevierStore', () => {
-   const createInput = (name: string): UpsertRevierInput => ({
+describe('HuntingDistrictStore', () => {
+   const createInput = (name: string): UpsertHuntingDistrictInput => ({
       name,
       municipalityName: 'Köln',
       municipalityCode: '05315000',
@@ -47,23 +47,23 @@ describe('RevierStore', () => {
    it('persists, updates and deletes multiple reviere independently', async () => {
       const directory = await mkdtemp(join(tmpdir(), 'jjtool-revier-'));
       tempDirs.push(directory);
-      const store = new RevierStore(directory);
+      const store = new HuntingDistrictStore(directory);
       await store.initialize();
 
-      const north = await store.createRevier(createInput('Jagdrevier Nord'));
-      const south = await store.createRevier(createInput('Jagdrevier Süd'));
-      const updated = await store.updateRevier(north.id, createInput('Nord neu'));
+      const north = await store.createHuntingDistrict(createInput('Jagdrevier Nord'));
+      const south = await store.createHuntingDistrict(createInput('Jagdrevier Süd'));
+      const updated = await store.updateHuntingDistrict(north.id, createInput('Nord neu'));
 
       assert.equal(updated?.id, north.id);
       assert.equal(updated?.createdAt, north.createdAt);
       assert.equal(updated?.name, 'Nord neu');
-      assert.equal((await store.getReviere()).length, 2);
-      assert.equal(await store.deleteRevier(south.id), true);
-      assert.equal(await store.deleteRevier('unknown'), false);
+      assert.equal((await store.getHuntingDistricts()).length, 2);
+      assert.equal(await store.deleteHuntingDistrict(south.id), true);
+      assert.equal(await store.deleteHuntingDistrict('unknown'), false);
 
-      const reloaded = new RevierStore(directory);
+      const reloaded = new HuntingDistrictStore(directory);
       await reloaded.initialize();
-      const loaded = await reloaded.getReviere();
+      const loaded = await reloaded.getHuntingDistricts();
       assert.deepEqual(loaded.map((revier) => revier.name), ['Nord neu']);
       assert.equal(loaded[0]?.boundary.features.length, 1);
    });
@@ -79,10 +79,10 @@ describe('RevierStore', () => {
       };
       await writeFile(join(directory, 'revier.json'), JSON.stringify({ revier: legacyRevier }));
 
-      const store = new RevierStore(directory);
+      const store = new HuntingDistrictStore(directory);
       await store.initialize();
 
-      assert.deepEqual(await store.getReviere(), [legacyRevier]);
+      assert.deepEqual(await store.getHuntingDistricts(), [legacyRevier]);
       const persisted = JSON.parse(await readFile(join(directory, 'revier.json'), 'utf8')) as { reviere: unknown[] };
       assert.equal(persisted.reviere.length, 1);
    });

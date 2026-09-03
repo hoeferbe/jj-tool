@@ -7,7 +7,7 @@ interface PasswordLinkMessage {
   passwordLink: string
 }
 
-interface RevierInvitationMessage {
+interface HuntingDistrictInvitationMessage {
   email: string
   revierName: string
   inviterName: string
@@ -57,7 +57,7 @@ export async function sendPasswordLink(message: PasswordLinkMessage) {
   })
 }
 
-export async function sendRevierInvitation(message: RevierInvitationMessage) {
+export async function sendHuntingDistrictInvitation(message: HuntingDistrictInvitationMessage) {
   const mailer = createMailer()
   if (!mailer) {
     console.log(`Revier invitation for ${message.email}: ${message.invitationLink}`)

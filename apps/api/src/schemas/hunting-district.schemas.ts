@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const invitationSchema = z.object({ email: z.string().trim().email() });
-export const revierSchema = z.object({
+export const huntingDistrictSchema = z.object({
    name: z.string().trim().min(2).max(120),
    municipalityName: z.string().trim().min(2).max(120),
    municipalityCode: z.string().trim().min(1).max(30).optional(),

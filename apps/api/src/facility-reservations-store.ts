@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-export interface JagdeinrichtungReservierung {
+export interface FacilityReservation {
    id: string;
    revierId: string;
    jagdeinrichtungId: string;
@@ -11,11 +11,11 @@ export interface JagdeinrichtungReservierung {
    releasedAt?: string;
 }
 
-interface ReservierungenData { reservierungen: JagdeinrichtungReservierung[] }
-const emptyData = (): ReservierungenData => ({ reservierungen: [] });
+interface ReservationsData { reservierungen: FacilityReservation[] }
+const emptyData = (): ReservationsData => ({ reservierungen: [] });
 
-export class JagdeinrichtungReservierungenStore {
-   private data: ReservierungenData = emptyData();
+export class FacilityReservationsStore {
+   private data: ReservationsData = emptyData();
    private writeQueue = Promise.resolve();
    private readonly filePath: string;
 
@@ -26,7 +26,7 @@ export class JagdeinrichtungReservierungenStore {
    async initialize() {
       await mkdir(dirname(this.filePath), { recursive: true });
       try {
-         const stored = JSON.parse(await readFile(this.filePath, 'utf8')) as Partial<ReservierungenData>;
+         const stored = JSON.parse(await readFile(this.filePath, 'utf8')) as Partial<ReservationsData>;
          this.data = { reservierungen: Array.isArray(stored.reservierungen) ? stored.reservierungen : [] };
       } catch (error: unknown) {
          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
@@ -34,7 +34,7 @@ export class JagdeinrichtungReservierungenStore {
       }
    }
 
-   async getActiveByRevierId(revierId: string) {
+   async getActiveByHuntingDistrictId(revierId: string) {
       return this.data.reservierungen.filter((entry) => entry.revierId === revierId && !entry.releasedAt);
    }
 
@@ -42,11 +42,11 @@ export class JagdeinrichtungReservierungenStore {
       return this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && !entry.releasedAt) ?? null;
    }
 
-   async reserve(input: Omit<JagdeinrichtungReservierung, 'id' | 'reservedAt'>) {
+   async reserve(input: Omit<FacilityReservation, 'id' | 'reservedAt'>) {
       return this.enqueue(async () => {
          const active = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === input.jagdeinrichtungId && !entry.releasedAt);
          if (active) throw new Error('ALREADY_RESERVED');
-         const reservation: JagdeinrichtungReservierung = {
+         const reservation: FacilityReservation = {
             id: randomUUID(), ...input, reservedAt: new Date().toISOString(),
          };
          this.data.reservierungen.push(reservation);

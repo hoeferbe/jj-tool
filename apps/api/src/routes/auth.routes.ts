@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator';
 import type { Hono, MiddlewareHandler } from 'hono';
 import { jwtVerify, SignJWT } from 'jose';
 import { type AuthStore, type User } from '../auth-store.js';
-import { type RevierStore } from '../revier-store.js';
+import { type HuntingDistrictStore } from '../hunting-district-store.js';
 import {
    emailSchema,
    loginSchema,
@@ -14,7 +14,7 @@ import type { AuthPayload } from '../middleware/auth.middleware.js';
 
 interface AuthRouteDependencies {
    authStore: AuthStore;
-   revierStore: RevierStore;
+   huntingDistrictStore: HuntingDistrictStore;
    authSecret: Uint8Array;
    getAuthenticatedPayload: (context: import('hono').Context) => Promise<AuthPayload | null>;
    requireAuth: MiddlewareHandler;
@@ -30,7 +30,7 @@ interface AuthRouteDependencies {
 export function registerAuthRoutes(app: Hono, dependencies: AuthRouteDependencies) {
    const {
       authStore,
-      revierStore,
+      huntingDistrictStore,
       authSecret,
       getAuthenticatedPayload,
       requireAuth,
@@ -45,7 +45,7 @@ export function registerAuthRoutes(app: Hono, dependencies: AuthRouteDependencie
          const input = context.req.valid('json');
          try {
             const invitation = input.invitationToken
-               ? authStore.getRevierInvitation(input.invitationToken)
+               ? authStore.getHuntingDistrictInvitation(input.invitationToken)
                : undefined;
             if (input.invitationToken && !invitation) {
                return context.json({ message: 'Einladung ungültig oder abgelaufen.' }, 400);
@@ -54,7 +54,7 @@ export function registerAuthRoutes(app: Hono, dependencies: AuthRouteDependencie
                return context.json({ message: 'Die E-Mail-Adresse passt nicht zur Einladung.' }, 400);
             }
             const revierId = invitation?.revierId ?? input.revierId;
-            if (revierId && !(await revierStore.getReviere()).some((revier) => revier.id === revierId)) {
+            if (revierId && !(await huntingDistrictStore.getHuntingDistricts()).some((district) => district.id === revierId)) {
                return context.json({ message: 'Das ausgewählte Revier existiert nicht mehr.' }, 400);
             }
             const user = await authStore.createUser({
@@ -64,7 +64,7 @@ export function registerAuthRoutes(app: Hono, dependencies: AuthRouteDependencie
                status: 'pending',
             });
             const selectedRevier = revierId
-               ? (await revierStore.getReviere()).find((revier) => revier.id === revierId)
+               ? (await huntingDistrictStore.getHuntingDistricts()).find((district) => district.id === revierId)
                : undefined;
             if (revierId) {
                await authStore.upsertMembership(user.id, {
@@ -83,7 +83,7 @@ export function registerAuthRoutes(app: Hono, dependencies: AuthRouteDependencie
                email: user.email,
                revierName: selectedRevier?.name,
             });
-            if (input.invitationToken) await authStore.consumeRevierInvitation(input.invitationToken);
+            if (input.invitationToken) await authStore.consumeHuntingDistrictInvitation(input.invitationToken);
             return context.json(
                {
                   message:

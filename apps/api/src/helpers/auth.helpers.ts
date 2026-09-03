@@ -1,17 +1,17 @@
 import { type AuthStore, type User } from '../auth-store.js';
-import { type RevierStore } from '../revier-store.js';
+import { type HuntingDistrictStore } from '../hunting-district-store.js';
 import { sendPasswordLink } from '../mailer.js';
 
 interface AuthHelperDependencies {
    authStore: AuthStore;
-   revierStore: RevierStore;
+   huntingDistrictStore: HuntingDistrictStore;
    appOrigin: string;
 }
 
-export function createAuthHelpers({ authStore, revierStore, appOrigin }: AuthHelperDependencies) {
-   async function hasOnlyExistingReviere(revierIds: string[] | undefined) {
+export function createAuthHelpers({ authStore, huntingDistrictStore, appOrigin }: AuthHelperDependencies) {
+   async function hasOnlyExistingHuntingDistricts(revierIds: string[] | undefined) {
       if (!revierIds) return true;
-      const existingIds = new Set((await revierStore.getReviere()).map((revier) => revier.id));
+      const existingIds = new Set((await huntingDistrictStore.getHuntingDistricts()).map((district) => district.id));
       return revierIds.every((id) => existingIds.has(id));
    }
 
@@ -24,5 +24,5 @@ export function createAuthHelpers({ authStore, revierStore, appOrigin }: AuthHel
       });
    }
 
-   return { hasOnlyExistingReviere, createPasswordLink };
+   return { hasOnlyExistingHuntingDistricts, createPasswordLink };
 }

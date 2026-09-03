@@ -2,30 +2,30 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-export const JAGDEINRICHTUNG_TYPEN = [
+export const FACILITY_TYPES = [
    'Kanzel',
    'Bock',
    'Leiter',
    'Roehrenfalle',
    'Kirrung',
 ] as const;
-export type JagdeinrichtungTyp = (typeof JAGDEINRICHTUNG_TYPEN)[number];
+export type FacilityType = (typeof FACILITY_TYPES)[number];
 
-export const JAGDEINRICHTUNG_STATUS = ['aktiv', 'defekt', 'ausser Betrieb'] as const;
-export type JagdeinrichtungStatus = (typeof JAGDEINRICHTUNG_STATUS)[number];
+export const FACILITY_STATUSES = ['aktiv', 'defekt', 'ausser Betrieb'] as const;
+export type FacilityStatus = (typeof FACILITY_STATUSES)[number];
 
-export interface JagdeinrichtungPoint {
+export interface FacilityCoordinates {
    lat: number;
    lng: number;
 }
 
-export interface Jagdeinrichtung {
+export interface Facility {
    id: string;
    revierId: string;
    name: string;
-   typ: JagdeinrichtungTyp;
-   position: JagdeinrichtungPoint;
-   status: JagdeinrichtungStatus;
+   typ: FacilityType;
+   position: FacilityCoordinates;
+   status: FacilityStatus;
    zustandsInfo?: string;
    notiz?: string;
    createdBy: string;
@@ -33,25 +33,25 @@ export interface Jagdeinrichtung {
    updatedAt: string;
 }
 
-export interface UpsertJagdeinrichtungInput {
+export interface UpsertFacilityInput {
    revierId: string;
    name: string;
-   typ: JagdeinrichtungTyp;
-   position: JagdeinrichtungPoint;
-   status: JagdeinrichtungStatus;
+   typ: FacilityType;
+   position: FacilityCoordinates;
+   status: FacilityStatus;
    zustandsInfo?: string;
    notiz?: string;
    createdBy: string;
 }
 
-interface JagdeinrichtungData {
-   jagdeinrichtungen: Jagdeinrichtung[];
+interface FacilityData {
+   jagdeinrichtungen: Facility[];
 }
 
-const emptyData = (): JagdeinrichtungData => ({ jagdeinrichtungen: [] });
+const emptyData = (): FacilityData => ({ jagdeinrichtungen: [] });
 
-export class JagdeinrichtungStore {
-   private data: JagdeinrichtungData = emptyData();
+export class FacilityStore {
+   private data: FacilityData = emptyData();
    private writeQueue = Promise.resolve();
    private readonly filePath: string;
 
@@ -62,7 +62,7 @@ export class JagdeinrichtungStore {
    async initialize() {
       await mkdir(dirname(this.filePath), { recursive: true });
       try {
-         const stored = JSON.parse(await readFile(this.filePath, 'utf8')) as Partial<JagdeinrichtungData>;
+         const stored = JSON.parse(await readFile(this.filePath, 'utf8')) as Partial<FacilityData>;
          this.data = {
             jagdeinrichtungen: Array.isArray(stored.jagdeinrichtungen)
                ? stored.jagdeinrichtungen
@@ -74,7 +74,7 @@ export class JagdeinrichtungStore {
       }
    }
 
-   async getByRevierId(revierId: string) {
+   async getByHuntingDistrictId(revierId: string) {
       return this.data.jagdeinrichtungen.filter((entry) => entry.revierId === revierId);
    }
 
@@ -82,10 +82,10 @@ export class JagdeinrichtungStore {
       return this.data.jagdeinrichtungen.find((entry) => entry.id === id) ?? null;
    }
 
-   async create(input: UpsertJagdeinrichtungInput) {
+   async create(input: UpsertFacilityInput) {
       return this.enqueue(async () => {
          const now = new Date().toISOString();
-         const entry: Jagdeinrichtung = {
+         const entry: Facility = {
             id: randomUUID(),
             ...input,
             createdAt: now,
@@ -96,12 +96,12 @@ export class JagdeinrichtungStore {
       });
    }
 
-   async update(id: string, input: UpsertJagdeinrichtungInput) {
+   async update(id: string, input: UpsertFacilityInput) {
       return this.enqueue(async () => {
          const index = this.data.jagdeinrichtungen.findIndex((entry) => entry.id === id);
          if (index < 0) return null;
          const existing = this.data.jagdeinrichtungen[index]!;
-         const updated: Jagdeinrichtung = {
+         const updated: Facility = {
             ...existing,
             ...input,
             id: existing.id,

@@ -1,22 +1,22 @@
 import { serve } from '@hono/node-server';
 import type { Hono } from 'hono';
 import { type AuthStore } from './auth-store.js';
-import { type JagdeinrichtungAufgabenStore } from './jagdeinrichtung-aufgaben-store.js';
-import { type JagdeinrichtungReservierungenStore } from './jagdeinrichtung-reservierungen-store.js';
-import { type JagdeinrichtungStore } from './jagdeinrichtung-store.js';
-import { type RevierStore } from './revier-store.js';
-import { type StreckeneintragStore } from './streckeneintrag-store.js';
+import { type FacilityTasksStore } from './facility-tasks-store.js';
+import { type FacilityReservationsStore } from './facility-reservations-store.js';
+import { type FacilityStore } from './facility-store.js';
+import { type HuntingDistrictStore } from './hunting-district-store.js';
+import { type KillEntryStore } from './kill-entry-store.js';
 import { type User } from './auth-store.js';
 
 interface BootstrapDependencies {
    app: Hono;
    port: number;
    authStore: AuthStore;
-   revierStore: RevierStore;
-   jagdeinrichtungStore: JagdeinrichtungStore;
-   aufgabenStore: JagdeinrichtungAufgabenStore;
-   reservierungenStore: JagdeinrichtungReservierungenStore;
-   streckeneintragStore: StreckeneintragStore;
+   huntingDistrictStore: HuntingDistrictStore;
+   facilityStore: FacilityStore;
+   taskStore: FacilityTasksStore;
+   reservationStore: FacilityReservationsStore;
+   killEntryStore: KillEntryStore;
    createPasswordLink: (user: User) => Promise<void>;
 }
 
@@ -39,22 +39,22 @@ export async function bootstrapApi(dependencies: BootstrapDependencies) {
       app,
       port,
       authStore,
-      revierStore,
-      jagdeinrichtungStore,
-      aufgabenStore,
-      reservierungenStore,
-      streckeneintragStore,
+      huntingDistrictStore,
+      facilityStore,
+      taskStore,
+      reservationStore,
+      killEntryStore,
       createPasswordLink,
    } = dependencies;
 
    await authStore.initialize();
-   await revierStore.initialize();
-   await jagdeinrichtungStore.initialize();
-   await aufgabenStore.initialize();
-   await reservierungenStore.initialize();
-   await streckeneintragStore.initialize();
-   for (const revier of await revierStore.getReviere()) {
-      await authStore.ensureRevierOwner(revier.createdBy, revier.id);
+   await huntingDistrictStore.initialize();
+   await facilityStore.initialize();
+   await taskStore.initialize();
+   await reservationStore.initialize();
+   await killEntryStore.initialize();
+   for (const district of await huntingDistrictStore.getHuntingDistricts()) {
+      await authStore.ensureHuntingDistrictOwner(district.createdBy, district.id);
    }
    await initializeInitialAdmin(authStore, createPasswordLink);
 

@@ -40,7 +40,7 @@ export function createAuthMiddleware({ authStore, authSecret }: AuthMiddlewareDe
       if (!payload || !payload.sub || user?.status !== 'active') {
          return context.json({ message: 'Nicht autorisiert.' }, 401);
       }
-      if (user.accountType !== 'systemAdmin' && authStore.getAdminRevierIds(user.id).length === 0) {
+      if (user.accountType !== 'systemAdmin' && authStore.getAdminHuntingDistrictIds(user.id).length === 0) {
          return context.json({ message: 'Zugriff verweigert.' }, 403);
       }
       await next();

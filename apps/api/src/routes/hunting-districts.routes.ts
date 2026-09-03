@@ -5,28 +5,28 @@ import type { Feature, MultiPolygon, Polygon } from 'geojson';
 import type { Hono, MiddlewareHandler } from 'hono';
 import { type AuthStore, type User } from '../auth-store.js';
 import type { AuthPayload } from '../middleware/auth.middleware.js';
-import { type RevierStore } from '../revier-store.js';
-import { revierSchema } from '../schemas/revier.schemas.js';
+import { type HuntingDistrictStore } from '../hunting-district-store.js';
+import { huntingDistrictSchema } from '../schemas/hunting-district.schemas.js';
 
-interface RevierRouteDependencies {
+interface HuntingDistrictRouteDependencies {
    authStore: AuthStore;
-   revierStore: RevierStore;
+   huntingDistrictStore: HuntingDistrictStore;
    getAuthenticatedPayload: (context: import('hono').Context) => Promise<AuthPayload | null>;
    requireAuth: MiddlewareHandler;
    requireAdmin: MiddlewareHandler;
-   canAdministerRevier: (user: User, revierId: string) => boolean;
+   canAdministerHuntingDistrict: (user: User, revierId: string) => boolean;
 }
 
-export function registerRevierRoutes(app: Hono, dependencies: RevierRouteDependencies) {
-   const { authStore, revierStore, getAuthenticatedPayload, requireAuth, requireAdmin, canAdministerRevier } = dependencies;
+export function registerHuntingDistrictRoutes(app: Hono, dependencies: HuntingDistrictRouteDependencies) {
+   const { authStore, huntingDistrictStore, getAuthenticatedPayload, requireAuth, requireAdmin, canAdministerHuntingDistrict } = dependencies;
 
    app.get('/reviere', requireAuth, async (context) => {
       const payload = await getAuthenticatedPayload(context);
-      const reviere = await revierStore.getReviere();
+      const districts = await huntingDistrictStore.getHuntingDistricts();
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
-      if (user?.accountType === 'systemAdmin') return context.json({ reviere });
+      if (user?.accountType === 'systemAdmin') return context.json({ reviere: districts });
       const assignedIds = new Set(user?.memberships.filter((membership) => membership.status === 'active').map((membership) => membership.revierId) ?? []);
-      return context.json({ reviere: reviere.filter((revier) => assignedIds.has(revier.id)) });
+      return context.json({ reviere: districts.filter((district) => assignedIds.has(district.id)) });
    });
 
    app.get('/reviere/:id/members', requireAuth, async (context) => {
@@ -44,10 +44,10 @@ export function registerRevierRoutes(app: Hono, dependencies: RevierRouteDepende
       return context.json({ members });
    });
 
-   app.post('/reviere', requireAuth, zValidator('json', revierSchema), async (context) => {
+   app.post('/reviere', requireAuth, zValidator('json', huntingDistrictSchema), async (context) => {
       const payload = await getAuthenticatedPayload(context);
       const input = context.req.valid('json');
-      const revier = await revierStore.createRevier({ ...input, createdBy: payload?.sub ?? 'unknown' });
+      const revier = await huntingDistrictStore.createHuntingDistrict({ ...input, createdBy: payload?.sub ?? 'unknown' });
       const creator = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
       if (creator?.accountType === 'member') {
          await authStore.upsertMembership(creator.id, { revierId: revier.id, status: 'active', memberType: 'paechter', isAdmin: true });
@@ -55,12 +55,12 @@ export function registerRevierRoutes(app: Hono, dependencies: RevierRouteDepende
       return context.json({ revier }, 201);
    });
 
-   app.put('/reviere/:id', requireAdmin, zValidator('json', revierSchema), async (context) => {
+   app.put('/reviere/:id', requireAdmin, zValidator('json', huntingDistrictSchema), async (context) => {
       const payload = await getAuthenticatedPayload(context);
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
       const id = context.req.param('id');
-      if (!user || !canAdministerRevier(user, id)) return context.json({ message: 'Dieses Revier darf nicht administriert werden.' }, 403);
-      const revier = await revierStore.updateRevier(id, { ...context.req.valid('json'), createdBy: payload?.sub ?? 'unknown' });
+      if (!user || !canAdministerHuntingDistrict(user, id)) return context.json({ message: 'Dieses Revier darf nicht administriert werden.' }, 403);
+      const revier = await huntingDistrictStore.updateHuntingDistrict(id, { ...context.req.valid('json'), createdBy: payload?.sub ?? 'unknown' });
       if (!revier) return context.json({ message: 'Revier nicht gefunden.' }, 404);
       return context.json({ revier });
    });
@@ -108,11 +108,11 @@ export function registerRevierRoutes(app: Hono, dependencies: RevierRouteDepende
       if (!id) return context.json({ message: 'Revier-ID fehlt.' }, 400);
       const payload = await getAuthenticatedPayload(context);
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
-      if (!user || !canAdministerRevier(user, id)) return context.json({ message: 'Dieses Revier darf nicht administriert werden.' }, 403);
+      if (!user || !canAdministerHuntingDistrict(user, id)) return context.json({ message: 'Dieses Revier darf nicht administriert werden.' }, 403);
       if (authStore.getAllUsers().some((candidate) => candidate.id !== user.id && candidate.memberships.some((membership) => membership.revierId === id))) return context.json({ message: 'Das Revier kann erst gelöscht werden, wenn keine Mitglieder mehr zugeordnet sind.' }, 409);
-      const deleted = await revierStore.deleteRevier(id);
+      const deleted = await huntingDistrictStore.deleteHuntingDistrict(id);
       if (!deleted) return context.json({ message: 'Revier nicht gefunden.' }, 404);
-      await authStore.removeRevierAssignments(id);
+      await authStore.removeHuntingDistrictAssignments(id);
       return context.json({ message: 'Revier gelöscht.' });
    });
 }

@@ -2,16 +2,16 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-export const AUFGABE_STATUS = ['offen', 'in Bearbeitung', 'erledigt'] as const;
-export type AufgabeStatus = (typeof AUFGABE_STATUS)[number];
+export const TASK_STATUSES = ['offen', 'in Bearbeitung', 'erledigt'] as const;
+export type TaskStatus = (typeof TASK_STATUSES)[number];
 
-export interface JagdeinrichtungAufgabe {
+export interface FacilityTask {
    id: string;
    revierId: string;
    jagdeinrichtungId: string;
    titel: string;
    beschreibung?: string;
-   status: AufgabeStatus;
+   status: TaskStatus;
    assignedTo?: string;
    assignedBy: string;
    createdAt: string;
@@ -19,21 +19,21 @@ export interface JagdeinrichtungAufgabe {
    completedAt?: string;
 }
 
-export interface CreateAufgabeInput {
+export interface CreateTaskInput {
    revierId: string;
    jagdeinrichtungId: string;
    titel: string;
    beschreibung?: string;
-   status: AufgabeStatus;
+   status: TaskStatus;
    assignedTo?: string;
    assignedBy: string;
 }
 
-interface AufgabenData { aufgaben: JagdeinrichtungAufgabe[] }
-const emptyData = (): AufgabenData => ({ aufgaben: [] });
+interface TaskData { aufgaben: FacilityTask[] }
+const emptyData = (): TaskData => ({ aufgaben: [] });
 
-export class JagdeinrichtungAufgabenStore {
-   private data: AufgabenData = emptyData();
+export class FacilityTasksStore {
+   private data: TaskData = emptyData();
    private writeQueue = Promise.resolve();
    private readonly filePath: string;
 
@@ -44,7 +44,7 @@ export class JagdeinrichtungAufgabenStore {
    async initialize() {
       await mkdir(dirname(this.filePath), { recursive: true });
       try {
-         const stored = JSON.parse(await readFile(this.filePath, 'utf8')) as Partial<AufgabenData>;
+         const stored = JSON.parse(await readFile(this.filePath, 'utf8')) as Partial<TaskData>;
          this.data = { aufgaben: Array.isArray(stored.aufgaben) ? stored.aufgaben : [] };
       } catch (error: unknown) {
          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
@@ -52,7 +52,7 @@ export class JagdeinrichtungAufgabenStore {
       }
    }
 
-   async getByRevierId(revierId: string) {
+   async getByHuntingDistrictId(revierId: string) {
       return this.data.aufgaben.filter((aufgabe) => aufgabe.revierId === revierId);
    }
 
@@ -60,16 +60,16 @@ export class JagdeinrichtungAufgabenStore {
       return this.data.aufgaben.find((aufgabe) => aufgabe.id === id) ?? null;
    }
 
-   async create(input: CreateAufgabeInput) {
+   async create(input: CreateTaskInput) {
       return this.enqueue(async () => {
          const now = new Date().toISOString();
-         const aufgabe: JagdeinrichtungAufgabe = { id: randomUUID(), ...input, createdAt: now, updatedAt: now };
+         const aufgabe: FacilityTask = { id: randomUUID(), ...input, createdAt: now, updatedAt: now };
          this.data.aufgaben.push(aufgabe);
          return aufgabe;
       });
    }
 
-   async update(id: string, input: Partial<Pick<JagdeinrichtungAufgabe, 'titel' | 'beschreibung' | 'status'>> & { assignedTo?: string | null }) {
+   async update(id: string, input: Partial<Pick<FacilityTask, 'titel' | 'beschreibung' | 'status'>> & { assignedTo?: string | null }) {
       return this.enqueue(async () => {
          const aufgabe = this.data.aufgaben.find((entry) => entry.id === id);
          if (!aufgabe) return null;
