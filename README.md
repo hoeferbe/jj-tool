@@ -1,23 +1,56 @@
 # jj-tool
 
-Jagdgruppen-App mit Ionic Vue als Client und Hono als API.
+Jagdgruppen-App mit Ionic Vue als Client und Hono als API. Die Anwendung verwaltet geschlossene Reviergruppen, Reviergrenzen, Jagdeinrichtungen, Aufgaben und Reservierungen.
 
 ## Voraussetzungen
 
-- Node.js 22 oder neuer
-- npm 10 oder neuer
+- Node.js 24 oder neuer
+- npm 11 oder neuer
 
-Die im System derzeit vorhandene Node.js-Version 14 ist nicht ausreichend.
+Die Versionen sind im Root-`package.json` als Engine-Anforderung hinterlegt.
 
 ## Entwicklung starten
 
 ```sh
 npm install
+```
+
+Für die Entwicklung werden zwei Terminalfenster benötigt:
+
+```sh
 npm run dev:api
 npm run dev:app
 ```
 
-Die API ist danach unter `http://localhost:8787` und die App unter der von Vite ausgegebenen lokalen Adresse erreichbar.
+Die API ist danach unter `http://localhost:8787` und die App unter der von Vite ausgegebenen lokalen Adresse erreichbar. Entwicklungsserver werden nur während der Arbeit oder zum Testen gestartet.
+
+## Prüfungen und Build
+
+```sh
+npm run typecheck
+npm run test --workspace=@jj-tool/api
+npm run build
+```
+
+`npm run test --workspace=@jj-tool/api` führt die API-Store-Tests aus. Der Produktionsbuild erzeugt die App unter `apps/app/dist` und die API unter `apps/api/dist`.
+
+## Konfiguration
+
+```sh
+cp apps/api/.env.example apps/api/.env
+```
+
+Mindestens `AUTH_SECRET` muss für einen echten Betrieb durch ein langes zufälliges Geheimnis ersetzt werden. `DATA_DIRECTORY` legt den Speicherort für `auth.json`, Revierdaten, Einrichtungen, Aufgaben und Reservierungen fest. SMTP-Variablen werden für Einladungen, Registrierungshinweise und Passwortlinks benötigt. Geheimnisse und `.env`-Dateien werden nicht eingecheckt.
+
+## Administrator einrichten
+
+Für eine neue Entwicklungsumgebung können `INITIAL_ADMIN_USERNAME`, `INITIAL_ADMIN_EMAIL` und `INITIAL_ADMIN_NAME` gesetzt werden. Alternativ erstellt beziehungsweise aktiviert das Skript ein Systemadministratorkonto:
+
+```sh
+npm run reset-admin --workspace=@jj-tool/api -- admin admin@example.com Administrator
+```
+
+Dabei wird ein einmaliger Passwortlink per E-Mail versendet. Ohne vollständige SMTP-Konfiguration gibt die Entwicklungs-Mailer-Konfiguration den Link lokal aus.
 
 ## Registrierung und E-Mail
 
@@ -41,4 +74,8 @@ Werden BKG-Grenzen später manuell verändert, muss der Quellenvermerk zusätzli
 
 - `apps/app`: Ionic-Vue-PWA und Capacitor-Client.
 - `apps/api`: Hono-API; lokal auf dem Mac mini, spaeter auf dem Raspberry Pi.
-- `docs`: Produkt- und Entwicklungsplanung.
+- `docs`: Produkt-, Entwicklungs- und Betriebsdokumentation.
+
+## Handbuch
+
+Die ausführliche Bedienungs- und Betriebsdokumentation steht in [docs/handbuch.md](docs/handbuch.md).

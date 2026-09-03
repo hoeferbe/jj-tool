@@ -8,6 +8,20 @@ Die Anwendung ist fuer einen festen, geschlossenen Nutzerkreis vorgesehen. Sie w
 
 Das primaere Einsatzgebiet ist die Gemeinde mit rund 14,5 Quadratkilometern. Offline-Kartenbereiche und Speicherbedarf werden auf dieses Gebiet zugeschnitten.
 
+## UI- und Dialog-Konventionen
+
+Alle neuen Erfassungs- und Bearbeitungsdialoge folgen einer einheitlichen, kompakten Struktur:
+
+- Kompakter Kopfbereich mit Titel links und Schliessen-Aktion rechts.
+- Eingaben werden fachlich gruppiert, statt als lose Folge von Feldern dargestellt zu werden.
+- Bezeichnung steht allein ueber die volle Breite; zusammengehoerige Auswahlfelder wie Typ und Status stehen nebeneinander und stapeln sich auf kleinen Bildschirmen.
+- Eingabefelder verwenden eine einheitliche gefuellte oder umrandete Darstellung, kompakte feste Feldhoehen, feste Abstaende und keine uebermaessigen Leerraeume. Fuer kompakte Formulare werden bevorzugt native HTML-Elemente (`input`, `select`, `textarea`) mit eigenen Klassen verwendet; Ionic-Felder kommen nur zum Einsatz, wenn ihre native Funktionalitaet benoetigt wird.
+- Position, Statusmeldungen und Bestaetigungen erhalten eigene visuelle Bereiche. Eine neue oder verschobene Position wird sichtbar bestaetigt und erst durch Speichern dauerhaft uebernommen.
+- Die Aktionszeile steht am Ende des Dialogs: Abbrechen als sekundäre Aktion, Speichern als einzige hervorgehobene Hauptaktion.
+- Dialoge sind auf Desktop kompakt begrenzt und auf mobilen Geraeten nahezu bildschirmbreit. Der Inhaltsbereich ist immer ein echter Scrollbereich; die Aktionen bleiben erreichbar und Inhalte duerfen nicht ueberlappen oder abgeschnitten werden.
+
+Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachsuchen und weitere Formulare. Fachliche Farben bleiben semantisch: gruen fuer aktiv oder erfolgreich, gelb fuer Warnungen beziehungsweise defekte Zustaende und grau fuer inaktive oder ausser Betrieb befindliche Objekte.
+
 ## Priorisierte Funktionen
 
 ### MVP: Einsatz und Kommunikation

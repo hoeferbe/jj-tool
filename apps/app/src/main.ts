@@ -5,6 +5,7 @@ import App from './App.vue';
 import AuthView from './views/AuthView.vue';
 import AdminDashboard from './views/AdminDashboard.vue';
 import MemberWelcome from './views/MemberWelcome.vue';
+import EinrichtungenView from './views/EinrichtungenView.vue';
 
 import 'leaflet/dist/leaflet.css';
 import '@ionic/vue/css/core.css';
@@ -80,6 +81,11 @@ const router = createRouter({
          path: '/reviere/mitglieder',
          component: MemberWelcome,
          props: { section: 'members' },
+         meta: { requiresAuth: true },
+      },
+      {
+         path: '/reviere/einrichtungen',
+         component: EinrichtungenView,
          meta: { requiresAuth: true },
       },
       { path: '/welcome', redirect: '/reviere/karte' },

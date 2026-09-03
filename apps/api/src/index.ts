@@ -11,8 +11,15 @@ import { SignJWT, jwtVerify } from 'jose';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { AuthStore, type User } from './auth-store.js';
+import {
+   JAGDEINRICHTUNG_STATUS,
+   JAGDEINRICHTUNG_TYPEN,
+   JagdeinrichtungStore,
+} from './jagdeinrichtung-store.js';
+import { AUFGABE_STATUS, JagdeinrichtungAufgabenStore } from './jagdeinrichtung-aufgaben-store.js';
+import { JagdeinrichtungReservierungenStore } from './jagdeinrichtung-reservierungen-store.js';
 import { sendPasswordLink, sendRegistrationNotification, sendRevierInvitation } from './mailer.js';
-import { RevierStore } from './revier-store.js';
+import { RevierStore, type Revier } from './revier-store.js';
 
 // Load .env from the api package root.
 config({ path: fileURLToPath(new URL('../.env', import.meta.url)) });
@@ -22,6 +29,9 @@ const dataDirectory = process.env.DATA_DIRECTORY ?? './data';
 const appOrigin = process.env.APP_ORIGIN ?? 'http://127.0.0.1:5173';
 const authStore = new AuthStore(dataDirectory);
 const revierStore = new RevierStore(dataDirectory);
+const jagdeinrichtungStore = new JagdeinrichtungStore(dataDirectory);
+const aufgabenStore = new JagdeinrichtungAufgabenStore(dataDirectory);
+const reservierungenStore = new JagdeinrichtungReservierungenStore(dataDirectory);
 // Encode the secret once so every JWT sign/verify reuses the same Uint8Array.
 const authSecret = new TextEncoder().encode(
    process.env.AUTH_SECRET ?? 'development-only-secret-change-me',
@@ -98,6 +108,30 @@ const revierSchema = z.object({
       ),
    }),
    source: z.literal('bkg-wfs-vg25'),
+});
+const jagdeinrichtungSchema = z.object({
+   name: z.string().trim().min(2).max(120),
+   typ: z.enum(JAGDEINRICHTUNG_TYPEN),
+   position: z.object({
+      lat: z.number().min(-90).max(90),
+      lng: z.number().min(-180).max(180),
+   }),
+   status: z.enum(JAGDEINRICHTUNG_STATUS).default('aktiv'),
+   zustandsInfo: z.string().trim().max(1000).optional(),
+   notiz: z.string().trim().max(1000).optional(),
+});
+const aufgabeSchema = z.object({
+   jagdeinrichtungId: z.string().uuid(),
+   titel: z.string().trim().min(2).max(160),
+   beschreibung: z.string().trim().max(2000).optional(),
+   status: z.enum(AUFGABE_STATUS).default('offen'),
+   assignedTo: z.string().uuid().optional(),
+});
+const aufgabeUpdateSchema = z.object({
+   titel: z.string().trim().min(2).max(160).optional(),
+   beschreibung: z.string().trim().max(2000).optional(),
+   status: z.enum(AUFGABE_STATUS).optional(),
+   assignedTo: z.string().uuid().nullable().optional(),
 });
 const ROLES = ['guest', 'paechter', 'bgs', 'admin'] as const;
 const POSITIONS = ['revierleiter', 'kassenwart', 'schriftfuehrer'] as const;
@@ -453,6 +487,42 @@ function canAdministerRevier(user: User, revierId: string) {
    return user.accountType === 'systemAdmin' || authStore.getAdminRevierIds(user.id).includes(revierId);
 }
 
+function canAccessRevier(user: User, revierId: string) {
+   return user.accountType === 'systemAdmin' || user.memberships.some(
+      (membership) => membership.revierId === revierId && membership.status === 'active',
+   );
+}
+
+function canCreateJagdeinrichtung(user: User, revierId: string) {
+   if (user.accountType === 'systemAdmin') return true;
+   return user.memberships.some((membership) =>
+      membership.revierId === revierId &&
+      membership.status === 'active' &&
+      (membership.isAdmin || membership.memberType === 'paechter' || membership.memberType === 'bgs'),
+   );
+}
+
+function isPointInsideRevier(revier: Revier, position: { lat: number; lng: number }) {
+   const clickedPoint = point([position.lng, position.lat]);
+   return revier.boundary.features.some((feature) => {
+      if (feature.geometry.type !== 'Polygon' && feature.geometry.type !== 'MultiPolygon') return false;
+      return booleanPointInPolygon(
+         clickedPoint,
+         feature as unknown as Feature<Polygon | MultiPolygon>,
+      );
+   });
+}
+
+function isActiveRevierMember(userId: string, revierId: string) {
+   const user = authStore.findUserById(userId);
+   return user?.status === 'active' && canAccessRevier(user, revierId);
+}
+
+async function getFacilityInRevier(revierId: string, facilityId: string) {
+   const facility = await jagdeinrichtungStore.getById(facilityId);
+   return facility?.revierId === revierId ? facility : null;
+}
+
 async function requireSystemAdmin(context: Context, next: Next) {
    const payload = await getAuthenticatedPayload(context);
    const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
@@ -500,6 +570,199 @@ app.get('/reviere/:id/members', requireAuth, async (context) => {
          : member.memberType,
    }));
    return context.json({ members });
+});
+
+app.get('/reviere/:revierId/jagdeinrichtungen', requireAuth, async (context) => {
+   const payload = await getAuthenticatedPayload(context);
+   const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+   const revierId = context.req.param('revierId');
+   if (!revierId) return context.json({ message: 'Revier-ID fehlt.' }, 400);
+   const revierExists = (await revierStore.getReviere()).some((revier) => revier.id === revierId);
+   if (!revierExists) return context.json({ message: 'Revier nicht gefunden.' }, 404);
+   if (!user || !canAccessRevier(user, revierId)) {
+      return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+   }
+   const jagdeinrichtungen = await jagdeinrichtungStore.getByRevierId(revierId);
+   return context.json({ jagdeinrichtungen });
+});
+
+app.post(
+   '/reviere/:revierId/jagdeinrichtungen',
+   requireAuth,
+   zValidator('json', jagdeinrichtungSchema),
+   async (context) => {
+      const payload = await getAuthenticatedPayload(context);
+      const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+      const revierId = context.req.param('revierId');
+      if (!revierId) return context.json({ message: 'Revier-ID fehlt.' }, 400);
+      const revierExists = (await revierStore.getReviere()).some((revier) => revier.id === revierId);
+      if (!revierExists) return context.json({ message: 'Revier nicht gefunden.' }, 404);
+      if (!user || !canAccessRevier(user, revierId)) {
+         return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      }
+      if (!canCreateJagdeinrichtung(user, revierId)) {
+         return context.json({ message: 'Gäste dürfen keine Jagdeinrichtungen anlegen.' }, 403);
+      }
+      const input = context.req.valid('json');
+      const revier = (await revierStore.getReviere()).find((entry) => entry.id === revierId);
+      if (!revier || !isPointInsideRevier(revier, input.position)) {
+         return context.json({ message: 'Die Position muss innerhalb der Reviergrenze liegen.' }, 400);
+      }
+      const jagdeinrichtung = await jagdeinrichtungStore.create({
+         ...input,
+         revierId,
+         createdBy: user.id,
+      });
+      return context.json({ jagdeinrichtung }, 201);
+   },
+);
+
+app.put(
+   '/reviere/:revierId/jagdeinrichtungen/:id',
+   requireAuth,
+   zValidator('json', jagdeinrichtungSchema),
+   async (context) => {
+      const payload = await getAuthenticatedPayload(context);
+      const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+      const revierId = context.req.param('revierId');
+      const id = context.req.param('id');
+      if (!revierId || !id) return context.json({ message: 'Revier- oder Einrichtungs-ID fehlt.' }, 400);
+      const revierExists = (await revierStore.getReviere()).some((revier) => revier.id === revierId);
+      if (!revierExists) return context.json({ message: 'Revier nicht gefunden.' }, 404);
+      if (!user || !canAccessRevier(user, revierId)) {
+         return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      }
+      const existing = await jagdeinrichtungStore.getById(id);
+      if (!existing || existing.revierId !== revierId) {
+         return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
+      }
+      if (existing.createdBy !== user.id && !canAdministerRevier(user, revierId)) {
+         return context.json({ message: 'Diese Jagdeinrichtung darf nicht bearbeitet werden.' }, 403);
+      }
+      const input = context.req.valid('json');
+      const revier = (await revierStore.getReviere()).find((entry) => entry.id === revierId);
+      if (!revier || !isPointInsideRevier(revier, input.position)) {
+         return context.json({ message: 'Die Position muss innerhalb der Reviergrenze liegen.' }, 400);
+      }
+      const jagdeinrichtung = await jagdeinrichtungStore.update(id, {
+         ...input,
+         revierId,
+         createdBy: existing.createdBy,
+      });
+      return context.json({ jagdeinrichtung });
+   },
+);
+
+app.get('/reviere/:revierId/jagdeinrichtungs-aufgaben', requireAuth, async (context) => {
+   const payload = await getAuthenticatedPayload(context);
+   const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+   const revierId = context.req.param('revierId');
+   if (!revierId) return context.json({ message: 'Revier-ID fehlt.' }, 400);
+   if (!user || !canAccessRevier(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+   const aufgaben = await aufgabenStore.getByRevierId(revierId);
+   return context.json({ aufgaben });
+});
+
+app.post(
+   '/reviere/:revierId/jagdeinrichtungs-aufgaben',
+   requireAuth,
+   zValidator('json', aufgabeSchema),
+   async (context) => {
+      const payload = await getAuthenticatedPayload(context);
+      const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+      const revierId = context.req.param('revierId');
+      if (!revierId || !user) return context.json({ message: 'Revier-ID fehlt.' }, 400);
+      if (!canAccessRevier(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      const input = context.req.valid('json');
+      if (!(await getFacilityInRevier(revierId, input.jagdeinrichtungId))) {
+         return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
+      }
+      if (input.assignedTo && !isActiveRevierMember(input.assignedTo, revierId)) {
+         return context.json({ message: 'Zugewiesenes Mitglied ist nicht aktiv in diesem Revier.' }, 400);
+      }
+      const aufgabe = await aufgabenStore.create({ ...input, revierId, assignedBy: user.id });
+      return context.json({ aufgabe }, 201);
+   },
+);
+
+app.patch(
+   '/reviere/:revierId/jagdeinrichtungs-aufgaben/:id',
+   requireAuth,
+   zValidator('json', aufgabeUpdateSchema),
+   async (context) => {
+      const payload = await getAuthenticatedPayload(context);
+      const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+      const revierId = context.req.param('revierId');
+      const id = context.req.param('id');
+      const aufgabe = id ? await aufgabenStore.getById(id) : null;
+      if (!revierId || !id || !aufgabe || aufgabe.revierId !== revierId) return context.json({ message: 'Aufgabe nicht gefunden.' }, 404);
+      if (!user || !canAccessRevier(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      const input = context.req.valid('json');
+      if (input.assignedTo && !isActiveRevierMember(input.assignedTo, revierId)) {
+         return context.json({ message: 'Zugewiesenes Mitglied ist nicht aktiv in diesem Revier.' }, 400);
+      }
+      const mayEdit = aufgabe.assignedBy === user.id || aufgabe.assignedTo === user.id || canAdministerRevier(user, revierId);
+      if (!mayEdit) return context.json({ message: 'Diese Aufgabe darf nicht bearbeitet werden.' }, 403);
+      const updated = await aufgabenStore.update(id, input);
+      return context.json({ aufgabe: updated });
+   },
+);
+
+app.post('/reviere/:revierId/jagdeinrichtungs-aufgaben/:id/uebernehmen', requireAuth, async (context) => {
+   const payload = await getAuthenticatedPayload(context);
+   const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+   const revierId = context.req.param('revierId');
+   const id = context.req.param('id');
+   if (!revierId || !id) return context.json({ message: 'Revier- oder Aufgaben-ID fehlt.' }, 400);
+   if (!revierId || !id) return context.json({ message: 'Revier- oder Aufgaben-ID fehlt.' }, 400);
+   const aufgabe = id ? await aufgabenStore.getById(id) : null;
+   if (!revierId || !id || !aufgabe || aufgabe.revierId !== revierId) return context.json({ message: 'Aufgabe nicht gefunden.' }, 404);
+   if (!user || !canAccessRevier(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+   if (aufgabe.assignedTo) return context.json({ message: 'Diese Aufgabe ist bereits zugewiesen.' }, 409);
+   const updated = await aufgabenStore.update(id, { assignedTo: user.id, status: 'in Bearbeitung' });
+   return context.json({ aufgabe: updated });
+});
+
+app.get('/reviere/:revierId/jagdeinrichtung-reservierungen', requireAuth, async (context) => {
+   const payload = await getAuthenticatedPayload(context);
+   const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+   const revierId = context.req.param('revierId');
+   if (!revierId || !user || !canAccessRevier(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+   const reservierungen = await reservierungenStore.getActiveByRevierId(revierId);
+   return context.json({ reservierungen });
+});
+
+app.post('/reviere/:revierId/jagdeinrichtungen/:id/reservieren', requireAuth, async (context) => {
+   const payload = await getAuthenticatedPayload(context);
+   const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+   const revierId = context.req.param('revierId');
+   const id = context.req.param('id');
+   if (!revierId || !id) return context.json({ message: 'Revier- oder Einrichtungs-ID fehlt.' }, 400);
+   const facility = await getFacilityInRevier(revierId, id);
+   if (!revierId || !user || !canAccessRevier(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+   if (!facility) return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
+   if (!['Kanzel', 'Bock', 'Leiter'].includes(facility.typ)) return context.json({ message: 'Diese Einrichtung kann nicht reserviert werden.' }, 400);
+   try {
+      const reservierung = await reservierungenStore.reserve({ revierId, jagdeinrichtungId: id, reservedBy: user.id });
+      return context.json({ reservierung }, 201);
+   } catch (error) {
+      if ((error as Error).message === 'ALREADY_RESERVED') return context.json({ message: 'Diese Einrichtung ist bereits reserviert.' }, 409);
+      throw error;
+   }
+});
+
+app.delete('/reviere/:revierId/jagdeinrichtungen/:id/reservieren', requireAuth, async (context) => {
+   const payload = await getAuthenticatedPayload(context);
+   const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+   const revierId = context.req.param('revierId');
+   const id = context.req.param('id');
+   if (!revierId || !id) return context.json({ message: 'Revier- oder Einrichtungs-ID fehlt.' }, 400);
+   const reservation = await reservierungenStore.getActiveByFacilityId(id);
+   if (!revierId || !user || !canAccessRevier(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+   if (!reservation || reservation.revierId !== revierId) return context.json({ message: 'Keine aktive Reservierung gefunden.' }, 404);
+   if (reservation.reservedBy !== user.id && !canAdministerRevier(user, revierId)) return context.json({ message: 'Diese Reservierung darf nicht freigegeben werden.' }, 403);
+   await reservierungenStore.release(id);
+   return context.json({ message: 'Reservierung freigegeben.' });
 });
 
 app.post(
@@ -887,6 +1150,9 @@ const port = Number(process.env.PORT ?? 8787);
 
 await authStore.initialize();
 await revierStore.initialize();
+await jagdeinrichtungStore.initialize();
+await aufgabenStore.initialize();
+await reservierungenStore.initialize();
 for (const revier of await revierStore.getReviere()) {
    await authStore.ensureRevierOwner(revier.createdBy, revier.id);
 }

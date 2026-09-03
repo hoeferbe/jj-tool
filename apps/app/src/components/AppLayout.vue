@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonList, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
-import { chevronDownOutline, logOutOutline, mapOutline, peopleOutline, settingsOutline } from 'ionicons/icons'
+import { chevronDownOutline, constructOutline, logOutOutline, mapOutline, peopleOutline, settingsOutline } from 'ionicons/icons'
 
 const router = useRouter()
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
@@ -44,6 +44,7 @@ async function navigate(path: string) {
  * clears localStorage, and navigates to the login page.
  */
 async function logout() {
+  const mapLayer = localStorage.getItem('jj-revier-map-layer')
   try {
     const token = localStorage.getItem('accessToken')
     await fetch(`${apiUrl}/auth/logout`, {
@@ -54,6 +55,7 @@ async function logout() {
     // best effort – still clear local session on network failure
   }
   localStorage.clear()
+  if (mapLayer) localStorage.setItem('jj-revier-map-layer', mapLayer)
   router.replace('/')
 }
 </script>
@@ -79,6 +81,10 @@ async function logout() {
           <IonItem button @click="navigate('/reviere/mitglieder')">
             <IonIcon slot="start" :icon="peopleOutline" />
             Reviermitglieder
+          </IonItem>
+          <IonItem button @click="navigate('/reviere/einrichtungen')">
+            <IonIcon slot="start" :icon="constructOutline" />
+            Reviereinrichtungen
           </IonItem>
           <IonItem v-if="isAdmin" button @click="navigate('/dashboard')">
             <IonIcon slot="start" :icon="settingsOutline" />
