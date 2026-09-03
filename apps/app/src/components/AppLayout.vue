@@ -7,7 +7,14 @@ import { chevronDownOutline, constructOutline, logOutOutline, mapOutline, people
 const router = useRouter()
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 const displayName = localStorage.getItem('displayName') ?? ''
-const userMenuTriggerId = `user-menu-trigger-${crypto.randomUUID()}`
+
+const uuid =
+  globalThis.crypto?.randomUUID?.() ??
+  `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+const userMenuTriggerId = `user-menu-trigger-${uuid}`
+
+//const userMenuTriggerId = `user-menu-trigger-${crypto.randomUUID()}`
 
 /**
  * Reads role and isAdmin out of the JWT payload stored in localStorage.

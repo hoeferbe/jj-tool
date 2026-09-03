@@ -17,6 +17,8 @@ import '@ionic/vue/css/padding.css';
 import './theme/variables.css';
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787';
+console.log('API URL:', apiUrl);
+console.debug('env:', import.meta.env);
 
 /**
  * Decodes the JWT payload stored in localStorage without verifying the signature.
