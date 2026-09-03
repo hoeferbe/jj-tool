@@ -30,7 +30,7 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 - Gemeindegrenze als Kartenlinie darstellen und bei Bedarf manuell anpassen.
 - Registrierung, Anmeldung und Freigabe von Mitgliedern durch Administratoren.
 - Einen initialen Administrator beim Einrichten des Backends anlegen.
-- Strecken- und Abschussmeldungen mit voreingestellter aktueller Position, Datum und Wildart erfassen.
+- Strecken- und Abschussmeldungen mit Datum und Wildart erfassen; die Position wird in einem späteren Schritt ergänzt.
 - Jagdeinrichtungen mit Bezeichnung, Typ und Kartenposition erfassen und anzeigen.
 - Lokale Speicherung ausstehender Aenderungen bei fehlender Verbindung mit spaeterer Synchronisation.
 
@@ -46,6 +46,9 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 - Einsatz- und Faehrtenhistorie mit Suche und Export.
 - Rollen und Berechtigungen, beispielsweise Leitung, Fuehrer und Beobachter.
 - Gewicht, Verwertung, Foto und das Senden einer zusammengefassten Strecke in die Gruppe.
+- Streckeneintrag um eine Auswahl der vier bis fünf wichtigsten Wildarten per Radiobuttons erweitern, möglichst mit verständlichen Grafik-Icons.
+- Wildarten intern in Unterarten gliedern, zum Beispiel Reh in Rehbock, Ricke, Schmalreh, Bockkitz und Kitz.
+- Streckeneintrag um eine Checkbox „Verkehrsopfer (VO)“ und die Ja/Nein-Angabe „Bescheinigung für Versicherung ausgestellt“ ergänzen.
 - Eine gruppenweite Informations- und Aufgabenliste mit Eintraegen, Faelligkeit und Erledigt-Status.
 - Mehrere Bilder je Abschuss, nachtraegliches Ergaenzen und eine komprimierte Bilduebertragung.
 - Auswertungen der Strecke nach Zeitraum, Wildart und Verwertungsweg.
@@ -96,24 +99,36 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 - Popover-Trigger pro gerouteter Ionic-Seite eindeutig gemacht, damit zurueckgehaltene Seiteninstanzen das aktive Menue nicht mehr abfangen.
 - Wiederverwendbare Komponenten fuer Revierkarte, Neuanlage-Dialog und BKG-Quellenvermerk erstellt.
 
+**Jagdeinrichtungen, Aufgaben und Reservierungen**
+
+- Jagdeinrichtungen mit Bezeichnung, Typ, Kartenposition, Status, Zustandsinfo und Notiz anlegen und bearbeiten.
+- Jagdeinrichtungen auf der Karte und in einer Listenansicht anzeigen.
+- Aufgaben an Einrichtungen anlegen, Mitgliedern zuweisen, übernehmen und als erledigt markieren.
+- Kanzeln, Böcke und Leitern reservieren und wieder freigeben.
+
+**Streckeneintraege**
+
+- Streckeneinträge pro Revier mit Datum, Wildart und optionaler Notiz erfassen und anzeigen.
+- Geschützte API-Routen und persistente Speicherung für Streckeneinträge umgesetzt.
+
 **Qualitaetssicherung**
 
 - Store-Tests fuer Mehr-Revier-Persistenz, Migration, Mitgliedschaften, Rechtescopes, Einladungen sowie System-/Revieradmin-Kontinuitaet ergaenzt.
-- Aktueller Stand: acht automatisierte API-Tests sowie erfolgreiche Workspace-Typechecks und Produktionsbuilds.
+- Aktueller Stand: zwölf automatisierte API-Tests sowie erfolgreiche Workspace-Typechecks und Produktionsbuilds.
 
 ### Als Naechstes umzusetzen
 
-- Erste geschützte API-Routen für Jagdeinrichtungen und Streckeneintraege erstellen.
-- Aktuelle GPS-Position in der Karte anzeigen.
-- Streckeneintrag mit voreingestellter aktueller Position, Datum und Wildart erfassen.
+- Aktuelle GPS-Position beim Streckeneintrag als Vorschlag erfassen.
+- Position des Streckeneintrags auf der Karte prüfen und bei Bedarf korrigieren.
+- Lokale Speicherung ausstehender Streckeneinträge bei fehlender Verbindung und spätere Synchronisation umsetzen.
 - Capacitor fuer Android konfigurieren; PWA-Manifest und Service-Worker fuer iOS pruefen.
 - Tailwind CSS als Ergaenzung zu Ionic integrieren (fuer eigene Layouts ausserhalb der Ionic-Komponenten).
 
 ### Noch nicht umgesetzt
 
 - Refresh-Tokens als `HttpOnly`-Cookies und Token-Widerruf (aktuell: JWT in localStorage mit 7-Tage-Sliding-Window).
-- Jagdeinrichtungen, Streckeneintraege und deren objektbezogene Berechtigungspruefungen.
-- Offline-Karten, Jagdeinrichtungen, Streckeneintraege, Bilder und Synchronisation.
+- GPS-Position und kartenbasierte Korrektur für Streckeneinträge.
+- Offline-Karten, Bilder und Synchronisation.
 - Capacitor-Android-Integration, PWA-Service-Worker, Cloudflare Tunnel und Raspberry-Pi-Betrieb.
 - Telegram, Firebase Cloud Messaging, Nachsuche und Faehrtenaufzeichnung.
 
@@ -141,7 +156,7 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 | Revier | ID, Name, Gemeinde, Gemeindegrenze als GeoJSON-Linie oder -Flaeche, Mittelpunkt, Ersteller |
 | Mitglied | Benutzername, Anzeigename, globaler Kontostatus und revierbezogene Mitgliedschaften mit Typ, Funktion und Revieradmin-Recht |
 | Jagdeinrichtung | Bezeichnung, Typ, Koordinaten, Status, Notiz, Foto optional |
-| Abschuss / Streckeneintrag | Datum und Uhrzeit, Koordinaten, Wildart, Gewicht, Verwertung, Notiz, Bilder, erfassende Person |
+| Abschuss / Streckeneintrag | Datum und Uhrzeit, Koordinaten, Wildart, später optional Unterart, Gewicht, Verwertung, Verkehrsopfer-Kennzeichnung, Versicherungsbescheinigung, Notiz, Bilder, erfassende Person |
 | Verwertung | Selbstverbrauch, Vermarktung innerhalb der Gemeinde, Vermarktung ausserhalb der Gemeinde; bei Bedarf erweiterbar |
 | Info / Aufgabe | Titel, Inhalt, Kategorie Info oder Aufgabe, Ersteller, Faelligkeit optional, Erledigt-Status |
 | Bild | Zugeordnetes Objekt, Speicherpfad, Aufnahmedatum, Dateityp und Groesse |
@@ -159,6 +174,8 @@ Fotos werden vom Client vor dem Upload in eine praxistaugliche Groesse komprimie
 - Das Backend laeuft auf einem Raspberry Pi 4 mit 4 GB Arbeitsspeicher und SSD-Speicher auf zwei Laufwerken im RAID. Der Betreiber verwaltet Cloudflare-Domain, Tunnel-Zugang und Server-Geheimnisse.
 - Als erste Kartenquelle wird OpenStreetMap verwendet. Der Offline-Kartenumfang wird vor der Freigabe anhand der Nutzungsbedingungen und eines Praxistests festgelegt.
 - Die anfänglichen Typen fuer Jagdeinrichtungen sind Kanzel, Bock, Leiter, Roehrenfalle und Kirrung.
+- Die Streckeneintrag-Erweiterung mit Wildart-Radiobuttons, optionalen Grafik-Icons, Wildart-Unterarten sowie Verkehrsopfer-Kennzeichnung und Versicherungsbescheinigung wird erst nach dem einfachen Streckeneintrag umgesetzt.
+- Für die wichtigsten Wildarten und die dazugehörigen Unterarten wird vor der Umsetzung eine fachliche Auswahlliste abgestimmt. Die fünf Reh-Unterarten Rehbock, Ricke, Schmalreh, Bockkitz und Kitz dienen als erstes Beispiel.
 - Interessenten registrieren sich mit Name, Benutzername und E-Mail-Adresse sowie optionaler Revierauswahl oder ueber einen Einladungslink. Sie erhalten erst nach Freigabe und Setzen des Passworts Zugang. Ein initiales Systemadministratorkonto wird beim Einrichten des Backends durch eine einmalige, nicht eingecheckte Konfiguration angelegt.
 - Die vollstaendige Gemeinde mit rund 14,5 Quadratkilometern kann als Offline-Kartenbereich auf das Geraet geladen werden. Der Download ist freiwillig, jederzeit in den Einstellungen loeschbar und zeigt vorab den Speicherbedarf an.
 - Ohne heruntergeladenen Offline-Kartenbereich und ohne Netzverbindung stehen Kartenansicht, Standortanzeige auf der Karte und kartenbasierte Eingaben nicht zur Verfuegung. Bereits lokal erfasste Daten bleiben erhalten und werden bei einer Verbindung synchronisiert.
@@ -223,6 +240,7 @@ Ergebnis: Das Revier ist auf der Karte begrenzt und ein Streckeneintrag kann mit
 2. Streckeneintrag mit Standort, Wildart, Gewicht, Verwertung und Bildaufnahme erstellen.
 3. Bilder lokal vormerken, bei Verbindung hochladen und dem Eintrag zuordnen.
 4. Informations- und Aufgabenliste mit Berechtigungen und Erledigt-Status bereitstellen.
+5. Streckeneintrag später um die wichtigsten Wildarten als Radiobuttons, passende Unterarten sowie die VO-Checkbox und die Ja/Nein-Angabe zur Versicherungsbescheinigung erweitern.
 
 Ergebnis: Einrichtungen, Strecke und Gruppeninformationen sind in der App nachvollziehbar dokumentiert.
 
@@ -262,4 +280,4 @@ Ergebnis: belastbarer Einsatzbetrieb im definierten Funktionsumfang.
 
 ## Naechster konkreter Schritt
 
-Den MVP mit Revier und Gemeindegrenze, Registrierung und Freigabe von Mitgliedern sowie einem Streckeneintrag mit aktueller Position, Datum und Wildart umsetzen. Nach diesem MVP folgen Nachsuche, Faehrtenaufzeichnung und Gruppenbenachrichtigungen.
+Den einfachen Streckeneintrag mit Datum, Wildart und optionaler Notiz fachlich abschliessen. Danach folgen GPS-Position und kartenbasierte Korrektur. Die Wildart-Auswahl mit Radiobuttons, Unterarten sowie VO- und Versicherungsbescheinigung werden erst in einem späteren Ausbauschritt umgesetzt.

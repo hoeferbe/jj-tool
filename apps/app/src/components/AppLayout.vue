@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonList, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
-import { chevronDownOutline, constructOutline, logOutOutline, mapOutline, peopleOutline, settingsOutline } from 'ionicons/icons'
+import { chevronDownOutline, constructOutline, logOutOutline, mapOutline, peopleOutline, settingsOutline, trailSignOutline } from 'ionicons/icons'
 
 const router = useRouter()
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
@@ -85,6 +85,10 @@ async function logout() {
           <IonItem button @click="navigate('/reviere/einrichtungen')">
             <IonIcon slot="start" :icon="constructOutline" />
             Reviereinrichtungen
+          </IonItem>
+          <IonItem button @click="navigate('/reviere/strecke')">
+            <IonIcon slot="start" :icon="trailSignOutline" />
+            Streckeneinträge
           </IonItem>
           <IonItem v-if="isAdmin" button @click="navigate('/dashboard')">
             <IonIcon slot="start" :icon="settingsOutline" />

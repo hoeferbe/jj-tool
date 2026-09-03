@@ -181,13 +181,24 @@ Die App verwendet Gemeindegrenzen als Orientierung für das jeweilige Revier. Di
 
 Die Karte bietet eine Straßen- und eine Satellitenansicht. Für die Darstellung werden externe Kartendienste verwendet; deshalb kann die Karte bei fehlender Verbindung oder einer Störung des Kartendienstes vorübergehend nicht geladen werden.
 
-## 11. Noch nicht verfügbare Funktionen
+## 11. Streckeneinträge
+
+Über **Streckeneinträge** können Beobachtungen mit Datum, Wildart und einer optionalen Notiz für das aktive Revier erfasst werden.
+
+1. Das Datum auswählen.
+2. Die Wildart eintragen.
+3. Optional eine Notiz ergänzen.
+4. **Streckeneintrag speichern** auswählen.
+
+Die Einträge werden anschließend chronologisch angezeigt. Die aktuelle Version erfasst noch keine Position.
+
+## 12. Noch nicht verfügbare Funktionen
 
 Folgende Funktionen gehören zur weiteren Planung und sind noch nicht Bestandteil des aktuellen Nutzungsumfangs:
 
 - Offline-Karten und automatische Synchronisation bei fehlender Verbindung
+- GPS-Position und kartenbasierte Korrektur von Streckeneinträgen
 - GPS-Aufzeichnung und Darstellung von Fährten
-- Strecken- und Abschussmeldungen
 - Fotos an Einrichtungen oder Einträgen
 - Push-Mitteilungen und Telegram-Benachrichtigungen
 - zeitlich begrenzte Reservierungen und eine Reservierungshistorie
