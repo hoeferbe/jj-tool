@@ -19,7 +19,6 @@ import './theme/variables.css';
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787';
 console.log('API URL:', apiUrl);
 console.debug('env:', import.meta.env);
-
 /**
  * Decodes the JWT payload stored in localStorage without verifying the signature.
  * Verification happens server-side; this is only used for client-side routing decisions.
