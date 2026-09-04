@@ -52,7 +52,7 @@ export async function sendPasswordLink(message: PasswordLinkMessage) {
   await mailer.transporter.sendMail({
     from: mailer.from,
     to: message.email,
-    subject: 'Passwort fuer Jagdgruppe setzen',
+    subject: 'Passwort fuer Mein Jagdrevier setzen',
     text: `Hallo ${message.displayName},\n\nsetze dein Passwort ueber diesen Link. Er ist eine Stunde gueltig:\n${message.passwordLink}`,
   })
 }

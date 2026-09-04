@@ -1,8 +1,8 @@
-# Jagdgruppe: Produkt- und Entwicklungsplan
+# Mein Jagdrevier: Produkt- und Entwicklungsplan
 
 ## Zielbild
 
-Eine private Jagdgruppen-App fuer Android als installierbare Capacitor-App und fuer iOS als Progressive Web App (PWA). Sie unterstuetzt die sichere Koordination im Revier, das Aufzeichnen von Nachsuchen und Uebungsfaehrten sowie die Kommunikation mit der Gruppe auch bei eingeschraenkter Netzabdeckung.
+Mein Jagdrevier ist eine private App fuer Android als installierbare Capacitor-App und fuer iOS als Progressive Web App (PWA). Sie unterstuetzt die sichere Koordination im Revier, das Aufzeichnen von Nachsuchen und Uebungsfaehrten sowie die Kommunikation mit der Gruppe auch bei eingeschraenkter Netzabdeckung.
 
 Die Anwendung ist fuer einen festen, geschlossenen Nutzerkreis vorgesehen. Sie wird nicht ueber offizielle App-Stores verteilt: Android-Nutzer installieren eine signierte APK, iPhone-Nutzer installieren die PWA aus Safari auf dem Startbildschirm.
 

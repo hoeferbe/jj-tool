@@ -168,7 +168,7 @@ function submitResetPassword() {
   <IonPage>
     <IonHeader>
       <IonToolbar>
-        <IonTitle>Jagdgruppe</IonTitle>
+        <IonTitle>Mein Jagdrevier</IonTitle>
       </IonToolbar>
     </IonHeader>
     <IonContent class="ion-padding">

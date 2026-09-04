@@ -1,8 +1,8 @@
-# Anwenderhandbuch Jagdgruppen-App
+# Anwenderhandbuch Mein Jagdrevier
 
 ## 1. Zweck der App
 
-Die Jagdgruppen-App unterstützt die gemeinsame Verwaltung von Revieren und Jagdeinrichtungen. Sie zeigt Reviere auf einer Karte, macht Einrichtungen und ihren Zustand sichtbar und erleichtert die Abstimmung innerhalb der Jagdgruppe.
+Mein Jagdrevier unterstützt die gemeinsame Verwaltung von Revieren und Jagdeinrichtungen. Die App zeigt Reviere auf einer Karte, macht Einrichtungen und ihren Zustand sichtbar und erleichtert die Abstimmung innerhalb der Jagdgruppe.
 
 Die App ist für einen geschlossenen Nutzerkreis gedacht. Welche Bereiche sichtbar sind und welche Aktionen möglich sind, hängt von der Rolle und der Zuordnung zu einem Revier ab.
 

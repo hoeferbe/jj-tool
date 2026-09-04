@@ -71,7 +71,7 @@ async function logout() {
   <IonPage>
     <IonHeader>
       <IonToolbar>
-        <IonTitle>Jagdgruppe</IonTitle>
+        <IonTitle>Mein Jagdrevier</IonTitle>
         <IonButtons slot="end">
           <IonButton :id="userMenuTriggerId" aria-label="Benutzermenü">
             {{ displayName || 'Menü' }}
@@ -109,7 +109,12 @@ async function logout() {
       </IonPopover>
     </IonHeader>
     <IonContent>
+      <div class="motd" role="status">Diese App befindet sich noch in der Entwicklung.</div>
       <slot />
     </IonContent>
   </IonPage>
 </template>
+
+<style scoped>
+.motd { padding: 7px 16px; border-bottom: 1px solid #d3d8c7; background: #eef1e7; color: #536142; font-size: 0.85rem; text-align: center; }
+</style>

@@ -1,6 +1,6 @@
-# jj-tool
+# Mein Jagdrevier
 
-Jagdgruppen-App mit Ionic Vue als Client und Hono als API. Die Anwendung verwaltet geschlossene Reviergruppen, Reviergrenzen, Jagdeinrichtungen, Aufgaben und Reservierungen.
+Mein Jagdrevier mit Ionic Vue als Client und Hono als API. Die Anwendung verwaltet geschlossene Reviergruppen, Reviergrenzen, Jagdeinrichtungen, Aufgaben und Reservierungen.
 
 ## Voraussetzungen
 
