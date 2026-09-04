@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import * as L from 'leaflet'
-import { IonButton, IonContent, IonInput, IonModal, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
+import { IonButton, IonContent, IonInput, IonItem, IonList, IonModal, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
 import BkgAttribution from './BkgAttribution.vue'
 
 interface Boundary {
@@ -28,6 +28,8 @@ const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 const mapContainer = ref<HTMLElement | null>(null)
 const name = ref('')
 const query = ref('')
+const suggestions = ref<Array<{ name: string; code?: string }>>([])
+const suggestionsLoading = ref(false)
 const state = ref('')
 const municipalityName = ref('')
 const municipalityCode = ref('')
@@ -42,6 +44,7 @@ let map: L.Map | null = null
 let boundaryLayer: L.GeoJSON | null = null
 let clickMarker: L.CircleMarker | null = null
 let userChangedMapView = false
+let suggestionTimer: ReturnType<typeof setTimeout> | null = null
 
 const states = [
   ['Schleswig-Holstein', 54.2, 9.8, 7], ['Hamburg', 53.55, 10, 10],
@@ -59,6 +62,8 @@ const canCreate = computed(() => name.value.trim().length >= 2 && boundary.value
 function reset() {
   name.value = ''
   query.value = ''
+  suggestions.value = []
+  suggestionsLoading.value = false
   state.value = ''
   municipalityName.value = ''
   municipalityCode.value = ''
@@ -171,9 +176,45 @@ async function searchMunicipality(params: URLSearchParams) {
 
 function searchByName() {
   if (!query.value.trim()) return
+  suggestions.value = []
   userChangedMapView = true
-  searchMunicipality(new URLSearchParams({ name: query.value.trim() }))
+  const params = new URLSearchParams({ name: query.value.trim() })
+  if (state.value) params.set('state', state.value)
+  searchMunicipality(params)
 }
+
+async function loadSuggestions(searchTerm: string) {
+  suggestionsLoading.value = true
+  const token = localStorage.getItem('accessToken')
+  try {
+    const params = new URLSearchParams({ name: searchTerm, suggest: 'true' })
+    if (state.value) params.set('state', state.value)
+    const response = await fetch(`${apiUrl}/municipalities/search?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+    const data = await response.json() as { suggestions?: Array<{ name: string; code?: string }> }
+    if (query.value.trim() === searchTerm) suggestions.value = response.ok ? data.suggestions ?? [] : []
+  } catch {
+    if (query.value.trim() === searchTerm) suggestions.value = []
+  } finally {
+    if (query.value.trim() === searchTerm) suggestionsLoading.value = false
+  }
+}
+
+function selectSuggestion(suggestion: { name: string }) {
+  query.value = suggestion.name
+  searchByName()
+}
+
+watch([query, state], ([value]) => {
+  if (suggestionTimer) clearTimeout(suggestionTimer)
+  const searchTerm = value.trim()
+  if (searchTerm.length < 2) {
+    suggestions.value = []
+    suggestionsLoading.value = false
+    return
+  }
+  suggestionsLoading.value = true
+  suggestionTimer = setTimeout(() => loadSuggestions(searchTerm), 250)
+})
 
 function searchByPoint(lat: number, lng: number) {
   searchMunicipality(new URLSearchParams({ lat: String(lat), lng: String(lng) }))
@@ -247,6 +288,12 @@ function close() {
           <IonInput v-model="query" label="Gemeinde suchen" label-placement="stacked" placeholder="Name der Gemeinde" @keyup.enter="searchByName" />
           <IonButton :disabled="searching || !query.trim()" @click="searchByName">{{ searching ? 'Suche...' : 'Suchen' }}</IonButton>
         </div>
+        <IonNote v-if="suggestionsLoading">Passende Gemeinden werden gesucht...</IonNote>
+        <IonList v-else-if="suggestions.length" class="suggestion-list" lines="full">
+          <IonItem v-for="suggestion in suggestions" :key="suggestion.code ?? suggestion.name" button detail @click="selectSuggestion(suggestion)">
+            {{ suggestion.name }}
+          </IonItem>
+        </IonList>
       </section>
       <section class="form-section map-section">
         <div class="map-section-heading">
@@ -280,6 +327,7 @@ function close() {
 .dialog-heading h2, .form-section h3 { margin: 0; }
 .form-section { display: flex; flex-direction: column; gap: 12px; }
 .location-controls ion-select, .search-controls ion-input { flex: 1; }
+.suggestion-list { margin-top: -4px; border: 1px solid var(--ion-color-light-shade); border-radius: 8px; overflow: hidden; }
 .map-section-heading { align-items: center; justify-content: space-between; }
 .creation-map { width: 100%; height: min(520px, 48vh); border: 1px solid var(--ion-color-light-shade); border-radius: 8px; overflow: hidden; }
 .creation-map.selection-mode { cursor: crosshair !important; box-shadow: 0 0 0 3px rgba(45, 211, 111, 0.35); }

@@ -8,6 +8,13 @@ import type { AuthPayload } from '../middleware/auth.middleware.js';
 import { type HuntingDistrictStore } from '../hunting-district-store.js';
 import { huntingDistrictSchema } from '../schemas/hunting-district.schemas.js';
 
+const stateCodes: Record<string, string> = {
+   'Schleswig-Holstein': '01', Hamburg: '02', Niedersachsen: '03', Bremen: '04',
+   'Nordrhein-Westfalen': '05', Hessen: '06', 'Rheinland-Pfalz': '07', 'Baden-Württemberg': '08',
+   Bayern: '09', Saarland: '10', Berlin: '11', Brandenburg: '12',
+   'Mecklenburg-Vorpommern': '13', Sachsen: '14', 'Sachsen-Anhalt': '15', Thüringen: '16',
+};
+
 interface HuntingDistrictRouteDependencies {
    authStore: AuthStore;
    huntingDistrictStore: HuntingDistrictStore;
@@ -67,6 +74,8 @@ export function registerHuntingDistrictRoutes(app: Hono, dependencies: HuntingDi
 
    app.get('/municipalities/search', requireAuth, async (context) => {
       const municipalityName = context.req.query('name');
+      const suggest = context.req.query('suggest') === 'true';
+      const stateCode = stateCodes[context.req.query('state') ?? ''];
       const latitude = context.req.query('lat');
       const longitude = context.req.query('lng');
       const bkgBaseUrl = process.env.BKG_WFS_URL ?? 'https://sgx.geodatenzentrum.de/wfs_vg25';
@@ -74,7 +83,10 @@ export function registerHuntingDistrictRoutes(app: Hono, dependencies: HuntingDi
       const url = new URL(bkgBaseUrl);
       const searchParams = new URLSearchParams({ service: 'WFS', version: '2.0.0', request: 'GetFeature', typeNames: 'vg25:vg25_gem', outputFormat: 'application/json', srsName: 'EPSG:4326' });
       if (municipalityName) {
-         searchParams.set('cql_filter', `gen = '${municipalityName.replace(/'/g, "''")}'`);
+         const escapedName = municipalityName.replace(/'/g, "''");
+         const nameFilter = suggest ? `gen ILIKE '%${escapedName}%'` : `gen = '${escapedName}'`;
+         searchParams.set('cql_filter', stateCode ? `${nameFilter} AND ags LIKE '${stateCode}%'` : nameFilter);
+         if (suggest) searchParams.set('count', '8');
       } else {
          const lat = Number(latitude);
          const lng = Number(longitude);
@@ -92,6 +104,16 @@ export function registerHuntingDistrictRoutes(app: Hono, dependencies: HuntingDi
       const data = await response.json() as { features?: Array<{ properties?: Record<string, unknown>; geometry?: unknown }> };
       const features = data.features ?? [];
       if (!features.length) return context.json({ message: 'Keine Gemeinde unter diesen Kriterien gefunden.' }, 404);
+      if (suggest) {
+         const suggestions = features
+            .map((feature) => ({
+               name: typeof feature.properties?.gen === 'string' ? feature.properties.gen : '',
+               code: typeof (feature.properties?.ags ?? feature.properties?.ars) === 'string' ? feature.properties?.ags ?? feature.properties?.ars : undefined,
+            }))
+            .filter((suggestion) => suggestion.name)
+            .sort((left, right) => left.name.localeCompare(right.name, 'de'));
+         return context.json({ suggestions });
+      }
       const clickedPoint = latitude && longitude ? point([Number(longitude), Number(latitude)]) : null;
       const firstFeature = (clickedPoint ? features.find((feature) => {
          const geometry = feature.geometry as { type?: string } | undefined;
