@@ -108,8 +108,10 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 
 **Streckeneintraege**
 
-- Streckeneinträge pro Revier mit Datum, Wildart und optionaler Notiz erfassen und anzeigen.
-- Geschützte API-Routen und persistente Speicherung für Streckeneinträge umgesetzt.
+- Streckeneinträge pro Revier mit Datum, Uhrzeit, Wildart, VO-Flag (Verkehrsopfer), Versicherungsbescheinigungs-Flag (ja/nein), Ortsbezeichnung, GPS-Position / Karten-Picker, Gewicht, geschätztem Alter und Notiz erfassen und bearbeiten.
+- Absteigende Sortierung der Streckenliste nach Datum und Uhrzeit.
+- Dialog für Neuanlage und nachträgliche Bearbeitung sowie Löschfunktion integriert.
+- Geschützte API-Routen (GET, POST, PUT, DELETE) und persistente Speicherung für Streckeneinträge umgesetzt.
 
 **Qualitaetssicherung**
 

@@ -2,11 +2,23 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
+export interface KillEntryPosition {
+   lat: number;
+   lng: number;
+}
+
 export interface KillEntry {
    id: string;
    revierId: string;
    datum: string;
+   uhrzeit?: string;
    wildart: string;
+   istVerkehrsopfer?: boolean;
+   bescheinigung?: boolean;
+   ortName?: string;
+   position?: KillEntryPosition;
+   gewicht?: number;
+   geschaetztesAlter?: string;
    notiz?: string;
    createdBy: string;
    createdAt: string;
@@ -16,10 +28,19 @@ export interface KillEntry {
 export interface CreateKillEntryInput {
    revierId: string;
    datum: string;
+   uhrzeit?: string;
    wildart: string;
+   istVerkehrsopfer?: boolean;
+   bescheinigung?: boolean;
+   ortName?: string;
+   position?: KillEntryPosition;
+   gewicht?: number;
+   geschaetztesAlter?: string;
    notiz?: string;
    createdBy: string;
 }
+
+export type UpdateKillEntryInput = Partial<Omit<CreateKillEntryInput, 'revierId' | 'createdBy'>>;
 
 interface KillEntryData {
    streckeneintraege: KillEntry[];
@@ -54,7 +75,11 @@ export class KillEntryStore {
    async getByHuntingDistrictId(revierId: string) {
       return this.data.streckeneintraege
          .filter((entry) => entry.revierId === revierId)
-         .sort((first, second) => second.datum.localeCompare(first.datum) || second.createdAt.localeCompare(first.createdAt));
+         .sort((first, second) => second.datum.localeCompare(first.datum) || (second.uhrzeit ?? '').localeCompare(first.uhrzeit ?? '') || second.createdAt.localeCompare(first.createdAt));
+   }
+
+   async getById(id: string, revierId: string) {
+      return this.data.streckeneintraege.find((entry) => entry.id === id && entry.revierId === revierId) ?? null;
    }
 
    async create(input: CreateKillEntryInput) {
@@ -68,6 +93,30 @@ export class KillEntryStore {
          };
          this.data.streckeneintraege.push(entry);
          return entry;
+      });
+   }
+
+   async update(id: string, revierId: string, input: UpdateKillEntryInput) {
+      return this.enqueue(async () => {
+         const index = this.data.streckeneintraege.findIndex((entry) => entry.id === id && entry.revierId === revierId);
+         if (index === -1) return null;
+         const existing = this.data.streckeneintraege[index]!;
+         const updated: KillEntry = {
+            ...existing,
+            ...input,
+            updatedAt: new Date().toISOString(),
+         };
+         this.data.streckeneintraege[index] = updated;
+         return updated;
+      });
+   }
+
+   async delete(id: string, revierId: string) {
+      return this.enqueue(async () => {
+         const index = this.data.streckeneintraege.findIndex((entry) => entry.id === id && entry.revierId === revierId);
+         if (index === -1) return false;
+         this.data.streckeneintraege.splice(index, 1);
+         return true;
       });
    }
 
