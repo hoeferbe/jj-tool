@@ -65,7 +65,14 @@ const allowedOrigins = new Set([
 app.use(
    '*',
    cors({
-      origin: (origin) => (origin && allowedOrigins.has(origin) ? origin : ''),
+      origin: (origin) => {
+         if (!origin) return '';
+         if (allowedOrigins.has(origin)) return origin;
+         if (/^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}):\d{4,5}$/.test(origin)) {
+            return origin;
+         }
+         return '';
+      },
       credentials: true,
    }),
 );

@@ -2,7 +2,20 @@ import { z } from 'zod';
 
 export const killEntrySchema = z.object({
    datum: z.string().date(),
-   uhrzeit: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Uhrzeit muss im Format HH:mm sein').optional(),
+   uhrzeit: z.preprocess((val) => {
+      if (typeof val === 'string') {
+         const trimmed = val.trim();
+         if (!trimmed) return undefined;
+         const parts = trimmed.split(':');
+         if (parts.length >= 2) {
+            const hh = parts[0]!.padStart(2, '0');
+            const mm = parts[1]!.padStart(2, '0');
+            return `${hh}:${mm}`;
+         }
+         return trimmed;
+      }
+      return val;
+   }, z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Uhrzeit muss im Format HH:mm sein').optional()),
    wildart: z.string().trim().min(2).max(120),
    istVerkehrsopfer: z.boolean().default(false),
    bescheinigung: z.boolean().default(false),

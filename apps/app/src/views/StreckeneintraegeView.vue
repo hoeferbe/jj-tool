@@ -4,7 +4,22 @@ import { IonButton, IonItem, IonList, IonNote, IonSelect, IonSelectOption } from
 import AppLayout from '../components/AppLayout.vue'
 import StreckeneintragDialog, { type Streckeneintrag } from '../components/StreckeneintragDialog.vue'
 
-interface Revier { id: string; name: string; municipalityName: string }
+interface GeoJsonFeatureCollection {
+  type: 'FeatureCollection'
+  features: Array<{
+    type: 'Feature'
+    properties?: Record<string, unknown>
+    geometry: { type: string; coordinates: unknown }
+  }>
+}
+
+interface Revier {
+  id: string
+  name: string
+  municipalityName: string
+  center?: { lat: number; lng: number }
+  boundary?: GeoJsonFeatureCollection
+}
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 const reviere = ref<Revier[]>([])
@@ -192,6 +207,8 @@ onMounted(loadReviere)
       <StreckeneintragDialog
         :is-open="isDialogOpen"
         :revier-id="selectedRevierId"
+        :revier-center="selectedRevier?.center"
+        :revier-boundary="selectedRevier?.boundary"
         :entry="editingEntry"
         @close="isDialogOpen = false"
         @saved="handleDialogSaved"

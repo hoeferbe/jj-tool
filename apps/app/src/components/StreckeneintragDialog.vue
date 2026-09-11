@@ -5,6 +5,15 @@ import * as L from 'leaflet'
 
 interface Point { lat: number; lng: number }
 
+interface GeoJsonFeatureCollection {
+  type: 'FeatureCollection'
+  features: Array<{
+    type: 'Feature'
+    properties?: Record<string, unknown>
+    geometry: { type: string; coordinates: unknown }
+  }>
+}
+
 export interface Streckeneintrag {
   id: string
   revierId: string
@@ -27,7 +36,8 @@ const props = withDefaults(defineProps<{
   isOpen: boolean
   revierId: string
   entry?: Streckeneintrag | null
-  defaultCenter?: Point
+  revierCenter?: Point
+  revierBoundary?: GeoJsonFeatureCollection
 }>(), {})
 
 const emit = defineEmits<{
@@ -67,8 +77,38 @@ const showMapPicker = ref(false)
 const mapContainer = ref<HTMLElement | null>(null)
 let mapInstance: L.Map | null = null
 let markerInstance: L.Marker | null = null
+let boundaryLayerInstance: L.GeoJSON | null = null
 
 const commonWildarten = ['Reh', 'Wildschwein', 'Fuchs', 'Fasan', 'Hase', 'Dachs', 'Waschbär', 'Damwild', 'Rotwild']
+
+function pointInRing(lat: number, lng: number, ring: number[][]) {
+  let inside = false
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
+    const [currentLng, currentLat] = ring[index] ?? []
+    const [previousLng, previousLat] = ring[previous] ?? []
+    if (currentLng === undefined || currentLat === undefined || previousLng === undefined || previousLat === undefined) continue
+    const intersects = (currentLat > lat) !== (previousLat > lat)
+      && lng < ((previousLng - currentLng) * (lat - currentLat)) / (previousLat - currentLat) + currentLng
+    if (intersects) inside = !inside
+  }
+  return inside
+}
+
+function pointInBoundary(boundary: GeoJsonFeatureCollection, lat: number, lng: number) {
+  if (!boundary || !boundary.features || !boundary.features.length) return true
+  return boundary.features.some((feature) => {
+    if (feature.geometry.type === 'Polygon') {
+      const rings = feature.geometry.coordinates as number[][][]
+      return Boolean(rings[0] && pointInRing(lat, lng, rings[0]) && !rings.slice(1).some((ring) => pointInRing(lat, lng, ring)))
+    }
+    if (feature.geometry.type === 'MultiPolygon') {
+      return (feature.geometry.coordinates as number[][][][]).some((polygon) =>
+        Boolean(polygon[0] && pointInRing(lat, lng, polygon[0]) && !polygon.slice(1).some((ring) => pointInRing(lat, lng, ring))),
+      )
+    }
+    return false
+  })
+}
 
 function reset() {
   if (props.entry) {
@@ -152,7 +192,7 @@ function initMapPicker() {
   if (!mapContainer.value) return
   if (mapInstance) destroyMapPicker()
 
-  const center: Point = position.value ?? props.defaultCenter ?? { lat: 51.1657, lng: 10.4515 }
+  const center: Point = position.value ?? props.revierCenter ?? { lat: 51.1657, lng: 10.4515 }
   mapInstance = L.map(mapContainer.value, { zoomControl: true }).setView([center.lat, center.lng], 14)
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -160,26 +200,46 @@ function initMapPicker() {
     maxZoom: 19,
   }).addTo(mapInstance)
 
+  if (props.revierBoundary && props.revierBoundary.features?.length) {
+    boundaryLayerInstance = L.geoJSON(props.revierBoundary as any, {
+      style: { color: '#2f6b32', weight: 2.5, fillColor: '#2dd36f', fillOpacity: 0.15 },
+    }).addTo(mapInstance)
+
+    if (!position.value && boundaryLayerInstance.getBounds().isValid()) {
+      mapInstance.fitBounds(boundaryLayerInstance.getBounds(), { padding: [12, 12] })
+    }
+  }
+
   if (position.value) {
     markerInstance = L.marker([position.value.lat, position.value.lng], { draggable: true }).addTo(mapInstance)
     markerInstance.on('dragend', (e) => {
       const latLng = (e.target as L.Marker).getLatLng()
-      position.value = { lat: latLng.lat, lng: latLng.lng }
+      updatePositionFromMapClick(latLng)
     })
   }
 
   mapInstance.on('click', (e: L.LeafletMouseEvent) => {
-    position.value = { lat: e.latlng.lat, lng: e.latlng.lng }
-    if (markerInstance) {
-      markerInstance.setLatLng(e.latlng)
-    } else if (mapInstance) {
-      markerInstance = L.marker(e.latlng, { draggable: true }).addTo(mapInstance)
-      markerInstance.on('dragend', (dragEvt) => {
-        const latLng = (dragEvt.target as L.Marker).getLatLng()
-        position.value = { lat: latLng.lat, lng: latLng.lng }
-      })
-    }
+    updatePositionFromMapClick(e.latlng)
   })
+}
+
+function updatePositionFromMapClick(latLng: L.LatLng) {
+  if (props.revierBoundary && !pointInBoundary(props.revierBoundary, latLng.lat, latLng.lng)) {
+    message.value = 'Hinweis: Der gewählte Ort liegt außerhalb der Grenze des Reviers.'
+  } else {
+    message.value = ''
+  }
+
+  position.value = { lat: latLng.lat, lng: latLng.lng }
+  if (markerInstance) {
+    markerInstance.setLatLng(latLng)
+  } else if (mapInstance) {
+    markerInstance = L.marker(latLng, { draggable: true }).addTo(mapInstance)
+    markerInstance.on('dragend', (dragEvt) => {
+      const newLatLng = (dragEvt.target as L.Marker).getLatLng()
+      updatePositionFromMapClick(newLatLng)
+    })
+  }
 }
 
 function destroyMapPicker() {
@@ -187,6 +247,7 @@ function destroyMapPicker() {
     mapInstance.remove()
     mapInstance = null
     markerInstance = null
+    boundaryLayerInstance = null
   }
 }
 
@@ -214,15 +275,21 @@ async function saveEntry() {
       ? `${apiUrl}/reviere/${props.revierId}/streckeneintraege/${props.entry!.id}`
       : `${apiUrl}/reviere/${props.revierId}/streckeneintraege`
 
+    const parsedGewicht = gewicht.value !== null && gewicht.value !== undefined && !isNaN(Number(gewicht.value)) && String(gewicht.value).trim() !== ''
+      ? Number(gewicht.value)
+      : undefined
+
+    const formattedTime = uhrzeit.value.trim() ? uhrzeit.value.trim() : undefined
+
     const payload = {
       datum: datum.value,
-      uhrzeit: uhrzeit.value.trim() || undefined,
+      uhrzeit: formattedTime,
       wildart: wildart.value.trim(),
       istVerkehrsopfer: istVerkehrsopfer.value,
       bescheinigung: bescheinigung.value,
       ortName: ortName.value.trim() || undefined,
       position: position.value ?? undefined,
-      gewicht: gewicht.value !== null && !isNaN(Number(gewicht.value)) ? Number(gewicht.value) : undefined,
+      gewicht: parsedGewicht,
       geschaetztesAlter: geschaetztesAlter.value.trim() || undefined,
       notiz: notiz.value.trim() || undefined,
     }
@@ -232,9 +299,16 @@ async function saveEntry() {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    const data = await response.json() as { streckeneintrag?: Streckeneintrag; message?: string }
-    if (!response.ok || !data.streckeneintrag) throw new Error(data.message ?? 'Streckeneintrag konnte nicht gespeichert werden.')
-    
+
+    let data: { streckeneintrag?: Streckeneintrag; message?: string } = {}
+    try {
+      data = (await response.json()) as { streckeneintrag?: Streckeneintrag; message?: string }
+    } catch {
+      throw new Error(`Server-Fehler (${response.status} ${response.statusText}). Bitte prüfen, ob die API neu gestartet/kompiliert wurde.`)
+    }
+
+    if (!response.ok || !data.streckeneintrag) throw new Error(data.message ?? `Streckeneintrag konnte nicht gespeichert werden (Status ${response.status}).`)
+
     emit('saved', data.streckeneintrag)
     close()
   } catch (error) {

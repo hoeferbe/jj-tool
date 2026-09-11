@@ -24,7 +24,12 @@ export function registerKillEntryRoutes(app: Hono, dependencies: KillEntryRouteD
       return context.json({ streckeneintraege: await killEntryStore.getByHuntingDistrictId(revierId) });
    });
 
-   app.post('/reviere/:revierId/streckeneintraege', requireAuth, zValidator('json', killEntrySchema), async (context) => {
+   app.post('/reviere/:revierId/streckeneintraege', requireAuth, zValidator('json', killEntrySchema, (result, context) => {
+      if (!result.success) {
+         const message = result.error.issues[0]?.message ?? 'Ungültige Eingabedaten.';
+         return context.json({ message }, 400);
+      }
+   }), async (context) => {
       const payload = await getAuthenticatedPayload(context);
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
       const revierId = context.req.param('revierId');
@@ -33,7 +38,12 @@ export function registerKillEntryRoutes(app: Hono, dependencies: KillEntryRouteD
       return context.json({ streckeneintrag: killEntry }, 201);
    });
 
-   app.put('/reviere/:revierId/streckeneintraege/:id', requireAuth, zValidator('json', updateKillEntrySchema), async (context) => {
+   app.put('/reviere/:revierId/streckeneintraege/:id', requireAuth, zValidator('json', updateKillEntrySchema, (result, context) => {
+      if (!result.success) {
+         const message = result.error.issues[0]?.message ?? 'Ungültige Eingabedaten.';
+         return context.json({ message }, 400);
+      }
+   }), async (context) => {
       const payload = await getAuthenticatedPayload(context);
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
       const revierId = context.req.param('revierId');
