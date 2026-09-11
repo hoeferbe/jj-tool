@@ -78,6 +78,7 @@ const mapContainer = ref<HTMLElement | null>(null)
 let mapInstance: L.Map | null = null
 let markerInstance: L.Marker | null = null
 let boundaryLayerInstance: L.GeoJSON | null = null
+const mapLayerStorageKey = 'jj-revier-map-layer'
 
 const commonWildarten = ['Reh', 'Wildschwein', 'Fuchs', 'Fasan', 'Hase', 'Dachs', 'Waschbär', 'Damwild', 'Rotwild']
 
@@ -195,10 +196,24 @@ function initMapPicker() {
   const center: Point = position.value ?? props.revierCenter ?? { lat: 51.1657, lng: 10.4515 }
   mapInstance = L.map(mapContainer.value, { zoomControl: true }).setView([center.lat, center.lng], 14)
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap',
+  const streets = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
     maxZoom: 19,
-  }).addTo(mapInstance)
+  })
+  const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri',
+    maxZoom: 19,
+  })
+
+  const savedLayer = localStorage.getItem(mapLayerStorageKey)
+  const activeLayer = savedLayer === 'satellite' ? satellite : streets
+  activeLayer.addTo(mapInstance)
+
+  L.control.layers({ Straßenkarte: streets, Satellit: satellite }).addTo(mapInstance)
+
+  mapInstance.on('baselayerchange', (event: L.LayersControlEvent) => {
+    localStorage.setItem(mapLayerStorageKey, event.name === 'Satellit' ? 'satellite' : 'streets')
+  })
 
   if (props.revierBoundary && props.revierBoundary.features?.length) {
     boundaryLayerInstance = L.geoJSON(props.revierBoundary as any, {
@@ -619,7 +634,7 @@ watch(() => props.isOpen, (isOpen) => {
 }
 
 .map-container {
-  height: 200px;
+  height: 280px;
   width: 100%;
   border-radius: 8px;
   border: 1px solid var(--ion-color-light-shade, #ccc);
