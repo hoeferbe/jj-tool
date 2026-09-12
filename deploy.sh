@@ -2,13 +2,19 @@
 # Baut die jj-tool Container (app + api) neu und startet sie neu.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
+
 COMPOSE_DIR="/media/docker/jj-tool"
 COMPOSE_FILE="$COMPOSE_DIR/docker-compose.yml"
 
-if [[ ! -f "$COMPOSE_FILE" ]]; then
-  echo "Compose-Datei nicht gefunden: $COMPOSE_FILE" >&2
+if [[ ! -f "$REPO_COMPOSE_FILE" ]]; then
+  echo "Compose-Datei nicht im Repo gefunden: $REPO_COMPOSE_FILE" >&2
   exit 1
 fi
+
+echo "==> Kopiere docker-compose.yml aus dem Repo nach $COMPOSE_DIR"
+cp "$REPO_COMPOSE_FILE" "$COMPOSE_FILE"
 
 echo "==> Baue Images neu (app + api)"
 docker compose -f "$COMPOSE_FILE" build
