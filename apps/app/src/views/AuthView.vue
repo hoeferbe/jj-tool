@@ -11,6 +11,7 @@ import {
   IonHeader,
   IonIcon,
   IonInput,
+  IonInputPasswordToggle,
   IonItem,
   IonList,
   IonNote,
@@ -22,7 +23,7 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/vue'
-import { checkmarkCircleOutline, ellipseOutline, eyeOffOutline, eyeOutline } from 'ionicons/icons'
+import { checkmarkCircleOutline, ellipseOutline } from 'ionicons/icons'
 
 /** Which sub-view is currently active inside the auth page. */
 type View = 'login' | 'register' | 'forgot' | 'reset'
@@ -51,9 +52,6 @@ const invitedRevierName = ref('')
 const forgotEmail = ref('')
 const resetPassword = ref('')
 const resetPasswordConfirm = ref('')
-const showLoginPassword = ref(false)
-const showResetPassword = ref(false)
-const showResetPasswordConfirm = ref(false)
 const registrationSubmitted = ref(false)
 
 // Password validation rules
@@ -177,8 +175,10 @@ function submitResetPassword() {
       throw new Error('Die eingegebenen Passwörter stimmen nicht überein.')
     }
     const result = await request('/auth/password/reset', { token: initialToken, password: resetPassword.value })
+    resetPassword.value = ''
+    resetPasswordConfirm.value = ''
     view.value = 'login'
-    window.history.replaceState({}, '', window.location.pathname)
+    await router.replace({ path: '/', query: {} })
     return result.message ?? ''
   })
 }
@@ -201,23 +201,16 @@ function submitResetPassword() {
         <IonItem>
           <IonInput v-model="login.identifier" label="Benutzername oder E-Mail" label-placement="stacked" autocomplete="username" />
         </IonItem>
-        <IonItem class="password-item">
+        <IonItem>
           <IonInput
             v-model="login.password"
-            :type="showLoginPassword ? 'text' : 'password'"
+            type="password"
             label="Passwort"
             label-placement="stacked"
             autocomplete="current-password"
-          />
-          <IonButton
-            slot="end"
-            fill="clear"
-            class="password-toggle-btn"
-            :aria-label="showLoginPassword ? 'Passwort verbergen' : 'Passwort anzeigen'"
-            @click="showLoginPassword = !showLoginPassword"
           >
-            <IonIcon slot="icon-only" :icon="showLoginPassword ? eyeOffOutline : eyeOutline" />
-          </IonButton>
+            <IonInputPasswordToggle slot="end" />
+          </IonInput>
         </IonItem>
         <IonButton expand="block" :disabled="isSubmitting" @click="submitLogin">Anmelden</IonButton>
         <IonButton fill="clear" expand="block" @click="view = 'forgot'">Passwort vergessen</IonButton>
@@ -259,42 +252,28 @@ function submitResetPassword() {
       </IonList>
 
       <IonList v-else class="reset-password-list">
-        <IonItem class="password-item">
+        <IonItem>
           <IonInput
             v-model="resetPassword"
-            :type="showResetPassword ? 'text' : 'password'"
+            type="password"
             label="Neues Passwort"
             label-placement="stacked"
             autocomplete="new-password"
-          />
-          <IonButton
-            slot="end"
-            fill="clear"
-            class="password-toggle-btn"
-            :aria-label="showResetPassword ? 'Passwort verbergen' : 'Passwort anzeigen'"
-            @click="showResetPassword = !showResetPassword"
           >
-            <IonIcon slot="icon-only" :icon="showResetPassword ? eyeOffOutline : eyeOutline" />
-          </IonButton>
+            <IonInputPasswordToggle slot="end" />
+          </IonInput>
         </IonItem>
 
-        <IonItem class="password-item">
+        <IonItem>
           <IonInput
             v-model="resetPasswordConfirm"
-            :type="showResetPasswordConfirm ? 'text' : 'password'"
+            type="password"
             label="Passwort wiederholen"
             label-placement="stacked"
             autocomplete="new-password"
-          />
-          <IonButton
-            slot="end"
-            fill="clear"
-            class="password-toggle-btn"
-            :aria-label="showResetPasswordConfirm ? 'Passwort verbergen' : 'Passwort anzeigen'"
-            @click="showResetPasswordConfirm = !showResetPasswordConfirm"
           >
-            <IonIcon slot="icon-only" :icon="showResetPasswordConfirm ? eyeOffOutline : eyeOutline" />
-          </IonButton>
+            <IonInputPasswordToggle slot="end" />
+          </IonInput>
         </IonItem>
 
         <div class="password-rules">
@@ -334,18 +313,6 @@ function submitResetPassword() {
 </template>
 
 <style scoped>
-.password-item {
-  --padding-end: 4px;
-}
-
-.password-toggle-btn {
-  --padding-start: 8px;
-  --padding-end: 8px;
-  margin: 0;
-  height: 36px;
-  color: var(--ion-color-medium, #666);
-}
-
 .password-rules {
   margin: 16px 8px 20px;
   padding: 12px 16px;
