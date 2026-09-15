@@ -240,7 +240,7 @@ watch(() => props.facilities, () => {
   clearFacilityMarkers()
   addFacilitiesToMap()
 }, { deep: true })
-watch([() => props.boundary, () => props.positioningFacilityId, () => props.facilityPlacementMode], renderMap, { deep: true })
+watch(() => props.boundary, renderMap, { deep: true })
 watch(() => props.facilityPlacementMode, updatePlacementButton)
 onMounted(renderMap)
 onMounted(() => window.addEventListener('keydown', handleEscape))

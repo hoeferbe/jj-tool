@@ -72,6 +72,9 @@ const taskTitle = ref('')
 const taskDescription = ref('')
 const taskAssignee = ref('')
 const taskSaving = ref(false)
+const showTaskHistory = ref(false)
+const openTasks = () => tasks.value.filter((task) => task.status !== 'erledigt')
+const completedTasks = () => tasks.value.filter((task) => task.status === 'erledigt')
 
 const reservable = () => props.facility && ['Kanzel', 'Bock', 'Leiter'].includes(props.facility.typ)
 const currentUserId = () => {
@@ -93,6 +96,7 @@ function reset() {
   reservationStart.value = toLocalDateTime(props.reservation?.startAt) ?? defaultReservationStart()
   reservationEnd.value = toLocalDateTime(props.reservation?.endAt) ?? defaultReservationEnd(reservationStart.value)
   showReservationFields.value = false
+  showTaskHistory.value = false
 }
 
 function toLocalDateTime(value?: string) {
@@ -308,14 +312,14 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
           <IonButton v-else-if="!loadedReservation && showReservationFields" size="small" fill="outline" :disabled="usageSaving || !reservationStart || !reservationEnd" @click="reserve">Reservierung speichern</IonButton>
           <IonButton v-else-if="loadedReservation?.reservedBy === currentUserId() && !loadedReservation?.checkedInBy && !showReservationFields" size="small" fill="outline" :disabled="usageSaving" @click="beginReservationEdit">Ändern</IonButton>
           <IonButton v-else-if="loadedReservation?.reservedBy === currentUserId() && !loadedReservation?.checkedInBy && showReservationFields" size="small" fill="outline" :disabled="usageSaving || !reservationStart || !reservationEnd" @click="updateReservation">Änderung speichern</IonButton>
-          <IonButton v-if="loadedReservation && loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" color="danger" :disabled="usageSaving" @click="cancelReservation">Stornieren</IonButton>
+          <IonButton v-if="loadedReservation && !loadedReservation.checkedInBy && loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" color="danger" :disabled="usageSaving" @click="cancelReservation">Stornieren</IonButton>
         </div>
         <p v-if="usageMessage" class="message">{{ usageMessage }}</p>
       </section>
       <section v-if="props.facility" class="tasks-section">
-        <div class="usage-heading"><h3>Aufgaben</h3><IonBadge color="medium">{{ tasks.length }}</IonBadge></div>
-        <IonList v-if="tasks.length" lines="full">
-          <IonItem v-for="task in tasks" :key="task.id">
+        <div class="usage-heading"><h3>Aufgaben</h3><IonBadge color="medium">{{ openTasks().length }}</IonBadge></div>
+        <IonList v-if="openTasks().length" lines="full">
+          <IonItem v-for="task in openTasks()" :key="task.id">
             <IonLabel>
               <h4>{{ task.titel }}</h4>
               <p>{{ task.beschreibung || 'Keine weitere Beschreibung' }}</p>
@@ -323,6 +327,18 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
             </IonLabel>
             <IonButton v-if="!task.assignedTo && task.status !== 'erledigt'" slot="end" size="small" @click="updateTask(task, { assignedTo: currentUserId(), status: 'in Bearbeitung' })">Übernehmen</IonButton>
             <IonButton v-else-if="task.assignedTo === currentUserId() && task.status !== 'erledigt'" slot="end" size="small" @click="updateTask(task, { status: 'erledigt' })">Erledigt</IonButton>
+          </IonItem>
+        </IonList>
+        <IonButton v-if="completedTasks().length" size="small" fill="clear" @click="showTaskHistory = !showTaskHistory">
+          {{ showTaskHistory ? 'Historie ausblenden' : `Historie anzeigen (${completedTasks().length})` }}
+        </IonButton>
+        <IonList v-if="showTaskHistory && completedTasks().length" lines="full" class="task-history">
+          <IonItem v-for="task in completedTasks()" :key="task.id">
+            <IonLabel>
+              <h4>{{ task.titel }}</h4>
+              <p>{{ task.beschreibung || 'Keine weitere Beschreibung' }}</p>
+              <p>{{ task.assignedTo ? `Zuständig: ${memberName(task.assignedTo)}` : 'Für alle Mitglieder' }} · erledigt</p>
+            </IonLabel>
           </IonItem>
         </IonList>
         <div class="task-form">
