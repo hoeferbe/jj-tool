@@ -128,6 +128,8 @@ function addFacilitiesToMap() {
       title: facility.name,
     })
     marker.on('click', (event) => {
+      const preservedCenter = map?.getCenter()
+      const preservedZoom = map?.getZoom()
       L.DomEvent.stop(event)
       if (props.positioningFacilityId === facility.id) {
         emit('facilityPositionSelected', {
@@ -136,6 +138,11 @@ function addFacilitiesToMap() {
         })
       } else {
         emit('facilitySelected', facility)
+      }
+      if (preservedCenter && preservedZoom !== undefined) {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          map?.setView(preservedCenter, preservedZoom, { animate: false })
+        }))
       }
     })
     marker.addTo(layer)

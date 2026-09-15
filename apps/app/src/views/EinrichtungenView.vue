@@ -35,7 +35,7 @@ const currentUserId = computed(() => {
   if (!token) return ''
   try { return (JSON.parse(atob(token.split('.')[1])) as { sub?: string }).sub ?? '' } catch { return '' }
 })
-const facilityTasks = (facilityId: string) => tasks.value.filter((task) => task.jagdeinrichtungId === facilityId)
+const facilityTasks = (facilityId: string) => tasks.value.filter((task) => task.jagdeinrichtungId === facilityId && task.status !== 'erledigt')
 const memberName = (id?: string) => members.value.find((member) => member.id === id)?.displayName ?? 'Alle Mitglieder'
 const reservationFor = (facilityId: string) => reservations.value.find((reservation) => reservation.jagdeinrichtungId === facilityId)
 const reservable = (facility: Facility) => ['Kanzel', 'Bock', 'Leiter'].includes(facility.typ)

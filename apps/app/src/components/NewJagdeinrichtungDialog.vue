@@ -380,8 +380,8 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
       <section class="form-section">
         <h3>Zustand und Notiz</h3>
         <label class="field-label">
-          <span>Zustandsinfo</span>
-          <textarea v-model="zustandsInfo" class="form-control textarea-control" rows="2" placeholder="z. B. Tür klemmt, Wespen vorhanden"></textarea>
+          <span>Aktueller Zustand / Mangel</span>
+          <textarea v-model="zustandsInfo" class="form-control textarea-control" rows="2" placeholder="Kurzbeschreibung, z. B. Tür klemmt oder Wespen vorhanden"></textarea>
         </label>
         <label class="field-label">
           <span>Notiz</span>
