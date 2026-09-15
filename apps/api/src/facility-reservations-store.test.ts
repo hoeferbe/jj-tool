@@ -45,4 +45,27 @@ describe('FacilityReservationsStore', () => {
       await store.checkOut('facility-2');
       assert.equal(await store.getActiveByFacilityId('facility-2'), null);
    });
+
+   it('supports scheduled reservations and changing or cancelling them', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'jjtool-scheduled-'));
+      tempDirs.push(directory);
+      const store = new FacilityReservationsStore(directory);
+      await store.initialize();
+      const reservation = await store.reserve({
+         revierId: 'revier-1',
+         jagdeinrichtungId: 'facility-3',
+         reservedBy: 'user-1',
+         startAt: '2030-06-15T18:00:00.000Z',
+         endAt: '2030-06-15T20:00:00.000Z',
+      });
+
+      assert.equal(reservation.startAt, '2030-06-15T18:00:00.000Z');
+      await store.updateReservation(reservation.id, {
+         startAt: '2030-06-16T18:00:00.000Z',
+         endAt: '2030-06-16T20:00:00.000Z',
+      });
+      assert.equal((await store.getActiveByFacilityId('facility-3'))?.startAt, '2030-06-16T18:00:00.000Z');
+      await store.releaseById(reservation.id);
+      assert.equal(await store.getActiveByFacilityId('facility-3'), null);
+   });
 });

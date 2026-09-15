@@ -17,8 +17,13 @@ interface Jagdeinrichtung {
   updatedAt: string
 }
 interface FacilityReservation {
+  id: string
   reservedBy: string
+  reservedByName?: string
   checkedInBy?: string
+  checkedInByName?: string
+  startAt?: string
+  endAt?: string
 }
 
 const props = withDefaults(defineProps<{
@@ -49,6 +54,8 @@ const message = ref('')
 const usageMessage = ref('')
 const usageSaving = ref(false)
 const loadedReservation = ref<FacilityReservation | null>(props.reservation ?? null)
+const reservationStart = ref('')
+const reservationEnd = ref('')
 
 const reservable = () => props.facility && ['Kanzel', 'Bock', 'Leiter'].includes(props.facility.typ)
 const currentUserId = () => {
@@ -67,6 +74,28 @@ function reset() {
   message.value = ''
   usageMessage.value = ''
   loadedReservation.value = props.reservation ?? null
+  reservationStart.value = toLocalDateTime(props.reservation?.startAt) ?? defaultReservationStart()
+  reservationEnd.value = toLocalDateTime(props.reservation?.endAt) ?? ''
+}
+
+function toLocalDateTime(value?: string) {
+  if (!value) return undefined
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return undefined
+  const timezoneOffset = date.getTimezoneOffset() * 60000
+  return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16)
+}
+
+function defaultReservationStart() {
+  const date = new Date(Date.now() + 5 * 60000)
+  return toLocalDateTime(date.toISOString()) ?? ''
+}
+
+function reservationPayload() {
+  return {
+    startAt: new Date(reservationStart.value).toISOString(),
+    endAt: reservationEnd.value ? new Date(reservationEnd.value).toISOString() : undefined,
+  }
 }
 
 async function loadUsage() {
@@ -76,6 +105,8 @@ async function loadUsage() {
   if (!response.ok) return
   const data = await response.json() as { reservierungen: Array<FacilityReservation & { jagdeinrichtungId: string }> }
   loadedReservation.value = data.reservierungen.find((entry) => entry.jagdeinrichtungId === props.facility?.id) ?? null
+  reservationStart.value = toLocalDateTime(loadedReservation.value?.startAt) ?? defaultReservationStart()
+  reservationEnd.value = toLocalDateTime(loadedReservation.value?.endAt) ?? ''
 }
 
 async function changeUsage(path: string, method: 'POST' | 'DELETE') {
@@ -90,6 +121,41 @@ async function changeUsage(path: string, method: 'POST' | 'DELETE') {
     emit('usageChanged')
   } catch (error) {
     usageMessage.value = error instanceof Error ? error.message : 'Nutzungsstatus konnte nicht geändert werden.'
+  } finally { usageSaving.value = false }
+}
+
+async function reserve() {
+  if (!props.facility || !reservationStart.value) return
+  await changeReservation('POST', reservationPayload())
+}
+
+async function updateReservation() {
+  if (!props.facility || !loadedReservation.value || !reservationStart.value) return
+  await changeReservation('PATCH', reservationPayload(), loadedReservation.value.id)
+}
+
+async function cancelReservation() {
+  if (!props.facility || !loadedReservation.value) return
+  await changeReservation('DELETE', undefined, loadedReservation.value.id)
+}
+
+async function changeReservation(method: 'POST' | 'PATCH' | 'DELETE', body?: { startAt: string; endAt?: string }, reservationId?: string) {
+  if (!props.facility) return
+  usageSaving.value = true
+  usageMessage.value = ''
+  const token = localStorage.getItem('accessToken')
+  const suffix = method === 'POST' ? 'reservieren' : `reservieren/${reservationId}`
+  try {
+    const response = await fetch(`${apiUrl}/reviere/${props.revierId}/jagdeinrichtungen/${props.facility.id}/${suffix}`, {
+      method,
+      headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    })
+    if (!response.ok) throw new Error(((await response.json()) as { message?: string }).message ?? 'Reservierung konnte nicht geändert werden.')
+    await loadUsage()
+    emit('usageChanged')
+  } catch (error) {
+    usageMessage.value = error instanceof Error ? error.message : 'Reservierung konnte nicht geändert werden.'
   } finally { usageSaving.value = false }
 }
 
@@ -134,6 +200,29 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await loadU
       <div class="dialog-heading">
         <h2>{{ props.facility ? 'Jagdeinrichtung bearbeiten' : 'Jagdeinrichtung anlegen' }}</h2>
       </div>
+      <section v-if="props.facility && reservable()" class="usage-section">
+        <div class="usage-heading">
+          <h3>Nutzung</h3>
+          <IonBadge v-if="loadedReservation?.checkedInBy" color="success">Eingecheckt</IonBadge>
+          <IonBadge v-else-if="loadedReservation" color="warning">Reserviert</IonBadge>
+          <IonBadge v-else color="medium">Frei</IonBadge>
+        </div>
+        <p v-if="loadedReservation?.checkedInBy">Eingecheckt von {{ loadedReservation.checkedInBy === currentUserId() ? 'dir' : loadedReservation.checkedInByName ?? 'Unbekanntes Mitglied' }}.</p>
+        <p v-else-if="loadedReservation">Reserviert von {{ loadedReservation.reservedBy === currentUserId() ? 'dir' : loadedReservation.reservedByName ?? 'Unbekanntes Mitglied' }} für {{ toLocalDateTime(loadedReservation.startAt)?.replace('T', ' ') }}{{ loadedReservation.endAt ? ` bis ${toLocalDateTime(loadedReservation.endAt)?.replace('T', ' ')}` : '' }}.</p>
+        <p v-else>Die Einrichtung ist frei. Lege einen Tag und Zeitraum für die Reservierung fest.</p>
+        <div class="reservation-period">
+          <label class="field-label"><span>Von</span><input v-model="reservationStart" class="form-control" type="datetime-local"></label>
+          <label class="field-label"><span>Bis</span><input v-model="reservationEnd" class="form-control" type="datetime-local"></label>
+        </div>
+        <div class="usage-actions">
+          <IonButton v-if="loadedReservation?.checkedInBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'DELETE')">Auschecken</IonButton>
+          <IonButton v-else-if="!loadedReservation || loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'POST')">Einchecken</IonButton>
+          <IonButton v-if="!loadedReservation" size="small" fill="outline" :disabled="usageSaving || !reservationStart" @click="reserve">Reservieren</IonButton>
+          <IonButton v-else-if="loadedReservation.reservedBy === currentUserId() && !loadedReservation.checkedInBy" size="small" fill="outline" :disabled="usageSaving || !reservationStart" @click="updateReservation">Ändern</IonButton>
+          <IonButton v-if="loadedReservation && loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" color="danger" :disabled="usageSaving" @click="cancelReservation">Stornieren</IonButton>
+        </div>
+        <p v-if="usageMessage" class="message">{{ usageMessage }}</p>
+      </section>
       <section class="form-section">
         <label class="field-label">
           <span>Bezeichnung</span>
@@ -178,23 +267,6 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await loadU
         </div>
         <IonButton v-if="props.facility" fill="outline" size="small" @click="emit('repositionRequested', props.facility)">Auf Karte wählen</IonButton>
       </section>
-      <section v-if="props.facility && reservable()" class="usage-section">
-        <div class="usage-heading">
-          <h3>Nutzung</h3>
-          <IonBadge v-if="loadedReservation?.checkedInBy" color="success">Eingecheckt</IonBadge>
-          <IonBadge v-else-if="loadedReservation" color="warning">Reserviert</IonBadge>
-          <IonBadge v-else color="medium">Frei</IonBadge>
-        </div>
-        <p v-if="loadedReservation?.checkedInBy === currentUserId()">Du bist aktuell eingecheckt.</p>
-        <p v-else-if="loadedReservation">Die Einrichtung ist aktuell durch ein anderes Mitglied belegt oder reserviert.</p>
-        <p v-else>Die Einrichtung ist frei. Einchecken ist auch ohne Reservierung möglich.</p>
-        <div class="usage-actions">
-          <IonButton v-if="loadedReservation?.checkedInBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'DELETE')">Auschecken</IonButton>
-          <IonButton v-else-if="!loadedReservation || loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'POST')">Einchecken</IonButton>
-          <IonButton v-if="!loadedReservation" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('reservieren', 'POST')">Reservieren</IonButton>
-        </div>
-        <p v-if="usageMessage" class="message">{{ usageMessage }}</p>
-      </section>
       <IonNote v-if="props.positionWasSelected" class="position-confirmation" color="success">Neue Position übernommen. Bitte mit „Speichern“ bestätigen.</IonNote>
       <p v-if="message" class="message">{{ message }}</p>
       <div class="dialog-actions">
@@ -223,6 +295,8 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await loadU
 .position-section { align-items: center; padding: 14px; border: 1px solid var(--ion-color-light-shade); border-radius: 8px; background: var(--ion-color-light, #f1f3ed); }
 .usage-section { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--ion-color-light-shade); border-radius: 8px; }
 .usage-heading, .usage-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.reservation-period { display: flex; gap: 10px; }
+.reservation-period .field-label { flex: 1; min-width: 0; }
 .usage-section p { margin: 0; color: var(--ion-color-medium-shade); }
 .position-section h3 { margin-bottom: 5px; font-size: 0.95rem; }
 .coordinates { color: var(--ion-color-medium-shade); font-variant-numeric: tabular-nums; }
@@ -234,6 +308,7 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await loadU
 @media (max-width: 560px) {
   .dialog-content { padding: 18px; gap: 14px; }
   .form-row { align-items: stretch; flex-direction: column; }
+  .reservation-period { flex-direction: column; }
   .position-section { align-items: stretch; flex-direction: column; }
   .position-section ion-button { width: 100%; }
   .dialog-actions ion-button { flex: 1; }

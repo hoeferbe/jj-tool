@@ -22,7 +22,16 @@ export function registerReservationRoutes(app: Hono, dependencies: ReservationRo
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
       const revierId = context.req.param('revierId');
       if (!revierId || !user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
-      return context.json({ reservierungen: await reservationStore.getActiveByHuntingDistrictId(revierId) });
+      const reservierungen = await reservationStore.getActiveByHuntingDistrictId(revierId);
+      return context.json({
+         reservierungen: reservierungen.map((reservation) => ({
+            ...reservation,
+            reservedByName: authStore.findUserById(reservation.reservedBy)?.displayName ?? 'Unbekanntes Mitglied',
+            checkedInByName: reservation.checkedInBy
+               ? authStore.findUserById(reservation.checkedInBy)?.displayName ?? 'Unbekanntes Mitglied'
+               : undefined,
+         })),
+      });
    });
 
    app.post('/reviere/:revierId/jagdeinrichtungen/:id/reservieren', requireAuth, async (context) => {
@@ -36,11 +45,50 @@ export function registerReservationRoutes(app: Hono, dependencies: ReservationRo
       if (!facility || facility.revierId !== revierId) return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
       if (!['Kanzel', 'Bock', 'Leiter'].includes(facility.typ)) return context.json({ message: 'Diese Einrichtung kann nicht reserviert werden.' }, 400);
       try {
-         return context.json({ reservierung: await reservationStore.reserve({ revierId, jagdeinrichtungId: id, reservedBy: user.id }) }, 201);
+         const body = await context.req.json().catch(() => ({})) as { startAt?: string; endAt?: string };
+         return context.json({ reservierung: await reservationStore.reserve({ revierId, jagdeinrichtungId: id, reservedBy: user.id, startAt: body.startAt, endAt: body.endAt }) }, 201);
       } catch (error) {
          if ((error as Error).message === 'ALREADY_RESERVED') return context.json({ message: 'Diese Einrichtung ist bereits reserviert.' }, 409);
+         if ((error as Error).message === 'INVALID_PERIOD') return context.json({ message: 'Der Reservierungszeitraum ist ungültig.' }, 400);
          throw error;
       }
+   });
+
+   app.patch('/reviere/:revierId/jagdeinrichtungen/:id/reservieren/:reservationId', requireAuth, async (context) => {
+      const payload = await getAuthenticatedPayload(context);
+      const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+      const revierId = context.req.param('revierId');
+      const id = context.req.param('id');
+      const reservationId = context.req.param('reservationId');
+      if (!revierId || !id || !reservationId) return context.json({ message: 'Reservierungs-ID fehlt.' }, 400);
+      if (!user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      const reservation = await reservationStore.getActiveByFacilityId(id);
+      if (!reservation || reservation.id !== reservationId || reservation.revierId !== revierId) return context.json({ message: 'Reservierung nicht gefunden.' }, 404);
+      if (reservation.reservedBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Diese Reservierung darf nicht geändert werden.' }, 403);
+      try {
+         const body = await context.req.json() as { startAt?: string; endAt?: string };
+         if (!body.startAt) return context.json({ message: 'Startzeit fehlt.' }, 400);
+         return context.json({ reservierung: await reservationStore.updateReservation(reservationId, { startAt: body.startAt, endAt: body.endAt }) });
+      } catch (error) {
+         if ((error as Error).message === 'ALREADY_RESERVED') return context.json({ message: 'Dieser Zeitraum ist bereits reserviert.' }, 409);
+         if ((error as Error).message === 'INVALID_PERIOD') return context.json({ message: 'Der Reservierungszeitraum ist ungültig.' }, 400);
+         throw error;
+      }
+   });
+
+   app.delete('/reviere/:revierId/jagdeinrichtungen/:id/reservieren/:reservationId', requireAuth, async (context) => {
+      const payload = await getAuthenticatedPayload(context);
+      const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+      const revierId = context.req.param('revierId');
+      const id = context.req.param('id');
+      const reservationId = context.req.param('reservationId');
+      if (!revierId || !id || !reservationId) return context.json({ message: 'Reservierungs-ID fehlt.' }, 400);
+      if (!user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      const reservation = await reservationStore.getActiveByFacilityId(id);
+      if (!reservation || reservation.id !== reservationId || reservation.revierId !== revierId) return context.json({ message: 'Reservierung nicht gefunden.' }, 404);
+      if (reservation.reservedBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Diese Reservierung darf nicht storniert werden.' }, 403);
+      await reservationStore.releaseById(reservationId);
+      return context.json({ message: 'Reservierung storniert.' });
    });
 
    app.post('/reviere/:revierId/jagdeinrichtungen/:id/einchecken', requireAuth, async (context) => {

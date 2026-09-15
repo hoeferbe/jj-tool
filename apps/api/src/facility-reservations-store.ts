@@ -8,6 +8,8 @@ export interface FacilityReservation {
    jagdeinrichtungId: string;
    reservedBy: string;
    reservedAt: string;
+   startAt?: string;
+   endAt?: string;
    releasedAt?: string;
    checkedInBy?: string;
    checkedInAt?: string;
@@ -42,7 +44,11 @@ export class FacilityReservationsStore {
    }
 
    async getActiveByFacilityId(jagdeinrichtungId: string) {
-      return this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && !entry.releasedAt) ?? null;
+      const now = Date.now();
+      return this.data.reservierungen
+         .filter((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && !entry.releasedAt)
+         .sort((first, second) => this.reservationStart(first) - this.reservationStart(second))
+         .find((entry) => !entry.endAt || new Date(entry.endAt).getTime() >= now) ?? null;
    }
 
    async checkIn(input: { revierId: string; jagdeinrichtungId: string; reservedBy?: string; checkedInBy: string }) {
@@ -89,12 +95,35 @@ export class FacilityReservationsStore {
 
    async reserve(input: Omit<FacilityReservation, 'id' | 'reservedAt'>) {
       return this.enqueue(async () => {
-         const active = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === input.jagdeinrichtungId && !entry.releasedAt);
-         if (active) throw new Error('ALREADY_RESERVED');
+         const startAt = input.startAt ?? new Date().toISOString();
+         this.validatePeriod(startAt, input.endAt);
+         const overlaps = this.data.reservierungen.some((entry) =>
+            entry.jagdeinrichtungId === input.jagdeinrichtungId && !entry.releasedAt
+            && (!entry.endAt || new Date(entry.endAt).getTime() > Date.now())
+            && this.periodsOverlap(entry.startAt, entry.endAt, startAt, input.endAt),
+         );
+         if (overlaps) throw new Error('ALREADY_RESERVED');
          const reservation: FacilityReservation = {
-            id: randomUUID(), ...input, reservedAt: new Date().toISOString(),
+            id: randomUUID(), ...input, startAt, reservedAt: new Date().toISOString(),
          };
          this.data.reservierungen.push(reservation);
+         return reservation;
+      });
+   }
+
+   async updateReservation(id: string, input: { startAt: string; endAt?: string }) {
+      return this.enqueue(async () => {
+         const reservation = this.data.reservierungen.find((entry) => entry.id === id && !entry.releasedAt);
+         if (!reservation) return null;
+         this.validatePeriod(input.startAt, input.endAt);
+         const overlaps = this.data.reservierungen.some((entry) =>
+            entry.id !== id && entry.jagdeinrichtungId === reservation.jagdeinrichtungId && !entry.releasedAt
+            && (!entry.endAt || new Date(entry.endAt).getTime() > Date.now())
+            && this.periodsOverlap(entry.startAt, entry.endAt, input.startAt, input.endAt),
+         );
+         if (overlaps) throw new Error('ALREADY_RESERVED');
+         reservation.startAt = input.startAt;
+         reservation.endAt = input.endAt;
          return reservation;
       });
    }
@@ -106,6 +135,34 @@ export class FacilityReservationsStore {
          reservation.releasedAt = new Date().toISOString();
          return reservation;
       });
+   }
+
+   async releaseById(id: string) {
+      return this.enqueue(async () => {
+         const reservation = this.data.reservierungen.find((entry) => entry.id === id && !entry.releasedAt);
+         if (!reservation) return null;
+         reservation.releasedAt = new Date().toISOString();
+         return reservation;
+      });
+   }
+
+   private reservationStart(reservation: FacilityReservation) {
+      return reservation.startAt ? new Date(reservation.startAt).getTime() : new Date(reservation.reservedAt).getTime();
+   }
+
+   private periodsOverlap(firstStart?: string, firstEnd?: string, secondStart?: string, secondEnd?: string) {
+      const firstFrom = firstStart ? new Date(firstStart).getTime() : 0;
+      const firstTo = firstEnd ? new Date(firstEnd).getTime() : Number.POSITIVE_INFINITY;
+      const secondFrom = secondStart ? new Date(secondStart).getTime() : 0;
+      const secondTo = secondEnd ? new Date(secondEnd).getTime() : Number.POSITIVE_INFINITY;
+      return firstFrom < secondTo && secondFrom < firstTo;
+   }
+
+   private validatePeriod(startAt?: string, endAt?: string) {
+      if (!startAt || Number.isNaN(new Date(startAt).getTime())) throw new Error('INVALID_PERIOD');
+      if (endAt && (Number.isNaN(new Date(endAt).getTime()) || new Date(endAt).getTime() <= new Date(startAt).getTime())) {
+         throw new Error('INVALID_PERIOD');
+      }
    }
 
    private async enqueue<T>(operation: () => Promise<T>) {

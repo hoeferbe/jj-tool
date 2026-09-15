@@ -189,10 +189,7 @@ onMounted(loadReviere)
           <div class="reservation" v-if="reservable(facility)">
             <span>{{ reservationLabel(facility) }}</span>
             <div class="reservation-actions">
-              <IonButton v-if="!reservationFor(facility.id)" size="small" fill="outline" @click="checkIn(facility)">Einchecken</IonButton>
-              <IonButton v-if="!reservationFor(facility.id)" size="small" fill="outline" @click="reserve(facility)">Reservieren</IonButton>
-              <IonButton v-else-if="reservationFor(facility.id)?.checkedInBy === currentUserId" size="small" fill="outline" @click="checkOut(facility)">Auschecken</IonButton>
-              <IonButton v-else-if="reservationFor(facility.id)?.reservedBy === currentUserId" size="small" fill="outline" @click="checkIn(facility)">Einchecken</IonButton>
+              <IonButton size="small" fill="outline" @click="openFacility(facility)">Nutzung öffnen</IonButton>
             </div>
           </div>
           <div class="task-heading"><strong>Aufgaben</strong><IonButton size="small" fill="clear" @click="openTask(facility)">Aufgabe hinzufügen</IonButton></div>
