@@ -9,7 +9,7 @@ type FacilityType = 'Kanzel' | 'Bock' | 'Leiter' | 'Roehrenfalle' | 'Kirrung'
 type FacilityStatus = 'aktiv' | 'defekt' | 'ausser Betrieb'
 interface Facility { id: string; revierId: string; name: string; typ: FacilityType; status: FacilityStatus; zustandsInfo?: string; notiz?: string }
 interface Task { id: string; jagdeinrichtungId: string; titel: string; beschreibung?: string; status: 'offen' | 'in Bearbeitung' | 'erledigt'; assignedTo?: string; assignedBy: string }
-interface Reservation { id: string; jagdeinrichtungId: string; reservedBy: string; reservedAt: string }
+interface Reservation { id: string; jagdeinrichtungId: string; reservedBy: string; reservedAt: string; checkedInBy?: string; checkedInAt?: string; checkedOutAt?: string }
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 const reviere = ref<Revier[]>([])
@@ -36,6 +36,13 @@ const facilityTasks = (facilityId: string) => tasks.value.filter((task) => task.
 const memberName = (id?: string) => members.value.find((member) => member.id === id)?.displayName ?? 'Alle Mitglieder'
 const reservationFor = (facilityId: string) => reservations.value.find((reservation) => reservation.jagdeinrichtungId === facilityId)
 const reservable = (facility: Facility) => ['Kanzel', 'Bock', 'Leiter'].includes(facility.typ)
+const reservationLabel = (facility: Facility) => {
+  const reservation = reservationFor(facility.id)
+  if (!reservation) return 'Frei'
+  if (reservation.checkedInBy) return reservation.checkedInBy === currentUserId.value ? 'Eingebucht von dir' : `Eingebucht von ${memberName(reservation.checkedInBy)}`
+  if (reservation.reservedBy === currentUserId.value) return 'Von dir reserviert'
+  return `Reserviert von ${memberName(reservation.reservedBy)}`
+}
 
 async function loadRevierData() {
   if (!selectedRevierId.value) return
@@ -83,6 +90,20 @@ async function reserve(facility: Facility) {
 
 async function release(facility: Facility) {
   await facilityAction(facility, 'DELETE')
+}
+
+async function checkIn(facility: Facility) {
+  const token = localStorage.getItem('accessToken')
+  const response = await fetch(`${apiUrl}/reviere/${facility.revierId}/jagdeinrichtungen/${facility.id}/einchecken`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+  if (!response.ok) { errorMessage.value = ((await response.json()) as { message?: string }).message ?? 'Einchecken konnte nicht erfolgen.'; return }
+  await loadRevierData()
+}
+
+async function checkOut(facility: Facility) {
+  const token = localStorage.getItem('accessToken')
+  const response = await fetch(`${apiUrl}/reviere/${facility.revierId}/jagdeinrichtungen/${facility.id}/einchecken`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+  if (!response.ok) { errorMessage.value = ((await response.json()) as { message?: string }).message ?? 'Auschecken konnte nicht erfolgen.'; return }
+  await loadRevierData()
 }
 
 async function facilityAction(facility: Facility, method: 'POST' | 'DELETE') {
@@ -149,9 +170,14 @@ onMounted(loadReviere)
           <p v-if="facility.zustandsInfo" class="condition"><strong>Zustand:</strong> {{ facility.zustandsInfo }}</p>
           <p v-if="facility.notiz" class="note">{{ facility.notiz }}</p>
           <div class="reservation" v-if="reservable(facility)">
-            <span v-if="reservationFor(facility.id)">Reserviert von {{ memberName(reservationFor(facility.id)?.reservedBy) }}</span><span v-else>Frei buchbar</span>
-            <IonButton v-if="!reservationFor(facility.id)" size="small" fill="outline" @click="reserve(facility)">Einbuchen</IonButton>
-            <IonButton v-else-if="reservationFor(facility.id)?.reservedBy === currentUserId" size="small" fill="outline" @click="release(facility)">Ausbuchen</IonButton>
+            <span>{{ reservationLabel(facility) }}</span>
+            <div class="reservation-actions">
+              <IonButton v-if="!reservationFor(facility.id)" size="small" fill="outline" @click="reserve(facility)">Reservieren</IonButton>
+              <IonButton v-else-if="reservationFor(facility.id)?.reservedBy === currentUserId && !reservationFor(facility.id)?.checkedInBy" size="small" fill="outline" @click="checkIn(facility)">Einchecken</IonButton>
+              <IonButton v-else-if="reservationFor(facility.id)?.checkedInBy === currentUserId || reservationFor(facility.id)?.reservedBy === currentUserId" size="small" fill="outline" @click="checkOut(facility)">Auschecken</IonButton>
+              <IonButton v-else-if="reservationFor(facility.id)?.reservedBy === currentUserId" size="small" fill="outline" @click="release(facility)">Reservierung lösen</IonButton>
+              <IonButton v-else size="small" fill="outline" @click="release(facility)">Reservierung freigeben</IonButton>
+            </div>
           </div>
           <div class="task-heading"><strong>Aufgaben</strong><IonButton size="small" fill="clear" @click="openTask(facility)">Aufgabe hinzufügen</IonButton></div>
           <IonList v-if="facilityTasks(facility.id).length" lines="full">
@@ -187,6 +213,7 @@ onMounted(loadReviere)
 .condition { margin: 12px 0 4px; }
 .note, .reservation, .task-heading { margin-top: 12px; }
 .reservation { border-top: 1px solid var(--ion-color-light-shade); padding-top: 10px; }
+.reservation-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .task-dialog { padding: 20px; }
 .task-dialog h2 { margin-top: 0; }
 .error-message { color: var(--ion-color-danger); }

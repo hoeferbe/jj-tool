@@ -7,12 +7,16 @@ export interface KillEntryPosition {
    lng: number;
 }
 
+export type KillEntryGender = 'maennlich' | 'weiblich' | 'unbekannt';
+
 export interface KillEntry {
    id: string;
    revierId: string;
    datum: string;
    uhrzeit?: string;
    wildart: string;
+   unterart?: string;
+   geschlecht?: KillEntryGender;
    istVerkehrsopfer?: boolean;
    bescheinigung?: boolean;
    ortName?: string;
@@ -30,6 +34,8 @@ export interface CreateKillEntryInput {
    datum: string;
    uhrzeit?: string;
    wildart: string;
+   unterart?: string;
+   geschlecht?: KillEntryGender;
    istVerkehrsopfer?: boolean;
    bescheinigung?: boolean;
    ortName?: string;

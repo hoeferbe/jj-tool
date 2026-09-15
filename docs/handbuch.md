@@ -188,6 +188,20 @@ Der Ersteller wird automatisch als Pächter und Revieradministrator dieses Revie
 
 Administratoren können den Reviernamen ändern. Vor dem Löschen eines Reviers sollte geprüft werden, ob es noch benötigt wird, da dabei die zugehörige Revierzuordnung entfernt wird.
 
+### Aktueller Verwaltungsstand
+
+Im aktuellen Produktstand sind die Verwaltungsschritte bereits in einer produktiven Administrationsoberfläche umgesetzt. Dazu gehören:
+
+- Mehrfachzuordnung eines Mitglieds zu mehreren Revieren,
+- Auswahl von Mitgliedstyp und optionaler Funktion,
+- Aktivierung oder Entzug von Revieradmin-Rechten,
+- Einladungslinks für Reviere,
+- Freigabe oder Ablehnung von Registrierungen,
+- Sperren, Entsperren und Löschen von Benutzerkonten,
+- Auswahl der Reviere über ein eigenes Verwaltungs-Accordion im Dashboard.
+
+Die Rechte werden dabei immer live aus dem aktuellen Store geprüft; dadurch bleibt das Verhalten konsistent, auch wenn mehrere Administratoren parallel arbeiten.
+
 ## 10. Karten- und Standortdaten
 
 Die App verwendet Gemeindegrenzen als Orientierung für das jeweilige Revier. Die Grenze wird in der Karte mit einem Quellenhinweis des Bundesamts für Kartographie und Geodäsie angezeigt.
@@ -206,7 +220,8 @@ Die Karte bietet eine Straßen- und eine Satellitenansicht. Für die Darstellung
 2. **Wildart & Status**: Eingabe der Wildart (inkl. Schnellwahl-Chips für häufige Wildarten wie Reh, Wildschwein, Fuchs etc.).
 3. **Verkehrsopfer & Bescheinigung**:
    - Checkbox **Verkehrsopfer (VO)** zur Kennzeichnung von Unfallwild.
-   - Checkbox **Bescheinigung für Versicherung ausgestellt**.
+   - Standardmäßig wird bei Verkehrsopfern eine Versicherungsbescheinigung hinterlegt.
+   - Optional kann die Checkbox **Keine Bescheinigung für Versicherung ausgestellt** aktiviert werden, falls keine Bescheinigung erforderlich oder ausgestellt wurde.
 4. **Ort & Standortdaten**:
    - Freitextfeld für die Ortsbezeichnung (z. B. „B27 Km 14“ oder „Waldrand Nord“).
    - **GPS Position verwenden**: Ermittelt per Knopfdruck die aktuellen Standortkoordinaten des Geräts.
@@ -221,7 +236,33 @@ Die Karte bietet eine Straßen- und eine Satellitenansicht. Für die Darstellung
 - Kennzeichnungen für **VO** und **Bescheinigung** werden als farbige Badges hervorgehoben.
 - Zu jedem Eintrag stehen Aktionen für **Bearbeiten** (✏️) zur nachträglichen Änderung aller Daten (z. B. nachträgliche Gewichtseingabe) sowie **Löschen** (🗑️) zur Verfügung.
 
-## 12. Noch nicht verfügbare Funktionen
+## 12. Aktueller Funktionsstand
+
+Derzeit ist die App im produktiven MVP-Bereich nutzbar und umfasst bereits die Kerndaten für Revierverwaltung, Mitgliedschaft, Jagdeinrichtungen, Aufgaben, Reservierungen und Streckeneinträge. Die wichtigsten Features sind bereits in der laufenden Oberfläche implementiert und werden im täglichen Betrieb genutzt.
+
+### Bereits nutzbar
+
+- Mehrfach-Revier-Auswahl mit aktivem Revier pro Ansicht
+- Anmeldung, Registrierung, Freigabe und Einladungslogik
+- Verwaltung von Mitgliedschaften und Revieradmin-Rechten
+- Kartendarstellung mit BKG-Gemeindegrenze und Revierabgrenzung
+- Jagdeinrichtungen mit Status, Zustandsinfo und Notiz
+- Aufgaben an Einrichtungen mit Zuständigkeit und Erledigungsstatus
+- Reservierungen für buchbare Einrichtungen
+- Erfassung, Bearbeitung und Löschung von Streckeneinträgen mit VO-/Bescheinigung-Flaggen
+- zentrale Administration über das Admin-Dashboard
+
+### Noch in Planung oder nicht umgesetzt
+
+- Offline-Karten und automatische Synchronisation bei fehlender Verbindung
+- GPS-Aufzeichnung und Darstellung von Fährten / Nachsuchen
+- Fotos an Einrichtungen oder Streckeneinträgen
+- Push-Mitteilungen und Telegram-Benachrichtigungen
+- zeitlich begrenzte Reservierungen und eine Reservierungshistorie
+- Zusammenfassende Streckenberichte und Exporte
+- Capacitor-/Android-Integration und App-Verteilung außerhalb der webbasierten PWA-Umgebung
+
+## 13. Noch nicht verfügbare Funktionen
 
 Folgende Funktionen gehören zur weiteren Planung und sind noch nicht Bestandteil des aktuellen Nutzungsumfangs:
 

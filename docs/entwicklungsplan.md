@@ -61,78 +61,75 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 
 - npm-Workspace mit Ionic Vue, Hono und TypeScript sowie Entwicklungs-, Test-, Typecheck- und Produktions-Build-Befehlen eingerichtet.
 - JSON-basierter Auth-Speicher mit atomischem Schreiben, serialisierten Schreibzugriffen, Argon2id-Passwort-Hashes und Session-Tracking umgesetzt.
-- Registrierung, Anmeldung, Passwort setzen/vergessen und sieben Tage gueltige Zugriffstokens mit Sliding-Window-Erneuerung implementiert.
+- Registrierung, Anmeldung, Passwort setzen/vergessen und sieben Tage gültige Zugriffstokens mit Sliding-Window-Erneuerung implementiert.
 - Initialer Systemadministrator per nicht eingecheckter Umgebungskonfiguration beziehungsweise `reset-admin` sowie SMTP-Versand mit sichtbarem Absendernamen „Jagd-App“ eingerichtet.
-- Routing und Zugriffsschutz fuer Anmeldung, Revierkarte, Reviermitglieder und Administration umgesetzt.
+- Routing und Zugriffsschutz für Anmeldung, Revierkarte, Reviermitglieder, Einrichtungen, Streckeneinträge und Administration umgesetzt.
 
-#### Seit Commit `297a65e` (`admin dashboard`)
-
-**Reviere und Karten**
+#### Mehr-Revier- und Revierverwaltung
 
 - Mehr-Revier-Speicher mit automatischer Migration des bisherigen Single-Revier-Formats, atomischer Persistenz und CRUD-Routen implementiert.
-- Gemeindegrenzen werden ueber den serverseitigen BKG-WFS-Proxy (`wfs_vg25`) per Name oder Kartenposition geladen; Punktabfragen verwenden Bounding Box und Point-in-Polygon-Pruefung.
-- Revier-Neuanlage fuer alle aktiven Mitglieder mit Deutschland-Fallback, Web-Geolocation, Bundesland-Sprung, Gemeindesuche sowie Strg-/Command-Klick beziehungsweise Fadenkreuzmodus umgesetzt.
-- Revierersteller werden im eigenen Revier initial und bei Altdaten nachtraeglich als Paechter und Revieradmin gefuehrt. Das letzte Revieradmin-Recht kann erst nach Ernennung eines Nachfolgers entzogen werden.
-- Arbeitskarte mit OpenStreetMap-/Satellitenebene, abgedunkeltem Aussenbereich, Revierauswahl und 90 Prozent Viewporthoehe umgesetzt.
-- Administration zeigt zum ausgewaehlten Revier eine kompakte, fixierte Kartenvorschau mit Hintergrund und Grenzumriss, jedoch ohne Zoom, Verschieben oder Layerwechsel.
-- Leaflet-Lifecycle im Ionic-Modal stabilisiert; Vue veraendert keine Leaflet-Laufzeitklassen mehr und Kartenkacheln bleiben nach Gemeindeauswahl sichtbar.
-- Sichtbarer Quellenvermerk fuer jede BKG-Grenzdarstellung eingebaut: „© BKG (Bezugsjahr) CC BY 4.0“ mit Links zu BKG, Lizenz und VG25-Datenquellen.
+- Revierauswahl und aktives Revier pro Ansicht inklusive Persistenz im Browser umgesetzt.
+- Gemeindegrenzen über den serverseitigen BKG-WFS-Proxy (`wfs_vg25`) per Name oder Kartenposition geladen; Punktabfragen nutzen Bounding Box und Point-in-Polygon-Prüfung.
+- Revier-Neuanlage für alle aktiven Mitglieder mit Deutschland-Fallback, Web-Geolocation, Bundesland-Sprung, Gemeindesuche, Fadenkreuzmodus und Strg-/Command-Klick-Punktwahl umgesetzt.
+- Revierersteller werden im eigenen Revier initial und bei Altdaten nachträglich als Pächter und Revieradmin geführt. Das letzte Revieradmin-Recht kann erst nach Ernennung eines Nachfolgers entzogen werden.
+- Arbeitskarte mit OpenStreetMap-/Satellitenebene, abgedunkeltem Außenbereich, Revierauswahl und 90 Prozent Viewporthöhe umgesetzt.
+- Die Administration zeigt zum ausgewählten Revier eine kompakte Kartenvorschau mit Hintergrund und Grenzumriss, jedoch ohne Zoom, Verschieben oder Layerwechsel.
+- Sichtbarer Quellenvermerk für jede BKG-Grenzdarstellung eingebaut: „© BKG (Bezugsjahr) CC BY 4.0“ mit Links zu BKG, Lizenz und VG25-Datenquellen.
 
-**Konten, Mitgliedschaften und Rechte**
+#### Konten, Mitgliedschaften und Rechte
 
-- Berechtigungsmodell in globale Systemadministratoren und revierbezogene Mitgliedschaften aufgeteilt. Mitgliedstyp, optionale Funktion und Revieradmin-Recht gelten unabhaengig pro Revier.
+- Berechtigungsmodell in globale Systemadministratoren und revierbezogene Mitgliedschaften aufgeteilt. Mitgliedstyp, optionale Funktion und Revieradmin-Recht gelten unabhängig pro Revier.
 - Bestehende `auth.json`-Daten werden mit Backup sicher migriert; unspezifische alte Adminflags werden nicht zu globalen Systemrechten hochgestuft.
-- Systemadministratoren verwalten alle Konten und Reviere. Revieradmins sehen und bearbeiten ausschliesslich Mitgliedschaften ihrer administrierten Reviere; Policies lesen immer den aktuellen Store-Zustand.
-- Konten koennen durch Systemadministratoren gesperrt, entsperrt und geloescht werden. Sperren widerruft laufende Sessions; Selbstsperre und Verlust des letzten Systemadministrators werden verhindert.
-- Mitglieder erhalten ueber die API nur aktive zugeordnete Reviere. Gemeinsame Reviermitglieder werden datensparsam mit Name, Typ und Funktion ausgeliefert; Gaeste sehen nur „Mitglied“ oder „Gast“.
+- Systemadministratoren verwalten alle Konten und Reviere. Revieradmins sehen und bearbeiten ausschließlich Mitgliedschaften ihrer administrierten Reviere; Policies lesen immer den aktuellen Store-Zustand.
+- Konten können durch Systemadministratoren gesperrt, entsperrt und gelöscht werden. Sperren widerruft laufende Sessions; Selbstsperre und Verlust des letzten Systemadministrators werden verhindert.
+- Mitglieder erhalten über die API nur aktive zugeordnete Reviere. Gemeinsame Reviermitglieder werden datensparsam mit Name, Typ und Funktion ausgeliefert; Gäste sehen nur „Mitglied“ oder „Gast“.
 - Passwort-Erfassung und -Reset mit interaktiver Kriterien-Checkliste (mind. 12 Zeichen, Groß-/Kleinbuchstaben, Zahlen/Sonderzeichen, Bestätigung) und Umschaltung zwischen Klartext und verdeckter Passworteingabe (Auge-Icon) umgesetzt.
 
-**Registrierung und Einladung**
+#### Registrierung, Einladung und Admin-Dashboard
 
-- Hybridregistrierung mit optionaler Revierauswahl umgesetzt. Antraege mit Revier gehen an dessen Revieradmins, freie Antraege an Systemadministratoren.
-- Revieradmins koennen fuer ihre Reviere gehashte, einmalige und sieben Tage gueltige Einladungslinks per E-Mail versenden und revierbezogene Antraege freigeben.
+- Hybridregistrierung mit optionaler Revierauswahl umgesetzt. Anträge mit Revier gehen an dessen Revieradmins, freie Anträge an Systemadministratoren.
+- Revieradmins können für ihre Reviere gehashte, einmalige und sieben Tage gültige Einladungslinks per E-Mail versenden und revierbezogene Anträge freigeben.
 - Nach erfolgreicher Registrierung erscheint eine Postfach-/Passwortlink-Anweisung; der Passwort-Link wird nach Freigabe versendet. Neue Registrierungen werden Systemadministratoren per E-Mail gemeldet.
+- Die Administrationsansicht enthält Akkordeons für ausstehende Registrierungen, Mitglieder und Reviere mit Rollen-/Funktionssteuerung, Revierzuordnungen und Einladungen.
+- Der Dashboard-Workflow ist bereits als produktive Verwaltungsoberfläche ausgeführt, nicht mehr nur als Konzept.
 
-**Oberflaeche und Navigation**
-
-- Administrationsansicht mit Akkordeons fuer ausstehende Registrierungen, Mitglieder und Reviere sowie responsiven Datenrastern, Rollen-/Funktionssteuerung und Revierzuordnungen umgesetzt.
-- Eigenstaendige Routen `/reviere/karte`, `/reviere/mitglieder` und `/dashboard` eingefuehrt; das Nutzer-Popover navigiert zwischen Karte, Mitgliederliste, optionaler Administration und Abmelden.
-- Popover-Trigger pro gerouteter Ionic-Seite eindeutig gemacht, damit zurueckgehaltene Seiteninstanzen das aktive Menue nicht mehr abfangen.
-- Wiederverwendbare Komponenten fuer Revierkarte, Neuanlage-Dialog und BKG-Quellenvermerk erstellt.
-
-**Jagdeinrichtungen, Aufgaben und Reservierungen**
+#### Jagdeinrichtungen, Aufgaben und Reservierungen
 
 - Jagdeinrichtungen mit Bezeichnung, Typ, Kartenposition, Status, Zustandsinfo und Notiz anlegen und bearbeiten.
 - Jagdeinrichtungen auf der Karte und in einer Listenansicht anzeigen.
 - Aufgaben an Einrichtungen anlegen, Mitgliedern zuweisen, übernehmen und als erledigt markieren.
 - Kanzeln, Böcke und Leitern reservieren und wieder freigeben.
+- Die Listenansicht zeigt zusätzlich den Reservierungsstatus und den Zuständigkeitsstatus der Aufgaben an.
 
-**Streckeneintraege**
+#### Streckeneinträge
 
 - Streckeneinträge pro Revier mit Datum, Uhrzeit, Wildart, VO-Flag (Verkehrsopfer), Versicherungsbescheinigungs-Flag (ja/nein), Ortsbezeichnung, GPS-Position / Karten-Picker (mit Straßen- und Satellitenebene sowie Fokus auf die Reviergrenzen), Gewicht, geschätztem Alter und Notiz erfassen und bearbeiten.
 - Absteigende Sortierung der Streckenliste nach Datum und Uhrzeit.
 - Dialog für Neuanlage und nachträgliche Bearbeitung sowie Löschfunktion integriert.
 - Geschützte API-Routen (GET, POST, PUT, DELETE) und persistente Speicherung für Streckeneinträge umgesetzt.
+- Die Detailansicht einer Strecke zeigt zusätzlich Badges, Mini-Karten-Vorschau, Datum, Ort und Notiz.
 
-**Qualitaetssicherung**
+#### Qualitätssicherung
 
-- Store-Tests fuer Mehr-Revier-Persistenz, Migration, Mitgliedschaften, Rechtescopes, Einladungen, System-/Revieradmin-Kontinuitaet sowie Streckeneintrag-CRUD und -Sortierung implementiert.
+- Store-Tests für Mehr-Revier-Persistenz, Migration, Mitgliedschaften, Rechtescopes, Einladungen, System-/Revieradmin-Kontinuität sowie Streckeneintrag-CRUD und -Sortierung implementiert.
 - Aktueller Stand: 18 automatisierte API-Tests sowie erfolgreiche Workspace-Typechecks und Produktionsbuilds.
 
-### Als Naechstes umzusetzen
+### Als Nächstes umzusetzen
 
 - Lokale Speicherung ausstehender Streckeneinträge bei fehlender Verbindung und spätere Synchronisation umsetzen.
 - Streckeneinträge um eine Auswahl der vier bis fünf wichtigsten Wildarten per Radiobuttons erweitern, möglichst mit verständlichen Grafik-Icons.
 - Wildarten intern in Unterarten gliedern, zum Beispiel Reh in Rehbock, Ricke, Schmalreh, Bockkitz und Kitz.
-- Capacitor fuer Android konfigurieren; PWA-Manifest und Service-Worker fuer iOS pruefen.
-- Tailwind CSS als Ergaenzung zu Ionic integrieren (fuer eigene Layouts ausserhalb der Ionic-Komponenten).
+- Capacitor für Android konfigurieren; PWA-Manifest und Service-Worker für iOS prüfen.
+- Tailwind CSS als Ergänzung zu Ionic integrieren (für eigene Layouts außerhalb der Ionic-Komponenten).
+- Optionales Offline-Kartenmanagement und Cache-Konzept für den Gemeindebereich vorbereiten.
 
 ### Noch nicht umgesetzt
 
 - Refresh-Tokens als `HttpOnly`-Cookies und Token-Widerruf (aktuell: JWT in localStorage mit 7-Tage-Sliding-Window).
 - Offline-Karten, Bilder und Synchronisation.
 - Capacitor-Android-Integration, PWA-Service-Worker, Cloudflare Tunnel und Raspberry-Pi-Betrieb.
-- Telegram, Firebase Cloud Messaging, Nachsuche und Faehrtenaufzeichnung.
+- Telegram, Firebase Cloud Messaging, Nachsuche und Fährtenaufzeichnung.
+- Produktionsreife lokale Datensynchronisierung mit Konfliktlösung und Queue-Handling bei Verbindungsausfall.
 
 ## Technische Zielarchitektur
 

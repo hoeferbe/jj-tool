@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { IonButton, IonContent, IonModal, IonNote } from '@ionic/vue'
 import * as L from 'leaflet'
 
@@ -14,12 +14,16 @@ interface GeoJsonFeatureCollection {
   }>
 }
 
+export type KillEntryGender = 'maennlich' | 'weiblich' | 'unbekannt'
+
 export interface Streckeneintrag {
   id: string
   revierId: string
   datum: string
   uhrzeit?: string
   wildart: string
+  unterart?: string
+  geschlecht?: KillEntryGender
   istVerkehrsopfer?: boolean
   bescheinigung?: boolean
   ortName?: string
@@ -61,8 +65,10 @@ function getCurrentTimeStr() {
 const datum = ref(getCurrentDateStr())
 const uhrzeit = ref(getCurrentTimeStr())
 const wildart = ref('')
+const unterart = ref('')
+const geschlecht = ref<KillEntryGender | ''>('')
 const istVerkehrsopfer = ref(false)
-const bescheinigung = ref(false)
+const keineBescheinigung = ref(false)
 const ortName = ref('')
 const position = ref<Point | null>(null)
 const gewicht = ref<number | null>(null)
@@ -81,6 +87,53 @@ let boundaryLayerInstance: L.GeoJSON | null = null
 const mapLayerStorageKey = 'jj-revier-map-layer'
 
 const commonWildarten = ['Reh', 'Wildschwein', 'Fuchs', 'Fasan', 'Hase', 'Dachs', 'Waschbär', 'Damwild', 'Rotwild']
+
+const isRehwild = computed(() => {
+  const w = wildart.value.toLowerCase().trim()
+  return w.includes('reh')
+})
+
+const isSchwarzwild = computed(() => {
+  const w = wildart.value.toLowerCase().trim()
+  return w.includes('schwein') || w.includes('sau') || w.includes('schwarz')
+})
+
+const isRotwildOrDamwild = computed(() => {
+  const w = wildart.value.toLowerCase().trim()
+  return w.includes('rot') || w.includes('dam') || w.includes('hirsch')
+})
+
+const isFuchs = computed(() => {
+  const w = wildart.value.toLowerCase().trim()
+  return w.includes('fuchs')
+})
+
+function createKillMarker(latLng: L.LatLngExpression) {
+  const icon = L.divIcon({
+    className: 'kill-marker-icon-container',
+    html: `
+      <div class="kill-pin-wrapper">
+        <svg viewBox="0 0 24 24" class="kill-pin-svg">
+          <path fill="#e63946" stroke="#ffffff" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+          <circle cx="12" cy="9" r="3.2" fill="#ffffff"/>
+        </svg>
+      </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32],
+  })
+  return L.marker(latLng, { icon, draggable: true })
+}
+
+function selectRehCategory(cat: { unterart: string; geschlecht: KillEntryGender }) {
+  unterart.value = cat.unterart
+  geschlecht.value = cat.geschlecht
+}
+
+function selectWildart(w: string) {
+  wildart.value = w
+}
 
 function pointInRing(lat: number, lng: number, ring: number[][]) {
   let inside = false
@@ -116,8 +169,10 @@ function reset() {
     datum.value = props.entry.datum
     uhrzeit.value = props.entry.uhrzeit ?? ''
     wildart.value = props.entry.wildart
+    unterart.value = props.entry.unterart ?? ''
+    geschlecht.value = props.entry.geschlecht ?? ''
     istVerkehrsopfer.value = Boolean(props.entry.istVerkehrsopfer)
-    bescheinigung.value = Boolean(props.entry.bescheinigung)
+    keineBescheinigung.value = Boolean(props.entry.istVerkehrsopfer && props.entry.bescheinigung === false)
     ortName.value = props.entry.ortName ?? ''
     position.value = props.entry.position ? { ...props.entry.position } : null
     gewicht.value = props.entry.gewicht ?? null
@@ -127,8 +182,10 @@ function reset() {
     datum.value = getCurrentDateStr()
     uhrzeit.value = getCurrentTimeStr()
     wildart.value = ''
+    unterart.value = ''
+    geschlecht.value = ''
     istVerkehrsopfer.value = false
-    bescheinigung.value = false
+    keineBescheinigung.value = false
     ortName.value = ''
     position.value = null
     gewicht.value = null
@@ -226,7 +283,7 @@ function initMapPicker() {
   }
 
   if (position.value) {
-    markerInstance = L.marker([position.value.lat, position.value.lng], { draggable: true }).addTo(mapInstance)
+    markerInstance = createKillMarker([position.value.lat, position.value.lng]).addTo(mapInstance)
     markerInstance.on('dragend', (e) => {
       const latLng = (e.target as L.Marker).getLatLng()
       updatePositionFromMapClick(latLng)
@@ -249,7 +306,7 @@ function updatePositionFromMapClick(latLng: L.LatLng) {
   if (markerInstance) {
     markerInstance.setLatLng(latLng)
   } else if (mapInstance) {
-    markerInstance = L.marker(latLng, { draggable: true }).addTo(mapInstance)
+    markerInstance = createKillMarker(latLng).addTo(mapInstance)
     markerInstance.on('dragend', (dragEvt) => {
       const newLatLng = (dragEvt.target as L.Marker).getLatLng()
       updatePositionFromMapClick(newLatLng)
@@ -295,13 +352,17 @@ async function saveEntry() {
       : undefined
 
     const formattedTime = uhrzeit.value.trim() ? uhrzeit.value.trim() : undefined
+    const isVo = istVerkehrsopfer.value
+    const hasBescheinigung = isVo ? !keineBescheinigung.value : false
 
     const payload = {
       datum: datum.value,
       uhrzeit: formattedTime,
       wildart: wildart.value.trim(),
-      istVerkehrsopfer: istVerkehrsopfer.value,
-      bescheinigung: bescheinigung.value,
+      unterart: unterart.value.trim() || undefined,
+      geschlecht: geschlecht.value || undefined,
+      istVerkehrsopfer: isVo,
+      bescheinigung: hasBescheinigung,
       ortName: ortName.value.trim() || undefined,
       position: position.value ?? undefined,
       gewicht: parsedGewicht,
@@ -363,7 +424,7 @@ watch(() => props.isOpen, (isOpen) => {
         </section>
 
         <section class="form-section">
-          <h3>Wildart & Status</h3>
+          <h3>Wildart & Kategorie</h3>
           <label class="field-label">
             <span>Wildart</span>
             <input v-model="wildart" class="form-control" type="text" list="wildarten-list" placeholder="z. B. Reh, Fuchs, Wildschwein">
@@ -373,9 +434,126 @@ watch(() => props.isOpen, (isOpen) => {
           </label>
 
           <div class="quick-tags">
-            <button v-for="w in commonWildarten" :key="w" type="button" class="tag-chip" :class="{ active: wildart === w }" @click="wildart = w">
+            <button v-for="w in commonWildarten" :key="w" type="button" class="tag-chip" :class="{ active: wildart === w }" @click="selectWildart(w)">
               {{ w }}
             </button>
+          </div>
+
+          <!-- Spezifische Unterarten für Rehwild -->
+          <div v-if="isRehwild" class="subspecies-group">
+            <span class="subspecies-title">Rehwild-Kategorie auswählen:</span>
+            <div class="quick-tags">
+              <button
+                type="button"
+                class="sub-tag-chip"
+                :class="{ active: unterart === 'Bock' && geschlecht === 'maennlich' }"
+                @click="selectRehCategory({ unterart: 'Bock', geschlecht: 'maennlich' })"
+              >
+                🦌 Bock (♂)
+              </button>
+              <button
+                type="button"
+                class="sub-tag-chip"
+                :class="{ active: unterart === 'Ricke' && geschlecht === 'weiblich' }"
+                @click="selectRehCategory({ unterart: 'Ricke', geschlecht: 'weiblich' })"
+              >
+                🦌 Ricke (♀)
+              </button>
+              <button
+                type="button"
+                class="sub-tag-chip"
+                :class="{ active: unterart === 'Schmalreh' && geschlecht === 'weiblich' }"
+                @click="selectRehCategory({ unterart: 'Schmalreh', geschlecht: 'weiblich' })"
+              >
+                🦌 Schmalreh (♀)
+              </button>
+              <button
+                type="button"
+                class="sub-tag-chip"
+                :class="{ active: unterart === 'Bockkitz' && geschlecht === 'maennlich' }"
+                @click="selectRehCategory({ unterart: 'Bockkitz', geschlecht: 'maennlich' })"
+              >
+                🦌 Bockkitz (♂)
+              </button>
+              <button
+                type="button"
+                class="sub-tag-chip"
+                :class="{ active: unterart === 'Kitz' && geschlecht === 'weiblich' }"
+                @click="selectRehCategory({ unterart: 'Kitz', geschlecht: 'weiblich' })"
+              >
+                🦌 Kitz / Rickenkitz (♀)
+              </button>
+            </div>
+          </div>
+
+          <!-- Spezifische Unterarten für Schwarzwild -->
+          <div v-else-if="isSchwarzwild" class="subspecies-group">
+            <span class="subspecies-title">Schwarzwild-Kategorie auswählen:</span>
+            <div class="quick-tags">
+              <button type="button" class="sub-tag-chip" :class="{ active: unterart === 'Keiler' }" @click="selectRehCategory({ unterart: 'Keiler', geschlecht: 'maennlich' })">🐗 Keiler (♂)</button>
+              <button type="button" class="sub-tag-chip" :class="{ active: unterart === 'Bache' }" @click="selectRehCategory({ unterart: 'Bache', geschlecht: 'weiblich' })">🐗 Bache (♀)</button>
+              <button type="button" class="sub-tag-chip" :class="{ active: unterart === 'Überläufer' }" @click="unterart = 'Überläufer'">🐗 Überläufer</button>
+              <button type="button" class="sub-tag-chip" :class="{ active: unterart === 'Frischling' }" @click="unterart = 'Frischling'">🐗 Frischling</button>
+            </div>
+          </div>
+
+          <!-- Spezifische Unterarten für Rotwild/Damwild -->
+          <div v-else-if="isRotwildOrDamwild" class="subspecies-group">
+            <span class="subspecies-title">Kategorie auswählen:</span>
+            <div class="quick-tags">
+              <button type="button" class="sub-tag-chip" :class="{ active: unterart === 'Hirsch' }" @click="selectRehCategory({ unterart: 'Hirsch', geschlecht: 'maennlich' })">Hirsch (♂)</button>
+              <button type="button" class="sub-tag-chip" :class="{ active: unterart === 'Alttier' }" @click="selectRehCategory({ unterart: 'Alttier', geschlecht: 'weiblich' })">Alttier (♀)</button>
+              <button type="button" class="sub-tag-chip" :class="{ active: unterart === 'Schmaltier' }" @click="selectRehCategory({ unterart: 'Schmaltier', geschlecht: 'weiblich' })">Schmaltier (♀)</button>
+              <button type="button" class="sub-tag-chip" :class="{ active: unterart === 'Kalb' }" @click="unterart = 'Kalb'">Kalb</button>
+            </div>
+          </div>
+
+          <!-- Spezifische Unterarten für Fuchs -->
+          <div v-else-if="isFuchs" class="subspecies-group">
+            <span class="subspecies-title">Kategorie auswählen:</span>
+            <div class="quick-tags">
+              <button type="button" class="sub-tag-chip" :class="{ active: unterart === 'Rüde' }" @click="selectRehCategory({ unterart: 'Rüde', geschlecht: 'maennlich' })">🦊 Rüde (♂)</button>
+              <button type="button" class="sub-tag-chip" :class="{ active: unterart === 'Fähe' }" @click="selectRehCategory({ unterart: 'Fähe', geschlecht: 'weiblich' })">🦊 Fähe (♀)</button>
+              <button type="button" class="sub-tag-chip" :class="{ active: unterart === 'Jungfuchs' }" @click="unterart = 'Jungfuchs'">🦊 Jungfuchs</button>
+            </div>
+          </div>
+
+          <!-- Geschlecht & Unterart Eingabefelder -->
+          <div class="form-row">
+            <label class="field-label flex-1">
+              <span>Geschlecht</span>
+              <div class="gender-toggle-group">
+                <button
+                  type="button"
+                  class="gender-btn"
+                  :class="{ active: geschlecht === 'maennlich' }"
+                  @click="geschlecht = geschlecht === 'maennlich' ? '' : 'maennlich'"
+                >
+                  ♂ Männlich
+                </button>
+                <button
+                  type="button"
+                  class="gender-btn"
+                  :class="{ active: geschlecht === 'weiblich' }"
+                  @click="geschlecht = geschlecht === 'weiblich' ? '' : 'weiblich'"
+                >
+                  ♀ Weiblich
+                </button>
+                <button
+                  type="button"
+                  class="gender-btn"
+                  :class="{ active: geschlecht === 'unbekannt' }"
+                  @click="geschlecht = geschlecht === 'unbekannt' ? '' : 'unbekannt'"
+                >
+                  ? Unbestimmt
+                </button>
+              </div>
+            </label>
+
+            <label class="field-label flex-1">
+              <span>Unterart / Kategorie (optional)</span>
+              <input v-model="unterart" class="form-control" type="text" placeholder="z. B. Bock, Ricke, Schmalreh">
+            </label>
           </div>
 
           <div class="checkbox-group">
@@ -383,10 +561,13 @@ watch(() => props.isOpen, (isOpen) => {
               <input v-model="istVerkehrsopfer" type="checkbox">
               <span>Verkehrsopfer (VO)</span>
             </label>
-            <label class="checkbox-label">
-              <input v-model="bescheinigung" type="checkbox">
-              <span>Bescheinigung für Versicherung ausgestellt</span>
-            </label>
+            <div v-if="istVerkehrsopfer" class="checkbox-sub-group">
+              <label class="checkbox-label sub-label">
+                <input v-model="keineBescheinigung" type="checkbox">
+                <span>Keine Bescheinigung für Versicherung ausgestellt</span>
+              </label>
+              <span class="checkbox-hint">(Standardmäßig wird eine Bescheinigung ausgestellt)</span>
+            </div>
           </div>
         </section>
 
@@ -571,11 +752,90 @@ watch(() => props.isOpen, (isOpen) => {
   border-color: var(--ion-color-primary, #3880ff);
 }
 
+.subspecies-group {
+  margin: 4px 0 12px;
+  padding: 10px 12px;
+  background: var(--ion-color-light, #f8f9fa);
+  border-radius: 8px;
+  border: 1px solid var(--ion-color-light-shade, #e9ecef);
+}
+
+.subspecies-title {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ion-color-medium, #555);
+  margin-bottom: 6px;
+}
+
+.sub-tag-chip {
+  background: #ffffff;
+  border: 1px solid #ced4da;
+  border-radius: 16px;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sub-tag-chip:hover {
+  border-color: var(--ion-color-primary, #3880ff);
+  background: #f0f7ff;
+}
+
+.sub-tag-chip.active {
+  background: #2b7a4b;
+  color: #ffffff;
+  border-color: #2b7a4b;
+  font-weight: 600;
+}
+
+.gender-toggle-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.gender-btn {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: 0.85rem;
+  background: var(--ion-color-light, #f4f5f8);
+  border: 1px solid var(--ion-color-light-shade, #ccc);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.gender-btn:hover {
+  background: var(--ion-color-light-shade, #e0e0e0);
+}
+
+.gender-btn.active {
+  background: var(--ion-color-primary, #3880ff);
+  color: #fff;
+  border-color: var(--ion-color-primary, #3880ff);
+  font-weight: 600;
+}
+
 .checkbox-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-top: 8px;
+}
+
+.checkbox-sub-group {
+  margin-left: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 10px;
+  background: var(--ion-color-light, #f8f9fa);
+  border-left: 3px solid var(--ion-color-medium-tint, #bbb);
+  border-radius: 4px;
 }
 
 .checkbox-label {
@@ -584,6 +844,17 @@ watch(() => props.isOpen, (isOpen) => {
   gap: 8px;
   font-size: 0.9rem;
   cursor: pointer;
+}
+
+.sub-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.checkbox-hint {
+  font-size: 0.75rem;
+  color: var(--ion-color-medium, #777);
+  margin-left: 26px;
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -652,6 +923,19 @@ watch(() => props.isOpen, (isOpen) => {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+
+:deep(.kill-pin-wrapper) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 3px 5px rgba(0,0,0,0.4));
+}
+
+:deep(.kill-pin-svg) {
+  width: 32px;
+  height: 32px;
+  display: block;
 }
 
 @media (max-width: 600px) {

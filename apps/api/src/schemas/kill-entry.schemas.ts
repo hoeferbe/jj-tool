@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const KILL_ENTRY_GENDERS = ['maennlich', 'weiblich', 'unbekannt'] as const;
+export type KillEntryGender = (typeof KILL_ENTRY_GENDERS)[number];
+
 export const killEntrySchema = z.object({
    datum: z.string().date(),
    uhrzeit: z.preprocess((val) => {
@@ -17,6 +20,8 @@ export const killEntrySchema = z.object({
       return val;
    }, z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Uhrzeit muss im Format HH:mm sein').optional()),
    wildart: z.string().trim().min(2).max(120),
+   unterart: z.string().trim().max(100).optional(),
+   geschlecht: z.enum(KILL_ENTRY_GENDERS).optional(),
    istVerkehrsopfer: z.boolean().default(false),
    bescheinigung: z.boolean().default(false),
    ortName: z.string().trim().max(200).optional(),

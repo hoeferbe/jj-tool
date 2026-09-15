@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { IonButton, IonItem, IonList, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
 import AppLayout from '../components/AppLayout.vue'
 import StreckeneintragDialog, { type Streckeneintrag } from '../components/StreckeneintragDialog.vue'
+import StreckeneintragDetailDialog from '../components/StreckeneintragDetailDialog.vue'
 
 interface GeoJsonFeatureCollection {
   type: 'FeatureCollection'
@@ -30,7 +31,9 @@ const errorMessage = ref('')
 const successMessage = ref('')
 
 const isDialogOpen = ref(false)
+const isDetailOpen = ref(false)
 const editingEntry = ref<Streckeneintrag | null>(null)
+const selectedEntryForDetail = ref<Streckeneintrag | null>(null)
 const deletingId = ref<string | null>(null)
 
 const selectedRevier = computed(() => reviere.value.find((revier) => revier.id === selectedRevierId.value) ?? null)
@@ -47,6 +50,14 @@ function formatDateTime(datum: string, uhrzeit?: string) {
 function formatGewicht(gewicht?: number) {
   if (gewicht === undefined || gewicht === null) return ''
   return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(gewicht) + ' kg'
+}
+
+function getOsmTileUrl(lat: number, lng: number, zoom = 14) {
+  const n = Math.pow(2, zoom)
+  const x = Math.floor(((lng + 180) / 360) * n)
+  const latRad = (lat * Math.PI) / 180
+  const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n)
+  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`
 }
 
 function sortEntries(list: Streckeneintrag[]) {
@@ -110,6 +121,21 @@ function openEditEntryDialog(entry: Streckeneintrag) {
   isDialogOpen.value = true
 }
 
+function openDetail(entry: Streckeneintrag) {
+  selectedEntryForDetail.value = entry
+  isDetailOpen.value = true
+}
+
+function handleEditFromDetail(entry: Streckeneintrag) {
+  isDetailOpen.value = false
+  openEditEntryDialog(entry)
+}
+
+function handleDeleteFromDetail(entry: Streckeneintrag) {
+  isDetailOpen.value = false
+  deleteEntry(entry)
+}
+
 function handleDialogSaved(savedEntry: Streckeneintrag) {
   const index = entries.value.findIndex((e) => e.id === savedEntry.id)
   if (index !== -1) {
@@ -118,6 +144,9 @@ function handleDialogSaved(savedEntry: Streckeneintrag) {
     entries.value.push(savedEntry)
   }
   entries.value = sortEntries(entries.value)
+  if (selectedEntryForDetail.value?.id === savedEntry.id) {
+    selectedEntryForDetail.value = savedEntry
+  }
   successMessage.value = editingEntry.value ? 'Streckeneintrag aktualisiert.' : 'Streckeneintrag gespeichert.'
   setTimeout(() => { successMessage.value = '' }, 4000)
 }
@@ -135,6 +164,10 @@ async function deleteEntry(entry: Streckeneintrag) {
     const data = await response.json() as { message?: string }
     if (!response.ok) throw new Error(data.message ?? 'Eintrag konnte nicht gelöscht werden.')
     entries.value = entries.value.filter((e) => e.id !== entry.id)
+    if (selectedEntryForDetail.value?.id === entry.id) {
+      isDetailOpen.value = false
+      selectedEntryForDetail.value = null
+    }
     successMessage.value = 'Streckeneintrag gelöscht.'
     setTimeout(() => { successMessage.value = '' }, 4000)
   } catch (error) {
@@ -172,38 +205,60 @@ onMounted(loadReviere)
       <IonNote v-else-if="!entries.length">Noch keine Streckeneinträge vorhanden.</IonNote>
 
       <IonList v-else class="entry-list" lines="full">
-        <IonItem v-for="entry in entries" :key="entry.id" class="entry-item">
-          <div class="entry-content">
-            <div class="entry-header">
-              <div class="header-main">
-                <h2 class="wildart-title">{{ entry.wildart }}</h2>
-                <div class="badge-row">
-                  <span v-if="entry.istVerkehrsopfer" class="badge badge-warning" title="Verkehrsopfer">🚗 VO</span>
-                  <span v-if="entry.bescheinigung" class="badge badge-info" title="Versicherungsbescheinigung ausgestellt">📜 Bescheinigung</span>
+        <IonItem v-for="entry in entries" :key="entry.id" class="entry-item" button @click="openDetail(entry)">
+          <div class="entry-layout">
+            <div class="entry-content">
+              <div class="entry-header">
+                <div class="header-main">
+                  <h2 class="wildart-title">
+                    {{ entry.wildart }}
+                    <span v-if="entry.unterart" class="unterart-text">({{ entry.unterart }})</span>
+                  </h2>
+                  <div class="badge-row">
+                    <span v-if="entry.geschlecht === 'maennlich'" class="badge badge-male" title="Männlich">♂ M</span>
+                    <span v-else-if="entry.geschlecht === 'weiblich'" class="badge badge-female" title="Weiblich">♀ W</span>
+                    <template v-if="entry.istVerkehrsopfer">
+                      <span class="badge badge-warning" title="Verkehrsopfer">🚗 VO</span>
+                      <span v-if="entry.bescheinigung !== false" class="badge badge-info" title="Versicherungsbescheinigung ausgestellt">📜 Bescheinigung</span>
+                      <span v-else class="badge badge-neutral" title="Keine Versicherungsbescheinigung ausgestellt">Ohne Bescheinigung</span>
+                    </template>
+                  </div>
                 </div>
+                <span class="entry-date">{{ formatDateTime(entry.datum, entry.uhrzeit) }}</span>
               </div>
-              <span class="entry-date">{{ formatDateTime(entry.datum, entry.uhrzeit) }}</span>
+
+              <div class="entry-details">
+                <span v-if="entry.gewicht" class="detail-pill">⚖️ {{ formatGewicht(entry.gewicht) }}</span>
+                <span v-if="entry.geschaetztesAlter" class="detail-pill">⏳ Alter: {{ entry.geschaetztesAlter }}</span>
+                <span v-if="entry.ortName" class="detail-pill">📍 {{ entry.ortName }}</span>
+                <span v-else-if="entry.position" class="detail-pill">📍 {{ entry.position.lat.toFixed(4) }}, {{ entry.position.lng.toFixed(4) }}</span>
+              </div>
+
+              <p v-if="entry.notiz" class="entry-notes">{{ entry.notiz }}</p>
+
+              <div class="entry-actions">
+                <button type="button" class="action-btn" @click.stop="openEditEntryDialog(entry)">✏️ Bearbeiten</button>
+                <button type="button" class="action-btn danger" :disabled="deletingId === entry.id" @click.stop="deleteEntry(entry)">
+                  {{ deletingId === entry.id ? 'Lösche...' : '🗑️ Löschen' }}
+                </button>
+              </div>
             </div>
 
-            <div class="entry-details">
-              <span v-if="entry.gewicht" class="detail-pill">⚖️ {{ formatGewicht(entry.gewicht) }}</span>
-              <span v-if="entry.geschaetztesAlter" class="detail-pill">⏳ Alter: {{ entry.geschaetztesAlter }}</span>
-              <span v-if="entry.ortName" class="detail-pill">📍 {{ entry.ortName }}</span>
-              <span v-else-if="entry.position" class="detail-pill">📍 {{ entry.position.lat.toFixed(4) }}, {{ entry.position.lng.toFixed(4) }}</span>
-            </div>
-
-            <p v-if="entry.notiz" class="entry-notes">{{ entry.notiz }}</p>
-
-            <div class="entry-actions">
-              <button type="button" class="action-btn" @click="openEditEntryDialog(entry)">✏️ Bearbeiten</button>
-              <button type="button" class="action-btn danger" :disabled="deletingId === entry.id" @click="deleteEntry(entry)">
-                {{ deletingId === entry.id ? 'Lösche...' : '🗑️ Löschen' }}
-              </button>
+            <!-- Mini Map Preview Thumbnail -->
+            <div v-if="entry.position" class="map-thumb-wrapper" title="Abschussort auf Karte anzeigen">
+              <img
+                :src="getOsmTileUrl(entry.position.lat, entry.position.lng)"
+                alt="Karten-Vorschau"
+                class="map-thumb-img"
+                loading="lazy"
+              />
+              <div class="map-thumb-pin">📍</div>
             </div>
           </div>
         </IonItem>
       </IonList>
 
+      <!-- Edit / Create Dialog -->
       <StreckeneintragDialog
         :is-open="isDialogOpen"
         :revier-id="selectedRevierId"
@@ -212,6 +267,17 @@ onMounted(loadReviere)
         :entry="editingEntry"
         @close="isDialogOpen = false"
         @saved="handleDialogSaved"
+      />
+
+      <!-- Detail View Dialog -->
+      <StreckeneintragDetailDialog
+        :is-open="isDetailOpen"
+        :entry="selectedEntryForDetail"
+        :revier-name="selectedRevier ? `${selectedRevier.name} · ${selectedRevier.municipalityName}` : undefined"
+        :revier-boundary="selectedRevier?.boundary"
+        @close="isDetailOpen = false"
+        @edit="handleEditFromDetail"
+        @delete="handleDeleteFromDetail"
       />
     </div>
   </AppLayout>
@@ -227,19 +293,24 @@ onMounted(loadReviere)
 .error-message { color: var(--ion-color-danger, #eb445a); margin-bottom: 16px; }
 
 .entry-list { border-radius: 8px; overflow: hidden; background: transparent; }
-.entry-item { --padding-start: 16px; --padding-end: 16px; --inner-padding-top: 14px; --inner-padding-bottom: 14px; }
+.entry-item { --padding-start: 16px; --padding-end: 16px; --inner-padding-top: 14px; --inner-padding-bottom: 14px; cursor: pointer; }
 
-.entry-content { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.entry-layout { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.entry-content { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 
 .entry-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
-.header-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.header-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .wildart-title { margin: 0; font-size: 1.15rem; font-weight: 600; color: var(--ion-text-color, #111); }
+.unterart-text { font-size: 0.95rem; font-weight: 500; color: var(--ion-color-primary, #3880ff); }
 .entry-date { font-size: 0.9rem; font-weight: 500; color: var(--ion-color-medium, #666); white-space: nowrap; }
 
-.badge-row { display: flex; gap: 6px; }
+.badge-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .badge { font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 12px; }
+.badge-male { background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; }
+.badge-female { background: #fce4ec; color: #c2185b; border: 1px solid #f8bbd0; }
 .badge-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
 .badge-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+.badge-neutral { background: #f5f5f5; color: #616161; border: 1px solid #e0e0e0; }
 
 .entry-details { display: flex; flex-wrap: wrap; gap: 8px; }
 .detail-pill { font-size: 0.82rem; background: var(--ion-color-light, #f4f5f8); border: 1px solid var(--ion-color-light-shade, #e0e0e0); padding: 2px 8px; border-radius: 4px; color: var(--ion-text-color, #333); }
@@ -251,9 +322,45 @@ onMounted(loadReviere)
 .action-btn:hover { text-decoration: underline; }
 .action-btn.danger { color: var(--ion-color-danger, #eb445a); }
 
+/* Map Thumbnail */
+.map-thumb-wrapper {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--ion-color-light-shade, #ccc);
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.map-thumb-wrapper:hover {
+  transform: scale(1.05);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+}
+
+.map-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.map-thumb-pin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.3rem;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+  pointer-events: none;
+}
+
 @media (max-width: 600px) {
   .page-heading { flex-direction: column; align-items: stretch; gap: 12px; }
   .heading-actions { flex-direction: column; align-items: stretch; }
   .entry-header { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .map-thumb-wrapper { width: 60px; height: 60px; }
 }
 </style>

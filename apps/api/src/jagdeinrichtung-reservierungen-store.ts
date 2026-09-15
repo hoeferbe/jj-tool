@@ -9,6 +9,9 @@ export interface FacilityReservation {
    reservedBy: string;
    reservedAt: string;
    releasedAt?: string;
+   checkedInBy?: string;
+   checkedInAt?: string;
+   checkedOutAt?: string;
 }
 
 interface ReservierungenData { reservierungen: FacilityReservation[] }
@@ -40,6 +43,45 @@ export class FacilityReservationsStore {
 
    async getActiveByFacilityId(jagdeinrichtungId: string) {
       return this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && !entry.releasedAt) ?? null;
+   }
+
+   async checkIn(input: { revierId: string; jagdeinrichtungId: string; reservedBy?: string; checkedInBy: string }) {
+      return this.enqueue(async () => {
+         const active = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === input.jagdeinrichtungId && !entry.releasedAt);
+         if (active) {
+            active.checkedInBy = input.checkedInBy;
+            active.checkedInAt ??= new Date().toISOString();
+            active.reservedBy ??= input.reservedBy ?? input.checkedInBy;
+            active.reservedAt ??= active.checkedInAt;
+            active.checkedOutAt = undefined;
+            return active;
+         }
+
+         const now = new Date().toISOString();
+         const reservation: FacilityReservation = {
+            id: randomUUID(),
+            revierId: input.revierId,
+            jagdeinrichtungId: input.jagdeinrichtungId,
+            reservedBy: input.reservedBy ?? input.checkedInBy,
+            reservedAt: now,
+            checkedInBy: input.checkedInBy,
+            checkedInAt: now,
+         };
+         this.data.reservierungen.push(reservation);
+         return reservation;
+      });
+   }
+
+   async checkOut(jagdeinrichtungId: string) {
+      return this.enqueue(async () => {
+         const reservation = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && !entry.releasedAt);
+         if (!reservation) return null;
+         reservation.checkedOutAt = new Date().toISOString();
+         reservation.releasedAt = reservation.checkedOutAt;
+         reservation.checkedInBy = undefined;
+         reservation.checkedInAt = undefined;
+         return reservation;
+      });
    }
 
    async reserve(input: Omit<FacilityReservation, 'id' | 'reservedAt'>) {

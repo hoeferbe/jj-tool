@@ -31,6 +31,8 @@ describe('KillEntryStore', () => {
          datum: '2026-09-11',
          uhrzeit: '14:00',
          wildart: 'Reh',
+         unterart: 'Bock',
+         geschlecht: 'maennlich',
          istVerkehrsopfer: true,
          bescheinigung: true,
          ortName: 'Waldrand',
@@ -40,12 +42,15 @@ describe('KillEntryStore', () => {
          notiz: 'Unfall an der B27',
          createdBy: 'user-1',
       });
+      assert.equal(created.unterart, 'Bock');
+      assert.equal(created.geschlecht, 'maennlich');
       assert.equal(created.istVerkehrsopfer, true);
       assert.equal(created.gewicht, 15.5);
 
-      const updated = await store.update(created.id, 'revier-1', { gewicht: 17.0, geschaetztesAlter: '3 Jahre' });
+      const updated = await store.update(created.id, 'revier-1', { gewicht: 17.0, geschaetztesAlter: '3 Jahre', unterart: 'Rehbock' });
       assert.equal(updated?.gewicht, 17.0);
       assert.equal(updated?.geschaetztesAlter, '3 Jahre');
+      assert.equal(updated?.unterart, 'Rehbock');
 
       const deleted = await store.delete(created.id, 'revier-1');
       assert.equal(deleted, true);

@@ -22,4 +22,27 @@ describe('FacilityReservationsStore', () => {
       await store.release('facility-1');
       assert.equal(await store.getActiveByFacilityId('facility-1'), null);
    });
+
+   it('supports check-in and check-out without a prior reservation', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'jjtool-checkin-'));
+      tempDirs.push(directory);
+      const store = new FacilityReservationsStore(directory);
+      await store.initialize();
+
+      const checkedIn = await store.checkIn({
+         revierId: 'revier-1',
+         jagdeinrichtungId: 'facility-2',
+         reservedBy: 'user-1',
+         checkedInBy: 'user-1',
+      });
+
+      assert.equal(checkedIn.checkedInBy, 'user-1');
+      assert.equal(checkedIn.checkedInAt !== undefined, true);
+
+      const active = await store.getActiveByFacilityId('facility-2');
+      assert.equal(active?.checkedInBy, 'user-1');
+
+      await store.checkOut('facility-2');
+      assert.equal(await store.getActiveByFacilityId('facility-2'), null);
+   });
 });

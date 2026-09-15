@@ -43,6 +43,35 @@ export function registerReservationRoutes(app: Hono, dependencies: ReservationRo
       }
    });
 
+   app.post('/reviere/:revierId/jagdeinrichtungen/:id/einchecken', requireAuth, async (context) => {
+      const payload = await getAuthenticatedPayload(context);
+      const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+      const revierId = context.req.param('revierId');
+      const id = context.req.param('id');
+      if (!revierId || !id) return context.json({ message: 'Revier- oder Einrichtungs-ID fehlt.' }, 400);
+      if (!user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      const facility = await facilityStore.getById(id);
+      if (!facility || facility.revierId !== revierId) return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
+      if (!['Kanzel', 'Bock', 'Leiter'].includes(facility.typ)) return context.json({ message: 'Diese Einrichtung kann nicht eingecheckt werden.' }, 400);
+      return context.json({ reservierung: await reservationStore.checkIn({ revierId, jagdeinrichtungId: id, checkedInBy: user.id }) }, 201);
+   });
+
+   app.delete('/reviere/:revierId/jagdeinrichtungen/:id/einchecken', requireAuth, async (context) => {
+      const payload = await getAuthenticatedPayload(context);
+      const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+      const revierId = context.req.param('revierId');
+      const id = context.req.param('id');
+      if (!revierId || !id) return context.json({ message: 'Revier- oder Einrichtungs-ID fehlt.' }, 400);
+      if (!user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      const reservation = await reservationStore.getActiveByFacilityId(id);
+      if (!reservation || reservation.revierId !== revierId) return context.json({ message: 'Keine aktive Buchung gefunden.' }, 404);
+      if (reservation.checkedInBy !== user.id && reservation.reservedBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) {
+         return context.json({ message: 'Diese Einrichtung darf nicht ausgecheckt werden.' }, 403);
+      }
+      await reservationStore.checkOut(id);
+      return context.json({ message: 'Einrichtung ausgecheckt.' });
+   });
+
    app.delete('/reviere/:revierId/jagdeinrichtungen/:id/reservieren', requireAuth, async (context) => {
       const payload = await getAuthenticatedPayload(context);
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
