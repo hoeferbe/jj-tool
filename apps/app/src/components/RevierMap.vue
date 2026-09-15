@@ -104,19 +104,10 @@ function addFacilityPlacementControl() {
 const facilityLabels: Record<Jagdeinrichtung['typ'], string> = {
   Kanzel: 'K', Bock: 'B', Leiter: 'L', Roehrenfalle: 'F', Kirrung: 'R',
 }
-const statusLabels: Record<Jagdeinrichtung['status'], string> = {
-  aktiv: 'Aktiv', defekt: 'Defekt', 'ausser Betrieb': 'Außer Betrieb',
-}
 const statusMarkerStyles: Record<Jagdeinrichtung['status'], { background: string; color: string; border: string }> = {
   aktiv: { background: '#52652d', color: '#ffffff', border: '#e8f0dc' },
   defekt: { background: '#ffc409', color: '#20271b', border: '#8a6d00' },
   'ausser Betrieb': { background: '#92949c', color: '#ffffff', border: '#4d5058' },
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>'"]/g, (character) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
-  })[character] ?? character)
 }
 
 function addFacilitiesToMap() {
@@ -134,11 +125,8 @@ function addFacilitiesToMap() {
       }),
       title: facility.name,
     })
-    if (!isPositioning) {
-      marker.bindPopup(`<strong>${escapeHtml(facility.name)}</strong><br>${escapeHtml(facility.typ)} · ${statusLabels[facility.status]}`)
-    }
     marker.on('click', (event) => {
-      L.DomEvent.stopPropagation(event)
+      L.DomEvent.stop(event)
       if (props.positioningFacilityId === facility.id) {
         emit('facilityPositionSelected', {
           position: { lat: event.latlng.lat, lng: event.latlng.lng },

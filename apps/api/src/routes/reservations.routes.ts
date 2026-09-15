@@ -53,7 +53,12 @@ export function registerReservationRoutes(app: Hono, dependencies: ReservationRo
       const facility = await facilityStore.getById(id);
       if (!facility || facility.revierId !== revierId) return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
       if (!['Kanzel', 'Bock', 'Leiter'].includes(facility.typ)) return context.json({ message: 'Diese Einrichtung kann nicht eingecheckt werden.' }, 400);
-      return context.json({ reservierung: await reservationStore.checkIn({ revierId, jagdeinrichtungId: id, checkedInBy: user.id }) }, 201);
+      try {
+         return context.json({ reservierung: await reservationStore.checkIn({ revierId, jagdeinrichtungId: id, checkedInBy: user.id }) }, 201);
+      } catch (error) {
+         if ((error as Error).message === 'ALREADY_IN_USE') return context.json({ message: 'Diese Einrichtung ist bereits belegt oder reserviert.' }, 409);
+         throw error;
+      }
    });
 
    app.delete('/reviere/:revierId/jagdeinrichtungen/:id/einchecken', requireAuth, async (context) => {

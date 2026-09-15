@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { IonButton, IonContent, IonModal, IonNote } from '@ionic/vue'
+import { IonBadge, IonButton, IonContent, IonModal, IonNote } from '@ionic/vue'
 
 interface Point { lat: number; lng: number }
 interface Jagdeinrichtung {
@@ -16,6 +16,10 @@ interface Jagdeinrichtung {
   createdAt: string
   updatedAt: string
 }
+interface FacilityReservation {
+  reservedBy: string
+  checkedInBy?: string
+}
 
 const props = withDefaults(defineProps<{
   isOpen: boolean
@@ -24,12 +28,14 @@ const props = withDefaults(defineProps<{
   facility?: Jagdeinrichtung | null
   position?: Point
   positionWasSelected?: boolean
+  reservation?: FacilityReservation | null
 }>(), {})
 const emit = defineEmits<{
   close: []
   created: [facility: Jagdeinrichtung]
   updated: [facility: Jagdeinrichtung]
   repositionRequested: [facility: Jagdeinrichtung]
+  usageChanged: []
 }>()
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 const name = ref('')
@@ -40,6 +46,16 @@ const notiz = ref('')
 const position = ref<Point>({ ...(props.position ?? props.center) })
 const saving = ref(false)
 const message = ref('')
+const usageMessage = ref('')
+const usageSaving = ref(false)
+const loadedReservation = ref<FacilityReservation | null>(props.reservation ?? null)
+
+const reservable = () => props.facility && ['Kanzel', 'Bock', 'Leiter'].includes(props.facility.typ)
+const currentUserId = () => {
+  const token = localStorage.getItem('accessToken')
+  if (!token) return ''
+  try { return (JSON.parse(atob(token.split('.')[1])) as { sub?: string }).sub ?? '' } catch { return '' }
+}
 
 function reset() {
   name.value = props.facility?.name ?? ''
@@ -49,6 +65,32 @@ function reset() {
   notiz.value = props.facility?.notiz ?? ''
   position.value = props.facility ? { ...props.facility.position } : { ...(props.position ?? props.center) }
   message.value = ''
+  usageMessage.value = ''
+  loadedReservation.value = props.reservation ?? null
+}
+
+async function loadUsage() {
+  if (!props.facility || !reservable()) return
+  const token = localStorage.getItem('accessToken')
+  const response = await fetch(`${apiUrl}/reviere/${props.revierId}/jagdeinrichtung-reservierungen`, { headers: { Authorization: `Bearer ${token}` } })
+  if (!response.ok) return
+  const data = await response.json() as { reservierungen: Array<FacilityReservation & { jagdeinrichtungId: string }> }
+  loadedReservation.value = data.reservierungen.find((entry) => entry.jagdeinrichtungId === props.facility?.id) ?? null
+}
+
+async function changeUsage(path: string, method: 'POST' | 'DELETE') {
+  if (!props.facility) return
+  usageSaving.value = true
+  usageMessage.value = ''
+  const token = localStorage.getItem('accessToken')
+  try {
+    const response = await fetch(`${apiUrl}/reviere/${props.revierId}/jagdeinrichtungen/${props.facility.id}/${path}`, { method, headers: { Authorization: `Bearer ${token}` } })
+    if (!response.ok) throw new Error(((await response.json()) as { message?: string }).message ?? 'Nutzungsstatus konnte nicht geändert werden.')
+    await loadUsage()
+    emit('usageChanged')
+  } catch (error) {
+    usageMessage.value = error instanceof Error ? error.message : 'Nutzungsstatus konnte nicht geändert werden.'
+  } finally { usageSaving.value = false }
 }
 
 async function saveFacility() {
@@ -82,7 +124,7 @@ function close() {
   emit('close')
 }
 
-watch(() => props.isOpen, (isOpen) => { if (isOpen) reset() })
+watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await loadUsage() } })
 </script>
 
 <template>
@@ -136,6 +178,23 @@ watch(() => props.isOpen, (isOpen) => { if (isOpen) reset() })
         </div>
         <IonButton v-if="props.facility" fill="outline" size="small" @click="emit('repositionRequested', props.facility)">Auf Karte wählen</IonButton>
       </section>
+      <section v-if="props.facility && reservable()" class="usage-section">
+        <div class="usage-heading">
+          <h3>Nutzung</h3>
+          <IonBadge v-if="loadedReservation?.checkedInBy" color="success">Eingecheckt</IonBadge>
+          <IonBadge v-else-if="loadedReservation" color="warning">Reserviert</IonBadge>
+          <IonBadge v-else color="medium">Frei</IonBadge>
+        </div>
+        <p v-if="loadedReservation?.checkedInBy === currentUserId()">Du bist aktuell eingecheckt.</p>
+        <p v-else-if="loadedReservation">Die Einrichtung ist aktuell durch ein anderes Mitglied belegt oder reserviert.</p>
+        <p v-else>Die Einrichtung ist frei. Einchecken ist auch ohne Reservierung möglich.</p>
+        <div class="usage-actions">
+          <IonButton v-if="loadedReservation?.checkedInBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'DELETE')">Auschecken</IonButton>
+          <IonButton v-else-if="!loadedReservation || loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'POST')">Einchecken</IonButton>
+          <IonButton v-if="!loadedReservation" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('reservieren', 'POST')">Reservieren</IonButton>
+        </div>
+        <p v-if="usageMessage" class="message">{{ usageMessage }}</p>
+      </section>
       <IonNote v-if="props.positionWasSelected" class="position-confirmation" color="success">Neue Position übernommen. Bitte mit „Speichern“ bestätigen.</IonNote>
       <p v-if="message" class="message">{{ message }}</p>
       <div class="dialog-actions">
@@ -162,6 +221,9 @@ watch(() => props.isOpen, (isOpen) => { if (isOpen) reset() })
 .status-defekt { border-color: #b58a00; background: #fff7d6; }
 .status-ausser-Betrieb { border-color: #5f6368; background: #eef0f2; }
 .position-section { align-items: center; padding: 14px; border: 1px solid var(--ion-color-light-shade); border-radius: 8px; background: var(--ion-color-light, #f1f3ed); }
+.usage-section { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--ion-color-light-shade); border-radius: 8px; }
+.usage-heading, .usage-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.usage-section p { margin: 0; color: var(--ion-color-medium-shade); }
 .position-section h3 { margin-bottom: 5px; font-size: 0.95rem; }
 .coordinates { color: var(--ion-color-medium-shade); font-variant-numeric: tabular-nums; }
 .position-confirmation { display: block; padding: 10px 12px; border-left: 3px solid var(--ion-color-success); background: rgba(63, 106, 66, 0.1); }

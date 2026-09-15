@@ -49,6 +49,9 @@ export class FacilityReservationsStore {
       return this.enqueue(async () => {
          const active = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === input.jagdeinrichtungId && !entry.releasedAt);
          if (active) {
+            if ((active.checkedInBy && active.checkedInBy !== input.checkedInBy) || (active.reservedBy && active.reservedBy !== input.checkedInBy)) {
+               throw new Error('ALREADY_IN_USE');
+            }
             active.checkedInBy = input.checkedInBy;
             active.checkedInAt ??= new Date().toISOString();
             active.reservedBy ??= input.reservedBy ?? input.checkedInBy;

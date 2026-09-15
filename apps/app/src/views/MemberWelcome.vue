@@ -287,6 +287,7 @@ onMounted(async () => {
         @close="closeFacilityDialog"
         @created="handleCreatedFacility"
         @updated="handleUpdatedFacility"
+        @usage-changed="selectRevier(selectedRevierId)"
         @reposition-requested="startRepositioning"
       />
 

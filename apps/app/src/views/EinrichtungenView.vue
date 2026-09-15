@@ -2,12 +2,13 @@
 import { computed, onMounted, ref } from 'vue'
 import { IonBadge, IonButton, IonInput, IonItem, IonLabel, IonList, IonModal, IonNote, IonSelect, IonSelectOption, IonTextarea } from '@ionic/vue'
 import AppLayout from '../components/AppLayout.vue'
+import NewJagdeinrichtungDialog from '../components/NewJagdeinrichtungDialog.vue'
 
-interface Revier { id: string; name: string; municipalityName: string }
+interface Revier { id: string; name: string; municipalityName: string; center: { lat: number; lng: number } }
 interface Member { id: string; displayName: string }
 type FacilityType = 'Kanzel' | 'Bock' | 'Leiter' | 'Roehrenfalle' | 'Kirrung'
 type FacilityStatus = 'aktiv' | 'defekt' | 'ausser Betrieb'
-interface Facility { id: string; revierId: string; name: string; typ: FacilityType; status: FacilityStatus; zustandsInfo?: string; notiz?: string }
+interface Facility { id: string; revierId: string; name: string; typ: FacilityType; status: FacilityStatus; position: { lat: number; lng: number }; zustandsInfo?: string; notiz?: string; createdBy: string; createdAt: string; updatedAt: string }
 interface Task { id: string; jagdeinrichtungId: string; titel: string; beschreibung?: string; status: 'offen' | 'in Bearbeitung' | 'erledigt'; assignedTo?: string; assignedBy: string }
 interface Reservation { id: string; jagdeinrichtungId: string; reservedBy: string; reservedAt: string; checkedInBy?: string; checkedInAt?: string; checkedOutAt?: string }
 
@@ -25,6 +26,8 @@ const taskTitle = ref('')
 const taskDescription = ref('')
 const taskAssignee = ref('')
 const taskSaving = ref(false)
+const facilityDialogOpen = ref(false)
+const selectedFacility = ref<Facility | null>(null)
 
 const selectedRevier = computed(() => reviere.value.find((revier) => revier.id === selectedRevierId.value) ?? null)
 const currentUserId = computed(() => {
@@ -42,6 +45,20 @@ const reservationLabel = (facility: Facility) => {
   if (reservation.checkedInBy) return reservation.checkedInBy === currentUserId.value ? 'Eingebucht von dir' : `Eingebucht von ${memberName(reservation.checkedInBy)}`
   if (reservation.reservedBy === currentUserId.value) return 'Von dir reserviert'
   return `Reserviert von ${memberName(reservation.reservedBy)}`
+}
+function openFacility(facility: Facility) {
+  selectedFacility.value = facility
+  facilityDialogOpen.value = true
+}
+
+function closeFacilityDialog() {
+  facilityDialogOpen.value = false
+  selectedFacility.value = null
+}
+
+function handleUpdatedFacility(facility: Facility) {
+  facilities.value = facilities.value.map((entry) => entry.id === facility.id ? facility : entry)
+  closeFacilityDialog()
 }
 
 async function loadRevierData() {
@@ -166,17 +183,16 @@ onMounted(loadReviere)
       <IonNote v-else-if="!facilities.length">Noch keine Jagdeinrichtungen angelegt.</IonNote>
       <div v-else class="facility-list">
         <article v-for="facility in facilities" :key="facility.id" class="facility-entry">
-          <div class="facility-header"><div><h2>{{ facility.name }}</h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'warning' : 'medium'">{{ facility.status }}</IonBadge></div>
+          <div class="facility-header"><div><h2>{{ facility.name }}</h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'warning' : 'medium'">{{ facility.status }}</IonBadge><IonButton size="small" fill="clear" @click="openFacility(facility)">Öffnen</IonButton></div>
           <p v-if="facility.zustandsInfo" class="condition"><strong>Zustand:</strong> {{ facility.zustandsInfo }}</p>
           <p v-if="facility.notiz" class="note">{{ facility.notiz }}</p>
           <div class="reservation" v-if="reservable(facility)">
             <span>{{ reservationLabel(facility) }}</span>
             <div class="reservation-actions">
+              <IonButton v-if="!reservationFor(facility.id)" size="small" fill="outline" @click="checkIn(facility)">Einchecken</IonButton>
               <IonButton v-if="!reservationFor(facility.id)" size="small" fill="outline" @click="reserve(facility)">Reservieren</IonButton>
-              <IonButton v-else-if="reservationFor(facility.id)?.reservedBy === currentUserId && !reservationFor(facility.id)?.checkedInBy" size="small" fill="outline" @click="checkIn(facility)">Einchecken</IonButton>
-              <IonButton v-else-if="reservationFor(facility.id)?.checkedInBy === currentUserId || reservationFor(facility.id)?.reservedBy === currentUserId" size="small" fill="outline" @click="checkOut(facility)">Auschecken</IonButton>
-              <IonButton v-else-if="reservationFor(facility.id)?.reservedBy === currentUserId" size="small" fill="outline" @click="release(facility)">Reservierung lösen</IonButton>
-              <IonButton v-else size="small" fill="outline" @click="release(facility)">Reservierung freigeben</IonButton>
+              <IonButton v-else-if="reservationFor(facility.id)?.checkedInBy === currentUserId" size="small" fill="outline" @click="checkOut(facility)">Auschecken</IonButton>
+              <IonButton v-else-if="reservationFor(facility.id)?.reservedBy === currentUserId" size="small" fill="outline" @click="checkIn(facility)">Einchecken</IonButton>
             </div>
           </div>
           <div class="task-heading"><strong>Aufgaben</strong><IonButton size="small" fill="clear" @click="openTask(facility)">Aufgabe hinzufügen</IonButton></div>
@@ -190,6 +206,16 @@ onMounted(loadReviere)
           <IonNote v-else>Keine Aufgaben</IonNote>
         </article>
       </div>
+      <NewJagdeinrichtungDialog
+        v-if="selectedRevier"
+        :is-open="facilityDialogOpen"
+        :revier-id="selectedRevier.id"
+        :center="selectedRevier.center"
+        :facility="selectedFacility"
+        @close="closeFacilityDialog"
+        @updated="handleUpdatedFacility"
+        @usage-changed="loadRevierData"
+      />
       <IonModal :is-open="Boolean(taskFacility)" @did-dismiss="taskFacility = null">
         <div class="task-dialog"><h2>Neue Aufgabe für {{ taskFacility?.name }}</h2><IonInput v-model="taskTitle" label="Aufgabe" label-placement="stacked" placeholder="z. B. Leiter instand setzen" /><IonTextarea v-model="taskDescription" label="Beschreibung" label-placement="stacked" :auto-grow="true" /><IonSelect v-model="taskAssignee" label="Zuweisen an" label-placement="stacked" interface="popover"><IonSelectOption value="">Für alle Mitglieder</IonSelectOption><IonSelectOption v-for="member in members" :key="member.id" :value="member.id">{{ member.displayName }}</IonSelectOption></IonSelect><div class="dialog-actions"><IonButton fill="clear" @click="taskFacility = null">Abbrechen</IonButton><IonButton :disabled="taskSaving || taskTitle.trim().length < 2" @click="createTask">Speichern</IonButton></div></div>
       </IonModal>
