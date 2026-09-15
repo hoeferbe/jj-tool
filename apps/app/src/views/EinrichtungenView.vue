@@ -61,6 +61,10 @@ function handleUpdatedFacility(facility: Facility) {
   closeFacilityDialog()
 }
 
+async function handleUsageChanged() {
+  await loadRevierData()
+}
+
 async function loadRevierData() {
   if (!selectedRevierId.value) return
   loading.value = true
@@ -186,12 +190,6 @@ onMounted(loadReviere)
           <div class="facility-header"><div><h2>{{ facility.name }}</h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'warning' : 'medium'">{{ facility.status }}</IonBadge><IonButton size="small" fill="clear" @click="openFacility(facility)">Öffnen</IonButton></div>
           <p v-if="facility.zustandsInfo" class="condition"><strong>Zustand:</strong> {{ facility.zustandsInfo }}</p>
           <p v-if="facility.notiz" class="note">{{ facility.notiz }}</p>
-          <div class="reservation" v-if="reservable(facility)">
-            <span>{{ reservationLabel(facility) }}</span>
-            <div class="reservation-actions">
-              <IonButton size="small" fill="outline" @click="openFacility(facility)">Nutzung öffnen</IonButton>
-            </div>
-          </div>
           <div class="task-heading"><strong>Aufgaben</strong><IonButton size="small" fill="clear" @click="openTask(facility)">Aufgabe hinzufügen</IonButton></div>
           <IonList v-if="facilityTasks(facility.id).length" lines="full">
             <IonItem v-for="task in facilityTasks(facility.id)" :key="task.id">
@@ -211,7 +209,7 @@ onMounted(loadReviere)
         :facility="selectedFacility"
         @close="closeFacilityDialog"
         @updated="handleUpdatedFacility"
-        @usage-changed="loadRevierData"
+        @usage-changed="handleUsageChanged"
       />
       <IonModal :is-open="Boolean(taskFacility)" @did-dismiss="taskFacility = null">
         <div class="task-dialog"><h2>Neue Aufgabe für {{ taskFacility?.name }}</h2><IonInput v-model="taskTitle" label="Aufgabe" label-placement="stacked" placeholder="z. B. Leiter instand setzen" /><IonTextarea v-model="taskDescription" label="Beschreibung" label-placement="stacked" :auto-grow="true" /><IonSelect v-model="taskAssignee" label="Zuweisen an" label-placement="stacked" interface="popover"><IonSelectOption value="">Für alle Mitglieder</IonSelectOption><IonSelectOption v-for="member in members" :key="member.id" :value="member.id">{{ member.displayName }}</IonSelectOption></IonSelect><div class="dialog-actions"><IonButton fill="clear" @click="taskFacility = null">Abbrechen</IonButton><IonButton :disabled="taskSaving || taskTitle.trim().length < 2" @click="createTask">Speichern</IonButton></div></div>

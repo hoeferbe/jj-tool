@@ -56,6 +56,7 @@ const usageSaving = ref(false)
 const loadedReservation = ref<FacilityReservation | null>(props.reservation ?? null)
 const reservationStart = ref('')
 const reservationEnd = ref('')
+const showReservationFields = ref(false)
 
 const reservable = () => props.facility && ['Kanzel', 'Bock', 'Leiter'].includes(props.facility.typ)
 const currentUserId = () => {
@@ -75,7 +76,8 @@ function reset() {
   usageMessage.value = ''
   loadedReservation.value = props.reservation ?? null
   reservationStart.value = toLocalDateTime(props.reservation?.startAt) ?? defaultReservationStart()
-  reservationEnd.value = toLocalDateTime(props.reservation?.endAt) ?? ''
+  reservationEnd.value = toLocalDateTime(props.reservation?.endAt) ?? defaultReservationEnd(reservationStart.value)
+  showReservationFields.value = false
 }
 
 function toLocalDateTime(value?: string) {
@@ -87,7 +89,15 @@ function toLocalDateTime(value?: string) {
 }
 
 function defaultReservationStart() {
-  const date = new Date(Date.now() + 5 * 60000)
+  const date = new Date(Date.now() + 30 * 60000)
+  date.setMinutes(date.getMinutes() - (date.getMinutes() % 30), 0, 0)
+  return toLocalDateTime(date.toISOString()) ?? ''
+}
+
+function defaultReservationEnd(start: string) {
+  if (!start) return ''
+  const date = new Date(start)
+  date.setHours(date.getHours() + 3)
   return toLocalDateTime(date.toISOString()) ?? ''
 }
 
@@ -106,7 +116,7 @@ async function loadUsage() {
   const data = await response.json() as { reservierungen: Array<FacilityReservation & { jagdeinrichtungId: string }> }
   loadedReservation.value = data.reservierungen.find((entry) => entry.jagdeinrichtungId === props.facility?.id) ?? null
   reservationStart.value = toLocalDateTime(loadedReservation.value?.startAt) ?? defaultReservationStart()
-  reservationEnd.value = toLocalDateTime(loadedReservation.value?.endAt) ?? ''
+  reservationEnd.value = toLocalDateTime(loadedReservation.value?.endAt) ?? defaultReservationEnd(reservationStart.value)
 }
 
 async function changeUsage(path: string, method: 'POST' | 'DELETE') {
@@ -127,6 +137,16 @@ async function changeUsage(path: string, method: 'POST' | 'DELETE') {
 async function reserve() {
   if (!props.facility || !reservationStart.value) return
   await changeReservation('POST', reservationPayload())
+}
+
+function beginReservation() {
+  showReservationFields.value = true
+  reservationStart.value = defaultReservationStart()
+  reservationEnd.value = defaultReservationEnd(reservationStart.value)
+}
+
+function beginReservationEdit() {
+  showReservationFields.value = true
 }
 
 async function updateReservation() {
@@ -153,6 +173,7 @@ async function changeReservation(method: 'POST' | 'PATCH' | 'DELETE', body?: { s
     })
     if (!response.ok) throw new Error(((await response.json()) as { message?: string }).message ?? 'Reservierung konnte nicht geändert werden.')
     await loadUsage()
+    showReservationFields.value = false
     emit('usageChanged')
   } catch (error) {
     usageMessage.value = error instanceof Error ? error.message : 'Reservierung konnte nicht geändert werden.'
@@ -210,15 +231,17 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await loadU
         <p v-if="loadedReservation?.checkedInBy">Eingecheckt von {{ loadedReservation.checkedInBy === currentUserId() ? 'dir' : loadedReservation.checkedInByName ?? 'Unbekanntes Mitglied' }}.</p>
         <p v-else-if="loadedReservation">Reserviert von {{ loadedReservation.reservedBy === currentUserId() ? 'dir' : loadedReservation.reservedByName ?? 'Unbekanntes Mitglied' }} für {{ toLocalDateTime(loadedReservation.startAt)?.replace('T', ' ') }}{{ loadedReservation.endAt ? ` bis ${toLocalDateTime(loadedReservation.endAt)?.replace('T', ' ')}` : '' }}.</p>
         <p v-else>Die Einrichtung ist frei. Lege einen Tag und Zeitraum für die Reservierung fest.</p>
-        <div class="reservation-period">
-          <label class="field-label"><span>Von</span><input v-model="reservationStart" class="form-control" type="datetime-local"></label>
-          <label class="field-label"><span>Bis</span><input v-model="reservationEnd" class="form-control" type="datetime-local"></label>
+        <div v-if="showReservationFields" class="reservation-period">
+          <label class="field-label"><span>Von</span><input v-model="reservationStart" class="form-control" type="datetime-local" step="1800"></label>
+          <label class="field-label"><span>Bis</span><input v-model="reservationEnd" class="form-control" type="datetime-local" step="1800"></label>
         </div>
         <div class="usage-actions">
           <IonButton v-if="loadedReservation?.checkedInBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'DELETE')">Auschecken</IonButton>
           <IonButton v-else-if="!loadedReservation || loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'POST')">Einchecken</IonButton>
-          <IonButton v-if="!loadedReservation" size="small" fill="outline" :disabled="usageSaving || !reservationStart" @click="reserve">Reservieren</IonButton>
-          <IonButton v-else-if="loadedReservation.reservedBy === currentUserId() && !loadedReservation.checkedInBy" size="small" fill="outline" :disabled="usageSaving || !reservationStart" @click="updateReservation">Ändern</IonButton>
+          <IonButton v-if="!loadedReservation && !showReservationFields" size="small" fill="outline" :disabled="usageSaving" @click="beginReservation">Reservieren</IonButton>
+          <IonButton v-else-if="!loadedReservation && showReservationFields" size="small" fill="outline" :disabled="usageSaving || !reservationStart || !reservationEnd" @click="reserve">Reservierung speichern</IonButton>
+          <IonButton v-else-if="loadedReservation?.reservedBy === currentUserId() && !loadedReservation?.checkedInBy && !showReservationFields" size="small" fill="outline" :disabled="usageSaving" @click="beginReservationEdit">Ändern</IonButton>
+          <IonButton v-else-if="loadedReservation?.reservedBy === currentUserId() && !loadedReservation?.checkedInBy && showReservationFields" size="small" fill="outline" :disabled="usageSaving || !reservationStart || !reservationEnd" @click="updateReservation">Änderung speichern</IonButton>
           <IonButton v-if="loadedReservation && loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" color="danger" :disabled="usageSaving" @click="cancelReservation">Stornieren</IonButton>
         </div>
         <p v-if="usageMessage" class="message">{{ usageMessage }}</p>
