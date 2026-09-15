@@ -9,6 +9,7 @@ import {
   IonCardTitle,
   IonContent,
   IonHeader,
+  IonIcon,
   IonInput,
   IonItem,
   IonList,
@@ -21,6 +22,7 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/vue'
+import { checkmarkCircleOutline, ellipseOutline, eyeOffOutline, eyeOutline } from 'ionicons/icons'
 
 /** Which sub-view is currently active inside the auth page. */
 type View = 'login' | 'register' | 'forgot' | 'reset'
@@ -48,7 +50,19 @@ const publicReviere = ref<Array<{ id: string; name: string; municipalityName: st
 const invitedRevierName = ref('')
 const forgotEmail = ref('')
 const resetPassword = ref('')
+const resetPasswordConfirm = ref('')
+const showLoginPassword = ref(false)
+const showResetPassword = ref(false)
+const showResetPasswordConfirm = ref(false)
 const registrationSubmitted = ref(false)
+
+// Password validation rules
+const hasMinLength = computed(() => resetPassword.value.length >= 12)
+const hasUppercase = computed(() => /[A-Z]/.test(resetPassword.value))
+const hasLowercase = computed(() => /[a-z]/.test(resetPassword.value))
+const hasNumberOrSpecial = computed(() => /[0-9]/.test(resetPassword.value) || /[^A-Za-z0-9]/.test(resetPassword.value))
+const passwordsMatch = computed(() => resetPasswordConfirm.value.length > 0 && resetPassword.value === resetPasswordConfirm.value)
+const isPasswordValid = computed(() => hasMinLength.value && passwordsMatch.value)
 
 // Hide the login/register segment tabs while the password-reset form is shown.
 const showNavigation = computed(() => view.value !== 'reset')
@@ -156,6 +170,12 @@ function submitResetPassword() {
     if (!initialToken) {
       throw new Error('Der Passwort-Link ist unvollstaendig.')
     }
+    if (!hasMinLength.value) {
+      throw new Error('Das Passwort muss mindestens 12 Zeichen lang sein.')
+    }
+    if (!passwordsMatch.value) {
+      throw new Error('Die eingegebenen Passwörter stimmen nicht überein.')
+    }
     const result = await request('/auth/password/reset', { token: initialToken, password: resetPassword.value })
     view.value = 'login'
     window.history.replaceState({}, '', window.location.pathname)
@@ -181,8 +201,23 @@ function submitResetPassword() {
         <IonItem>
           <IonInput v-model="login.identifier" label="Benutzername oder E-Mail" label-placement="stacked" autocomplete="username" />
         </IonItem>
-        <IonItem>
-          <IonInput v-model="login.password" type="password" label="Passwort" label-placement="stacked" autocomplete="current-password" />
+        <IonItem class="password-item">
+          <IonInput
+            v-model="login.password"
+            :type="showLoginPassword ? 'text' : 'password'"
+            label="Passwort"
+            label-placement="stacked"
+            autocomplete="current-password"
+          />
+          <IonButton
+            slot="end"
+            fill="clear"
+            class="password-toggle-btn"
+            :aria-label="showLoginPassword ? 'Passwort verbergen' : 'Passwort anzeigen'"
+            @click="showLoginPassword = !showLoginPassword"
+          >
+            <IonIcon slot="icon-only" :icon="showLoginPassword ? eyeOffOutline : eyeOutline" />
+          </IonButton>
         </IonItem>
         <IonButton expand="block" :disabled="isSubmitting" @click="submitLogin">Anmelden</IonButton>
         <IonButton fill="clear" expand="block" @click="view = 'forgot'">Passwort vergessen</IonButton>
@@ -223,12 +258,139 @@ function submitResetPassword() {
         <IonButton fill="clear" expand="block" @click="view = 'login'">Zurueck zur Anmeldung</IonButton>
       </IonList>
 
-      <IonList v-else>
-        <IonItem><IonInput v-model="resetPassword" type="password" :minlength="12" label="Neues Passwort" label-placement="stacked" helper-text="Mindestens 12 Zeichen" autocomplete="new-password" /></IonItem>
-        <IonButton expand="block" :disabled="isSubmitting" @click="submitResetPassword">Passwort setzen</IonButton>
+      <IonList v-else class="reset-password-list">
+        <IonItem class="password-item">
+          <IonInput
+            v-model="resetPassword"
+            :type="showResetPassword ? 'text' : 'password'"
+            label="Neues Passwort"
+            label-placement="stacked"
+            autocomplete="new-password"
+          />
+          <IonButton
+            slot="end"
+            fill="clear"
+            class="password-toggle-btn"
+            :aria-label="showResetPassword ? 'Passwort verbergen' : 'Passwort anzeigen'"
+            @click="showResetPassword = !showResetPassword"
+          >
+            <IonIcon slot="icon-only" :icon="showResetPassword ? eyeOffOutline : eyeOutline" />
+          </IonButton>
+        </IonItem>
+
+        <IonItem class="password-item">
+          <IonInput
+            v-model="resetPasswordConfirm"
+            :type="showResetPasswordConfirm ? 'text' : 'password'"
+            label="Passwort wiederholen"
+            label-placement="stacked"
+            autocomplete="new-password"
+          />
+          <IonButton
+            slot="end"
+            fill="clear"
+            class="password-toggle-btn"
+            :aria-label="showResetPasswordConfirm ? 'Passwort verbergen' : 'Passwort anzeigen'"
+            @click="showResetPasswordConfirm = !showResetPasswordConfirm"
+          >
+            <IonIcon slot="icon-only" :icon="showResetPasswordConfirm ? eyeOffOutline : eyeOutline" />
+          </IonButton>
+        </IonItem>
+
+        <div class="password-rules">
+          <div class="rules-title">Passwortanforderungen:</div>
+          <ul class="rules-list">
+            <li :class="{ met: hasMinLength }">
+              <IonIcon :icon="hasMinLength ? checkmarkCircleOutline : ellipseOutline" />
+              <span>Mindestens 12 Zeichen</span>
+            </li>
+            <li :class="{ met: hasUppercase }">
+              <IonIcon :icon="hasUppercase ? checkmarkCircleOutline : ellipseOutline" />
+              <span>Mindestens ein Großbuchstabe (A–Z)</span>
+            </li>
+            <li :class="{ met: hasLowercase }">
+              <IonIcon :icon="hasLowercase ? checkmarkCircleOutline : ellipseOutline" />
+              <span>Mindestens ein Kleinbuchstabe (a–z)</span>
+            </li>
+            <li :class="{ met: hasNumberOrSpecial }">
+              <IonIcon :icon="hasNumberOrSpecial ? checkmarkCircleOutline : ellipseOutline" />
+              <span>Mindestens eine Ziffer (0–9) oder ein Sonderzeichen</span>
+            </li>
+            <li :class="{ met: passwordsMatch }">
+              <IonIcon :icon="passwordsMatch ? checkmarkCircleOutline : ellipseOutline" />
+              <span>Passwörter stimmen überein</span>
+            </li>
+          </ul>
+        </div>
+
+        <IonButton expand="block" :disabled="isSubmitting || !isPasswordValid" @click="submitResetPassword">
+          Passwort setzen
+        </IonButton>
       </IonList>
 
       <IonNote v-if="message" class="ion-padding-top">{{ message }}</IonNote>
     </IonContent>
   </IonPage>
 </template>
+
+<style scoped>
+.password-item {
+  --padding-end: 4px;
+}
+
+.password-toggle-btn {
+  --padding-start: 8px;
+  --padding-end: 8px;
+  margin: 0;
+  height: 36px;
+  color: var(--ion-color-medium, #666);
+}
+
+.password-rules {
+  margin: 16px 8px 20px;
+  padding: 12px 16px;
+  background: var(--ion-color-light, #f4f5f8);
+  border: 1px solid var(--ion-color-light-shade, #e0e0e0);
+  border-radius: 8px;
+}
+
+.rules-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--ion-color-dark, #222);
+}
+
+.rules-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rules-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--ion-color-medium, #777);
+  transition: color 0.2s ease;
+}
+
+.rules-list li ion-icon {
+  font-size: 1.1rem;
+  color: var(--ion-color-medium-tint, #aaa);
+  transition: color 0.2s ease;
+}
+
+.rules-list li.met {
+  color: var(--ion-color-success, #2dd36f);
+  font-weight: 500;
+}
+
+.rules-list li.met ion-icon {
+  color: var(--ion-color-success, #2dd36f);
+}
+</style>

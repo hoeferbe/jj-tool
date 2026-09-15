@@ -85,6 +85,7 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 - Systemadministratoren verwalten alle Konten und Reviere. Revieradmins sehen und bearbeiten ausschliesslich Mitgliedschaften ihrer administrierten Reviere; Policies lesen immer den aktuellen Store-Zustand.
 - Konten koennen durch Systemadministratoren gesperrt, entsperrt und geloescht werden. Sperren widerruft laufende Sessions; Selbstsperre und Verlust des letzten Systemadministrators werden verhindert.
 - Mitglieder erhalten ueber die API nur aktive zugeordnete Reviere. Gemeinsame Reviermitglieder werden datensparsam mit Name, Typ und Funktion ausgeliefert; Gaeste sehen nur „Mitglied“ oder „Gast“.
+- Passwort-Erfassung und -Reset mit interaktiver Kriterien-Checkliste (mind. 12 Zeichen, Groß-/Kleinbuchstaben, Zahlen/Sonderzeichen, Bestätigung) und Umschaltung zwischen Klartext und verdeckter Passworteingabe (Auge-Icon) umgesetzt.
 
 **Registrierung und Einladung**
 
@@ -108,28 +109,27 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 
 **Streckeneintraege**
 
-- Streckeneinträge pro Revier mit Datum, Uhrzeit, Wildart, VO-Flag (Verkehrsopfer), Versicherungsbescheinigungs-Flag (ja/nein), Ortsbezeichnung, GPS-Position / Karten-Picker, Gewicht, geschätztem Alter und Notiz erfassen und bearbeiten.
+- Streckeneinträge pro Revier mit Datum, Uhrzeit, Wildart, VO-Flag (Verkehrsopfer), Versicherungsbescheinigungs-Flag (ja/nein), Ortsbezeichnung, GPS-Position / Karten-Picker (mit Straßen- und Satellitenebene sowie Fokus auf die Reviergrenzen), Gewicht, geschätztem Alter und Notiz erfassen und bearbeiten.
 - Absteigende Sortierung der Streckenliste nach Datum und Uhrzeit.
 - Dialog für Neuanlage und nachträgliche Bearbeitung sowie Löschfunktion integriert.
 - Geschützte API-Routen (GET, POST, PUT, DELETE) und persistente Speicherung für Streckeneinträge umgesetzt.
 
 **Qualitaetssicherung**
 
-- Store-Tests fuer Mehr-Revier-Persistenz, Migration, Mitgliedschaften, Rechtescopes, Einladungen sowie System-/Revieradmin-Kontinuitaet ergaenzt.
-- Aktueller Stand: zwölf automatisierte API-Tests sowie erfolgreiche Workspace-Typechecks und Produktionsbuilds.
+- Store-Tests fuer Mehr-Revier-Persistenz, Migration, Mitgliedschaften, Rechtescopes, Einladungen, System-/Revieradmin-Kontinuitaet sowie Streckeneintrag-CRUD und -Sortierung implementiert.
+- Aktueller Stand: 18 automatisierte API-Tests sowie erfolgreiche Workspace-Typechecks und Produktionsbuilds.
 
 ### Als Naechstes umzusetzen
 
-- Aktuelle GPS-Position beim Streckeneintrag als Vorschlag erfassen.
-- Position des Streckeneintrags auf der Karte prüfen und bei Bedarf korrigieren.
 - Lokale Speicherung ausstehender Streckeneinträge bei fehlender Verbindung und spätere Synchronisation umsetzen.
+- Streckeneinträge um eine Auswahl der vier bis fünf wichtigsten Wildarten per Radiobuttons erweitern, möglichst mit verständlichen Grafik-Icons.
+- Wildarten intern in Unterarten gliedern, zum Beispiel Reh in Rehbock, Ricke, Schmalreh, Bockkitz und Kitz.
 - Capacitor fuer Android konfigurieren; PWA-Manifest und Service-Worker fuer iOS pruefen.
 - Tailwind CSS als Ergaenzung zu Ionic integrieren (fuer eigene Layouts ausserhalb der Ionic-Komponenten).
 
 ### Noch nicht umgesetzt
 
 - Refresh-Tokens als `HttpOnly`-Cookies und Token-Widerruf (aktuell: JWT in localStorage mit 7-Tage-Sliding-Window).
-- GPS-Position und kartenbasierte Korrektur für Streckeneinträge.
 - Offline-Karten, Bilder und Synchronisation.
 - Capacitor-Android-Integration, PWA-Service-Worker, Cloudflare Tunnel und Raspberry-Pi-Betrieb.
 - Telegram, Firebase Cloud Messaging, Nachsuche und Faehrtenaufzeichnung.

@@ -10,7 +10,7 @@ Die App ist für einen geschlossenen Nutzerkreis gedacht. Welche Bereiche sichtb
 
 ### Anmelden
 
-Für die Anmeldung werden Benutzername oder E-Mail-Adresse und das persönliche Passwort benötigt.
+Für die Anmeldung werden Benutzername oder E-Mail-Adresse und das persönliche Passwort benötigt. Über das Augensymbol im Passwortfeld kann das eingegebene Passwort bei Bedarf im Klartext angezeigt oder wieder verborgen werden.
 
 Nach erfolgreicher Anmeldung öffnet sich je nach Berechtigung direkt die Administration oder die Revierkarte.
 
@@ -19,6 +19,18 @@ Nach erfolgreicher Anmeldung öffnet sich je nach Berechtigung direkt die Admini
 Neue Nutzer wählen **Registrieren** und geben Name, Benutzername und E-Mail-Adresse an. Dabei kann ein Revier ausgewählt werden. Eine Registrierung kann auch über eine persönliche Einladung erfolgen.
 
 Die Registrierung wird zunächst geprüft. Erst nach der Freigabe durch einen zuständigen Administrator ist der Zugang aktiv. Danach erhalten Nutzer eine E-Mail mit einem Link, über den sie ihr Passwort festlegen.
+
+### Passwort festlegen und Passwortregeln
+
+Beim erstmaligen Setzen des Passworts oder beim Zurücksetzen über einen E-Mail-Link zeigt die App eine Live-Prüfung der Passwortanforderungen:
+
+- **Mindestens 12 Zeichen** (Pflicht)
+- **Mindestens ein Großbuchstabe (A–Z)**
+- **Mindestens ein Kleinbuchstabe (a–z)**
+- **Mindestens eine Ziffer (0–9) oder ein Sonderzeichen**
+- **Passwörter stimmen überein** (Passwort wiederholen)
+
+Erfüllte Kriterien werden während der Eingabe direkt mit einem grünen Häkchen hervorgehoben. Über das Augensymbol können beide Passwortfelder im Klartext sichtbar gemacht werden.
 
 ### Passwort vergessen
 
@@ -35,6 +47,7 @@ Das Benutzer-Menü oben rechts führt zu den wichtigsten Bereichen:
 - **Revierkarte**: Karte des ausgewählten Reviers mit seinen Einrichtungen
 - **Reviermitglieder**: aktive Mitglieder des ausgewählten Reviers
 - **Reviereinrichtungen**: Liste, Aufgaben und Reservierungen der Einrichtungen
+- **Streckeneinträge**: Erfassung, Bearbeitung und Übersicht der Strecke
 - **Administration**: Verwaltung für Nutzer mit den entsprechenden Rechten
 - **Abmelden**: aktuelle Sitzung beenden
 
@@ -183,22 +196,38 @@ Die Karte bietet eine Straßen- und eine Satellitenansicht. Für die Darstellung
 
 ## 11. Streckeneinträge
 
-Über **Streckeneinträge** können Beobachtungen mit Datum, Wildart und einer optionalen Notiz für das aktive Revier erfasst werden.
+Über **Streckeneinträge** können Erlegungen und Fallwild (inkl. Verkehrsopfer) für das aktive Revier erfasst, eingesehen und nachträglich bearbeitet werden.
 
-1. Das Datum auswählen.
-2. Die Wildart eintragen.
-3. Optional eine Notiz ergänzen.
-4. **Streckeneintrag speichern** auswählen.
+### Neuen Streckeneintrag erfassen
 
-Die Einträge werden anschließend chronologisch angezeigt. Die aktuelle Version erfasst noch keine Position.
+Über **Neuer Streckeneintrag** öffnet sich das Erfassungsformular:
+
+1. **Datum und Uhrzeit**: Standardmäßig mit dem aktuellen Datum und der aktuellen Uhrzeit vorausgefüllt; kann beliebig angepasst werden.
+2. **Wildart & Status**: Eingabe der Wildart (inkl. Schnellwahl-Chips für häufige Wildarten wie Reh, Wildschwein, Fuchs etc.).
+3. **Verkehrsopfer & Bescheinigung**:
+   - Checkbox **Verkehrsopfer (VO)** zur Kennzeichnung von Unfallwild.
+   - Checkbox **Bescheinigung für Versicherung ausgestellt**.
+4. **Ort & Standortdaten**:
+   - Freitextfeld für die Ortsbezeichnung (z. B. „B27 Km 14“ oder „Waldrand Nord“).
+   - **GPS Position verwenden**: Ermittelt per Knopfdruck die aktuellen Standortkoordinaten des Geräts.
+   - **Auf Karte wählen**: Öffnet eine integrierte Revierkarte (mit Umschaltung zwischen Straßenkarte und Satellit). Durch Antippen kann die genaue Position im Revier gewählt oder korrigiert werden.
+5. **Gewicht & Alter**: Optionale Angaben für das Aufbruch-/Körpergewicht in kg sowie das geschätzte Alter (z. B. „2 Jahre“, „Schmalreh“).
+6. **Notiz**: Ergänzende Angaben zum Abschuss, Nachsuche oder Fundort.
+7. Mit **Speichern** wird der Eintrag angelegt.
+
+### Streckenliste, Sortierung und Nachbearbeitung
+
+- Die Streckeneinträge werden absteigend nach **Datum und Uhrzeit** sortiert dargestellt.
+- Kennzeichnungen für **VO** und **Bescheinigung** werden als farbige Badges hervorgehoben.
+- Zu jedem Eintrag stehen Aktionen für **Bearbeiten** (✏️) zur nachträglichen Änderung aller Daten (z. B. nachträgliche Gewichtseingabe) sowie **Löschen** (🗑️) zur Verfügung.
 
 ## 12. Noch nicht verfügbare Funktionen
 
 Folgende Funktionen gehören zur weiteren Planung und sind noch nicht Bestandteil des aktuellen Nutzungsumfangs:
 
 - Offline-Karten und automatische Synchronisation bei fehlender Verbindung
-- GPS-Position und kartenbasierte Korrektur von Streckeneinträgen
-- GPS-Aufzeichnung und Darstellung von Fährten
-- Fotos an Einrichtungen oder Einträgen
+- GPS-Aufzeichnung und Darstellung von Fährten / Nachsuchen
+- Fotos an Einrichtungen oder Streckeneinträgen
 - Push-Mitteilungen und Telegram-Benachrichtigungen
 - zeitlich begrenzte Reservierungen und eine Reservierungshistorie
+- Zusammenfassende Streckenberichte und Exporte
