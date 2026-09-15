@@ -44,6 +44,7 @@ const container = ref<HTMLElement | null>(null)
 const tileError = ref(false)
 let map: L.Map | null = null
 let placementButton: HTMLButtonElement | null = null
+let facilityLayer: L.LayerGroup | null = null
 let savedView: { center: L.LatLng; zoom: number } | null = null
 let renderedBoundary: GeoJsonFeatureCollection | null = null
 const mapLayerStorageKey = 'jj-revier-map-layer'
@@ -112,6 +113,7 @@ const statusMarkerStyles: Record<Jagdeinrichtung['status'], { background: string
 
 function addFacilitiesToMap() {
   if (!map) return
+  facilityLayer?.removeFrom(map)
   const layer = L.layerGroup()
   for (const facility of props.facilities) {
     const markerStyle = statusMarkerStyles[facility.status]
@@ -139,6 +141,11 @@ function addFacilitiesToMap() {
     marker.addTo(layer)
   }
   layer.addTo(map)
+  facilityLayer = layer
+}
+
+function clearFacilityMarkers() {
+  facilityLayer?.remove()
 }
 
 function buildMask(boundary: GeoJsonFeatureCollection) {
@@ -168,9 +175,10 @@ function buildMask(boundary: GeoJsonFeatureCollection) {
 }
 
 async function renderMap() {
-  if (map && props.boundary === renderedBoundary) savedView = { center: map.getCenter(), zoom: map.getZoom() }
-  else savedView = null
+  if (map && props.boundary === renderedBoundary) return
+  savedView = null
   map?.remove()
+  facilityLayer = null
   map = null
   tileError.value = false
   await nextTick()
@@ -227,7 +235,12 @@ async function renderMap() {
   })
 }
 
-watch([() => props.boundary, () => props.facilities, () => props.positioningFacilityId, () => props.facilityPlacementMode], renderMap, { deep: true })
+watch(() => props.facilities, () => {
+  if (!map) return
+  clearFacilityMarkers()
+  addFacilitiesToMap()
+}, { deep: true })
+watch([() => props.boundary, () => props.positioningFacilityId, () => props.facilityPlacementMode], renderMap, { deep: true })
 watch(() => props.facilityPlacementMode, updatePlacementButton)
 onMounted(renderMap)
 onMounted(() => window.addEventListener('keydown', handleEscape))

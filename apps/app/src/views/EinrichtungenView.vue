@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { IonBadge, IonButton, IonInput, IonItem, IonLabel, IonList, IonModal, IonNote, IonSelect, IonSelectOption, IonTextarea } from '@ionic/vue'
+import { IonBadge, IonButton, IonItem, IonLabel, IonList, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
 import AppLayout from '../components/AppLayout.vue'
 import NewJagdeinrichtungDialog from '../components/NewJagdeinrichtungDialog.vue'
 
@@ -190,12 +190,10 @@ onMounted(loadReviere)
           <div class="facility-header"><div><h2>{{ facility.name }}</h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'warning' : 'medium'">{{ facility.status }}</IonBadge><IonButton size="small" fill="clear" @click="openFacility(facility)">Öffnen</IonButton></div>
           <p v-if="facility.zustandsInfo" class="condition"><strong>Zustand:</strong> {{ facility.zustandsInfo }}</p>
           <p v-if="facility.notiz" class="note">{{ facility.notiz }}</p>
-          <div class="task-heading"><strong>Aufgaben</strong><IonButton size="small" fill="clear" @click="openTask(facility)">Aufgabe hinzufügen</IonButton></div>
+          <div class="task-heading"><strong>Aufgaben</strong></div>
           <IonList v-if="facilityTasks(facility.id).length" lines="full">
             <IonItem v-for="task in facilityTasks(facility.id)" :key="task.id">
               <IonLabel><h3>{{ task.titel }}</h3><p>{{ task.beschreibung || 'Keine weitere Beschreibung' }}</p><p>{{ task.assignedTo ? `Zuständig: ${memberName(task.assignedTo)}` : 'Für alle Mitglieder' }} · {{ task.status }}</p></IonLabel>
-              <IonButton v-if="!task.assignedTo && task.status !== 'erledigt'" slot="end" size="small" @click="claimTask(task)">Übernehmen</IonButton>
-              <IonButton v-else-if="task.assignedTo === currentUserId && task.status !== 'erledigt'" slot="end" size="small" @click="completeTask(task)">Erledigt</IonButton>
             </IonItem>
           </IonList>
           <IonNote v-else>Keine Aufgaben</IonNote>
@@ -211,9 +209,6 @@ onMounted(loadReviere)
         @updated="handleUpdatedFacility"
         @usage-changed="handleUsageChanged"
       />
-      <IonModal :is-open="Boolean(taskFacility)" @did-dismiss="taskFacility = null">
-        <div class="task-dialog"><h2>Neue Aufgabe für {{ taskFacility?.name }}</h2><IonInput v-model="taskTitle" label="Aufgabe" label-placement="stacked" placeholder="z. B. Leiter instand setzen" /><IonTextarea v-model="taskDescription" label="Beschreibung" label-placement="stacked" :auto-grow="true" /><IonSelect v-model="taskAssignee" label="Zuweisen an" label-placement="stacked" interface="popover"><IonSelectOption value="">Für alle Mitglieder</IonSelectOption><IonSelectOption v-for="member in members" :key="member.id" :value="member.id">{{ member.displayName }}</IonSelectOption></IonSelect><div class="dialog-actions"><IonButton fill="clear" @click="taskFacility = null">Abbrechen</IonButton><IonButton :disabled="taskSaving || taskTitle.trim().length < 2" @click="createTask">Speichern</IonButton></div></div>
-      </IonModal>
       </main>
     </div>
   </AppLayout>

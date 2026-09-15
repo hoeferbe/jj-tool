@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { IonBadge, IonButton, IonContent, IonModal, IonNote } from '@ionic/vue'
+import { IonBadge, IonButton, IonContent, IonItem, IonLabel, IonList, IonModal, IonNote, IonSelect, IonSelectOption, IonTextarea } from '@ionic/vue'
 
 interface Point { lat: number; lng: number }
 interface Jagdeinrichtung {
@@ -25,6 +25,15 @@ interface FacilityReservation {
   startAt?: string
   endAt?: string
 }
+interface FacilityTask {
+  id: string
+  jagdeinrichtungId: string
+  titel: string
+  beschreibung?: string
+  status: 'offen' | 'in Bearbeitung' | 'erledigt'
+  assignedTo?: string
+}
+interface FacilityMember { id: string; displayName: string }
 
 const props = withDefaults(defineProps<{
   isOpen: boolean
@@ -57,6 +66,12 @@ const loadedReservation = ref<FacilityReservation | null>(props.reservation ?? n
 const reservationStart = ref('')
 const reservationEnd = ref('')
 const showReservationFields = ref(false)
+const tasks = ref<FacilityTask[]>([])
+const members = ref<FacilityMember[]>([])
+const taskTitle = ref('')
+const taskDescription = ref('')
+const taskAssignee = ref('')
+const taskSaving = ref(false)
 
 const reservable = () => props.facility && ['Kanzel', 'Bock', 'Leiter'].includes(props.facility.typ)
 const currentUserId = () => {
@@ -117,6 +132,57 @@ async function loadUsage() {
   loadedReservation.value = data.reservierungen.find((entry) => entry.jagdeinrichtungId === props.facility?.id) ?? null
   reservationStart.value = toLocalDateTime(loadedReservation.value?.startAt) ?? defaultReservationStart()
   reservationEnd.value = toLocalDateTime(loadedReservation.value?.endAt) ?? defaultReservationEnd(reservationStart.value)
+}
+
+async function loadTasks() {
+  if (!props.facility) return
+  const token = localStorage.getItem('accessToken')
+  const headers = { Authorization: `Bearer ${token}` }
+  const [tasksResponse, membersResponse] = await Promise.all([
+    fetch(`${apiUrl}/reviere/${props.revierId}/jagdeinrichtungs-aufgaben`, { headers }),
+    fetch(`${apiUrl}/reviere/${props.revierId}/members`, { headers }),
+  ])
+  if (tasksResponse.ok) {
+    const data = await tasksResponse.json() as { aufgaben: FacilityTask[] }
+    tasks.value = data.aufgaben.filter((task) => task.jagdeinrichtungId === props.facility?.id)
+  }
+  if (membersResponse.ok) members.value = (await membersResponse.json() as { members: FacilityMember[] }).members
+}
+
+function memberName(id?: string) {
+  return members.value.find((member) => member.id === id)?.displayName ?? 'Alle Mitglieder'
+}
+
+async function createTask() {
+  if (!props.facility || taskTitle.value.trim().length < 2) return
+  taskSaving.value = true
+  const token = localStorage.getItem('accessToken')
+  try {
+    const response = await fetch(`${apiUrl}/reviere/${props.revierId}/jagdeinrichtungs-aufgaben`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jagdeinrichtungId: props.facility.id, titel: taskTitle.value.trim(), beschreibung: taskDescription.value.trim() || undefined, assignedTo: taskAssignee.value || undefined }),
+    })
+    if (!response.ok) throw new Error(((await response.json()) as { message?: string }).message ?? 'Aufgabe konnte nicht angelegt werden.')
+    taskTitle.value = ''
+    taskDescription.value = ''
+    taskAssignee.value = ''
+    await loadTasks()
+  } catch (error) {
+    usageMessage.value = error instanceof Error ? error.message : 'Aufgabe konnte nicht angelegt werden.'
+  } finally { taskSaving.value = false }
+}
+
+async function updateTask(task: FacilityTask, data: { status?: FacilityTask['status']; assignedTo?: string }) {
+  const token = localStorage.getItem('accessToken')
+  const response = await fetch(`${apiUrl}/reviere/${props.revierId}/jagdeinrichtungs-aufgaben/${task.id}`, {
+    method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    usageMessage.value = ((await response.json()) as { message?: string }).message ?? 'Aufgabe konnte nicht aktualisiert werden.'
+    return
+  }
+  await loadTasks()
 }
 
 async function changeUsage(path: string, method: 'POST' | 'DELETE') {
@@ -211,7 +277,7 @@ function close() {
   emit('close')
 }
 
-watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await loadUsage() } })
+watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promise.all([loadUsage(), loadTasks()]) } })
 </script>
 
 <template>
@@ -245,6 +311,29 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await loadU
           <IonButton v-if="loadedReservation && loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" color="danger" :disabled="usageSaving" @click="cancelReservation">Stornieren</IonButton>
         </div>
         <p v-if="usageMessage" class="message">{{ usageMessage }}</p>
+      </section>
+      <section v-if="props.facility" class="tasks-section">
+        <div class="usage-heading"><h3>Aufgaben</h3><IonBadge color="medium">{{ tasks.length }}</IonBadge></div>
+        <IonList v-if="tasks.length" lines="full">
+          <IonItem v-for="task in tasks" :key="task.id">
+            <IonLabel>
+              <h4>{{ task.titel }}</h4>
+              <p>{{ task.beschreibung || 'Keine weitere Beschreibung' }}</p>
+              <p>{{ task.assignedTo ? `Zuständig: ${memberName(task.assignedTo)}` : 'Für alle Mitglieder' }} · {{ task.status }}</p>
+            </IonLabel>
+            <IonButton v-if="!task.assignedTo && task.status !== 'erledigt'" slot="end" size="small" @click="updateTask(task, { assignedTo: currentUserId(), status: 'in Bearbeitung' })">Übernehmen</IonButton>
+            <IonButton v-else-if="task.assignedTo === currentUserId() && task.status !== 'erledigt'" slot="end" size="small" @click="updateTask(task, { status: 'erledigt' })">Erledigt</IonButton>
+          </IonItem>
+        </IonList>
+        <div class="task-form">
+          <input v-model="taskTitle" class="form-control" type="text" placeholder="Neue Aufgabe">
+          <IonTextarea v-model="taskDescription" label="Beschreibung" label-placement="stacked" :auto-grow="true" />
+          <IonSelect v-model="taskAssignee" label="Zuweisen an" label-placement="stacked" interface="popover">
+            <IonSelectOption value="">Für alle Mitglieder</IonSelectOption>
+            <IonSelectOption v-for="member in members" :key="member.id" :value="member.id">{{ member.displayName }}</IonSelectOption>
+          </IonSelect>
+          <IonButton size="small" :disabled="taskSaving || taskTitle.trim().length < 2" @click="createTask">Aufgabe speichern</IonButton>
+        </div>
       </section>
       <section class="form-section">
         <label class="field-label">
@@ -321,6 +410,10 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await loadU
 .reservation-period { display: flex; gap: 10px; }
 .reservation-period .field-label { flex: 1; min-width: 0; }
 .usage-section p { margin: 0; color: var(--ion-color-medium-shade); }
+.tasks-section { display: flex; flex-direction: column; gap: 8px; }
+.tasks-section h3 { margin: 0; }
+.tasks-section h4 { margin: 0; }
+.task-form { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; border-top: 1px solid var(--ion-color-light-shade); }
 .position-section h3 { margin-bottom: 5px; font-size: 0.95rem; }
 .coordinates { color: var(--ion-color-medium-shade); font-variant-numeric: tabular-nums; }
 .position-confirmation { display: block; padding: 10px 12px; border-left: 3px solid var(--ion-color-success); background: rgba(63, 106, 66, 0.1); }
