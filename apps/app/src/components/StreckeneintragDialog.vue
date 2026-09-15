@@ -52,7 +52,11 @@ const emit = defineEmits<{
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 
 function getCurrentDateStr() {
-  return new Date().toISOString().slice(0, 10)
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function getCurrentTimeStr() {
@@ -167,7 +171,7 @@ function pointInBoundary(boundary: GeoJsonFeatureCollection, lat: number, lng: n
 function reset() {
   if (props.entry) {
     datum.value = props.entry.datum
-    uhrzeit.value = props.entry.uhrzeit ?? ''
+    uhrzeit.value = props.entry.uhrzeit ?? getCurrentTimeStr()
     wildart.value = props.entry.wildart
     unterart.value = props.entry.unterart ?? ''
     geschlecht.value = props.entry.geschlecht ?? ''
