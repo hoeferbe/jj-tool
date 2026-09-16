@@ -115,6 +115,7 @@ const canEditFacility = computed(() => {
 const canDeleteFacility = computed(() => Boolean(props.facility) && canEditFacility.value)
 
 const reservable = () => props.facility && ['Kanzel', 'Bock', 'Leiter'].includes(props.facility.typ)
+const facilityUsable = computed(() => props.facility?.status === 'aktiv')
 const currentUserId = () => {
   const token = localStorage.getItem('accessToken')
   if (!token) return ''
@@ -424,6 +425,7 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
           <IonBadge v-else color="medium">Frei</IonBadge>
         </div>
         <p v-if="loadedReservation?.checkedInBy">Eingecheckt von {{ loadedReservation.checkedInBy === currentUserId() ? 'dir' : loadedReservation.checkedInByName ?? 'Unbekanntes Mitglied' }}.</p>
+        <p v-if="!facilityUsable" class="message">Diese Einrichtung ist als „{{ props.facility?.status }}“ markiert und kann nicht reserviert oder eingecheckt werden.</p>
         <p v-if="!activeReservations.length">Die Einrichtung ist frei. Lege einen Tag und Zeitraum für die Reservierung fest.</p>
         <div v-else class="reservation-list">
           <article v-for="reservation in activeReservations" :key="reservation.id" class="reservation-entry">
@@ -445,10 +447,10 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
         </div>
         <div class="usage-actions">
           <IonButton v-if="loadedReservation?.checkedInBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'DELETE')">Auschecken</IonButton>
-          <IonButton v-else-if="!loadedReservation || loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'POST')">Einchecken</IonButton>
-          <IonButton v-if="!showReservationFields" size="small" fill="outline" :disabled="usageSaving" @click="beginReservation">{{ activeReservations.length ? 'Weitere Reservierung' : 'Reservieren' }}</IonButton>
-          <IonButton v-else-if="!editingReservation" size="small" fill="outline" :disabled="usageSaving || !reservationStart || !reservationEnd" @click="reserve">Reservierung speichern</IonButton>
-          <IonButton v-else size="small" fill="outline" :disabled="usageSaving || !reservationStart || !reservationEnd" @click="updateReservation">Änderung speichern</IonButton>
+          <IonButton v-else-if="!loadedReservation || loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving || !facilityUsable" @click="changeUsage('einchecken', 'POST')">Einchecken</IonButton>
+          <IonButton v-if="!showReservationFields" size="small" fill="outline" :disabled="usageSaving || !facilityUsable" @click="beginReservation">{{ activeReservations.length ? 'Weitere Reservierung' : 'Reservieren' }}</IonButton>
+          <IonButton v-else-if="!editingReservation" size="small" fill="outline" :disabled="usageSaving || !reservationStart || !reservationEnd || !facilityUsable" @click="reserve">Reservierung speichern</IonButton>
+          <IonButton v-else size="small" fill="outline" :disabled="usageSaving || !reservationStart || !reservationEnd || !facilityUsable" @click="updateReservation">Änderung speichern</IonButton>
         </div>
         <IonButton v-if="reservationHistory.length" size="small" fill="clear" @click="showReservationHistory = !showReservationHistory">
           {{ showReservationHistory ? 'Reservierungshistorie ausblenden' : `Reservierungshistorie (${reservationHistory.length})` }}
@@ -567,7 +569,7 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
 .form-control:focus { outline: 2px solid rgba(82, 101, 45, 0.35); outline-offset: 1px; border-color: var(--ion-color-primary); }
 .textarea-control { min-height: 64px; resize: vertical; }
 .status-aktiv { border-color: var(--ion-color-success); background: #edf5e8; }
-.status-defekt { border-color: #b58a00; background: #fff7d6; }
+.status-defekt { border-color: #e57373; background: #fdecea; }
 .status-ausser-Betrieb { border-color: #5f6368; background: #eef0f2; }
 .position-section { align-items: center; padding: 14px; border: 1px solid var(--ion-color-light-shade); border-radius: 8px; background: var(--ion-color-light, #f1f3ed); }
 .position-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }

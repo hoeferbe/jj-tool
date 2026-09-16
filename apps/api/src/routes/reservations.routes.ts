@@ -55,6 +55,7 @@ export function registerReservationRoutes(app: Hono, dependencies: ReservationRo
       const facility = await facilityStore.getById(id);
       if (!facility || facility.revierId !== revierId) return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
       if (!['Kanzel', 'Bock', 'Leiter'].includes(facility.typ)) return context.json({ message: 'Diese Einrichtung kann nicht reserviert werden.' }, 400);
+      if (facility.status !== 'aktiv') return context.json({ message: `Diese Einrichtung ist ${facility.status} und kann nicht reserviert werden.` }, 400);
       try {
          const body = await context.req.json().catch(() => ({})) as { startAt?: string; endAt?: string };
          return context.json({ reservierung: await reservationStore.reserve({ revierId, jagdeinrichtungId: id, reservedBy: user.id, startAt: body.startAt, endAt: body.endAt }) }, 201);
@@ -76,6 +77,8 @@ export function registerReservationRoutes(app: Hono, dependencies: ReservationRo
       const reservation = await reservationStore.getActiveById(reservationId);
       if (!reservation || reservation.jagdeinrichtungId !== id || reservation.revierId !== revierId) return context.json({ message: 'Reservierung nicht gefunden.' }, 404);
       if (reservation.reservedBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Diese Reservierung darf nicht geändert werden.' }, 403);
+      const facility = await facilityStore.getById(id);
+      if (!facility || facility.status !== 'aktiv') return context.json({ message: `Diese Einrichtung ist ${facility?.status ?? 'unbekannt'} und kann nicht reserviert werden.` }, 400);
       try {
          const body = await context.req.json() as { startAt?: string; endAt?: string };
          if (!body.startAt) return context.json({ message: 'Startzeit fehlt.' }, 400);
@@ -112,6 +115,7 @@ export function registerReservationRoutes(app: Hono, dependencies: ReservationRo
       const facility = await facilityStore.getById(id);
       if (!facility || facility.revierId !== revierId) return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
       if (!['Kanzel', 'Bock', 'Leiter'].includes(facility.typ)) return context.json({ message: 'Diese Einrichtung kann nicht eingecheckt werden.' }, 400);
+      if (facility.status !== 'aktiv') return context.json({ message: `Diese Einrichtung ist ${facility.status} und kann nicht eingecheckt werden.` }, 400);
       try {
          return context.json({ reservierung: await reservationStore.checkIn({ revierId, jagdeinrichtungId: id, checkedInBy: user.id }) }, 201);
       } catch (error) {

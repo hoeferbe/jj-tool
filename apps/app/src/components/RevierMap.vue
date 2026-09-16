@@ -175,7 +175,7 @@ const facilityLabels: Record<Jagdeinrichtung['typ'], string> = {
 }
 const statusMarkerStyles: Record<Jagdeinrichtung['status'], { background: string; color: string; border: string }> = {
   aktiv: { background: '#52652d', color: '#ffffff', border: '#e8f0dc' },
-  defekt: { background: '#ffc409', color: '#20271b', border: '#8a6d00' },
+  defekt: { background: '#e57373', color: '#3a1414', border: '#ca6565' },
   'ausser Betrieb': { background: '#92949c', color: '#ffffff', border: '#4d5058' },
 }
 

@@ -242,6 +242,13 @@ onMounted(async () => {
     } else {
       await selectRevier(selectedRevierId.value)
     }
+    if (typeof route.query.reposition === 'string') {
+      const facility = facilities.value.find((entry) => entry.id === route.query.reposition)
+      const remainingQuery = { ...route.query }
+      delete remainingQuery.reposition
+      if (facility) startRepositioning(facility)
+      await router.replace({ path: route.path, query: remainingQuery })
+    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Reviere konnten nicht geladen werden.'
   } finally {

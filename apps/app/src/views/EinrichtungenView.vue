@@ -77,6 +77,12 @@ async function showFacilityOnMap(facility: Facility) {
   await router.push({ path: '/reviere/karte', query: { facility: facility.id } })
 }
 
+async function requestFacilityReposition(facility: Facility) {
+  localStorage.setItem('jj-member-selected-revier', facility.revierId)
+  closeFacilityDialog()
+  await router.push({ path: '/reviere/karte', query: { facility: facility.id, reposition: facility.id } })
+}
+
 function handleUpdatedFacility(facility: Facility) {
   facilities.value = facilities.value.map((entry) => entry.id === facility.id ? facility : entry)
   closeFacilityDialog()
@@ -230,7 +236,7 @@ onMounted(loadReviere)
       <IonNote v-else-if="!facilities.length">Noch keine Jagdeinrichtungen angelegt.</IonNote>
       <div v-else class="facility-list">
         <article v-for="facility in facilities" :key="facility.id" class="facility-entry">
-          <div class="facility-header"><div class="facility-title"><h2>{{ facility.name }}</h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'warning' : 'medium'">{{ facility.status }}</IonBadge><SatelliteThumbnail class="facility-thumbnail" :position="facility.position" :label="`Satellitenbild der Einrichtung ${facility.name}`" /><IonButton size="small" fill="clear" @click="openFacility(facility)">Öffnen</IonButton></div>
+          <div class="facility-header"><div class="facility-title"><h2>{{ facility.name }}</h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'defekt' : 'medium'">{{ facility.status }}</IonBadge><SatelliteThumbnail class="facility-thumbnail" :position="facility.position" :label="`Satellitenbild der Einrichtung ${facility.name}`" /><IonButton size="small" fill="clear" @click="openFacility(facility)">Öffnen</IonButton></div>
           <p v-if="facility.zustandsInfo" class="condition"><strong>Zustand:</strong> {{ facility.zustandsInfo }}</p>
           <p v-if="facility.notiz" class="note">{{ facility.notiz }}</p>
           <div v-if="reservable(facility)" class="reservation"><strong>Nutzung</strong><div class="reservation-summary"><IonBadge :color="reservationBadge(facility).color">{{ reservationBadge(facility).label }}</IonBadge><span>{{ reservationDetails(facility) }}</span></div></div>
@@ -249,10 +255,12 @@ onMounted(loadReviere)
         :revier-id="selectedRevier.id"
         :center="selectedRevier.center"
         :facility="selectedFacility"
+        :can-reposition="true"
         @close="closeFacilityDialog"
         @updated="handleUpdatedFacility"
         @deleted="handleDeletedFacility"
         @show-on-map-requested="showFacilityOnMap"
+        @reposition-requested="requestFacilityReposition"
         @usage-changed="handleUsageChanged"
       />
       </main>
