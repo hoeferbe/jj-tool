@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonList, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
-import { chevronDownOutline, constructOutline, logOutOutline, mapOutline, peopleOutline, settingsOutline, trailSignOutline } from 'ionicons/icons'
+import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonList, IonModal, IonNote, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
+import { addCircleOutline, chevronDownOutline, constructOutline, logOutOutline, mapOutline, peopleOutline, personCircleOutline, settingsOutline, trailSignOutline } from 'ionicons/icons'
 
 const router = useRouter()
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
-const displayName = localStorage.getItem('displayName') ?? ''
+const displayName = ref(localStorage.getItem('displayName') ?? '')
+const showProfile = ref(false)
+const profile = ref({ username: '', displayName: '', email: '' })
+const profileSaving = ref(false)
+const profileError = ref('')
 
 const uuid =
   globalThis.crypto?.randomUUID?.() ??
@@ -44,6 +48,42 @@ async function navigate(path: string) {
   await router.push(path)
   const hash = path.split('#')[1]
   if (hash) requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' }))
+}
+
+async function openProfile() {
+  profileError.value = ''
+  const token = localStorage.getItem('accessToken')
+  const response = await fetch(`${apiUrl}/auth/me`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+  const data = await response.json() as { user?: { username: string; displayName: string; email: string }; message?: string }
+  if (!response.ok || !data.user) {
+    profileError.value = data.message ?? 'Profildaten konnten nicht geladen werden.'
+    showProfile.value = true
+    return
+  }
+  profile.value = data.user
+  showProfile.value = true
+}
+
+async function saveProfile() {
+  profileSaving.value = true
+  profileError.value = ''
+  const token = localStorage.getItem('accessToken')
+  try {
+    const response = await fetch(`${apiUrl}/auth/me`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ displayName: profile.value.displayName, email: profile.value.email }),
+    })
+    const data = await response.json() as { user?: { displayName: string; email: string }; message?: string }
+    if (!response.ok || !data.user) throw new Error(data.message ?? 'Profil konnte nicht gespeichert werden.')
+    displayName.value = data.user.displayName
+    localStorage.setItem('displayName', data.user.displayName)
+    showProfile.value = false
+  } catch (error) {
+    profileError.value = error instanceof Error ? error.message : 'Profil konnte nicht gespeichert werden.'
+  } finally {
+    profileSaving.value = false
+  }
 }
 
 /**
@@ -97,6 +137,14 @@ async function logout() {
             <IonIcon slot="start" :icon="trailSignOutline" />
             Streckeneinträge
           </IonItem>
+          <IonItem button @click="navigate('/reviere/karte?action=new-revier')">
+            <IonIcon slot="start" :icon="addCircleOutline" />
+            Neues Revier
+          </IonItem>
+          <IonItem button @click="openProfile">
+            <IonIcon slot="start" :icon="personCircleOutline" />
+            Mein Profil
+          </IonItem>
           <IonItem v-if="isAdmin" button @click="navigate('/dashboard')">
             <IonIcon slot="start" :icon="settingsOutline" />
             Administration
@@ -112,9 +160,29 @@ async function logout() {
       <div class="motd" role="status">Diese App befindet sich noch in der Entwicklung.</div>
       <slot />
     </IonContent>
+    <IonModal :is-open="showProfile" @did-dismiss="showProfile = false">
+      <IonHeader>
+        <IonToolbar>
+          <IonTitle>Mein Profil</IonTitle>
+          <IonButtons slot="end"><IonButton @click="showProfile = false">Schließen</IonButton></IonButtons>
+        </IonToolbar>
+      </IonHeader>
+      <IonContent class="ion-padding">
+        <form class="profile-form" @submit.prevent="saveProfile">
+          <IonItem><IonInput :value="profile.username" label="Login-Name" label-placement="stacked" readonly /></IonItem>
+          <IonItem><IonInput v-model="profile.displayName" label="Name" label-placement="stacked" autocomplete="name" required /></IonItem>
+          <IonItem><IonInput v-model="profile.email" type="email" label="E-Mail" label-placement="stacked" autocomplete="email" required /></IonItem>
+          <IonNote v-if="profileError" color="danger">{{ profileError }}</IonNote>
+          <IonButton type="submit" expand="block" :disabled="profileSaving">
+            {{ profileSaving ? 'Speichern...' : 'Speichern' }}
+          </IonButton>
+        </form>
+      </IonContent>
+    </IonModal>
   </IonPage>
 </template>
 
 <style scoped>
 .motd { padding: 7px 16px; border-bottom: 1px solid #d3d8c7; background: #eef1e7; color: #536142; font-size: 0.85rem; text-align: center; }
+.profile-form { display: grid; gap: 16px; max-width: 560px; margin: 0 auto; }
 </style>

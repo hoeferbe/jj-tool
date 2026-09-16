@@ -112,6 +112,10 @@ export class AuthStore {
          // Older files may not have a sessions array yet.
          this.data.sessions ??= [];
          this.data.invitations ??= [];
+         const invitationCount = this.data.invitations.length;
+         this.data.invitations = this.data.invitations.filter(
+            (invitation) => !invitation.usedAt && Date.parse(invitation.expiresAt) > Date.now(),
+         );
          const legacyUsers = this.data.users.filter(
             (user) => !user.accountType || !Array.isArray(user.memberships),
          );
@@ -144,8 +148,8 @@ export class AuthStore {
                delete (legacy as { isAdmin?: boolean }).isAdmin;
                delete (legacy as { revierIds?: string[] }).revierIds;
             }
-            await this.persist();
          }
+         if (legacyUsers.length > 0 || invitationCount !== this.data.invitations.length) await this.persist();
       } catch (error: unknown) {
          // ENOENT means first run – bootstrap an empty file.
          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -239,9 +243,8 @@ export class AuthStore {
          const normalizedEmail = email.trim().toLowerCase();
          this.data.invitations = this.data.invitations.filter(
             (invitation) =>
-               invitation.email !== normalizedEmail ||
-               invitation.revierId !== revierId ||
-               invitation.usedAt,
+               Date.parse(invitation.expiresAt) > Date.now() &&
+               (invitation.email !== normalizedEmail || invitation.revierId !== revierId),
          );
          this.data.invitations.push({
             id: randomUUID(),
@@ -269,7 +272,9 @@ export class AuthStore {
       return this.enqueue(async () => {
          const invitation = this.getHuntingDistrictInvitation(token);
          if (!invitation) throw new Error('INVITATION_INVALID');
-         invitation.usedAt = new Date().toISOString();
+         this.data.invitations = this.data.invitations.filter(
+            (entry) => entry.id !== invitation.id,
+         );
          return invitation;
       });
    }
@@ -341,6 +346,28 @@ export class AuthStore {
             updatedAt: new Date().toISOString(),
          });
          // Profile change invalidates any outstanding password tokens.
+         this.data.passwordTokens = this.data.passwordTokens.filter(
+            (entry) => entry.userId !== userId,
+         );
+         return user;
+      });
+   }
+
+   async updateOwnProfile(
+      userId: string,
+      input: Pick<User, 'email' | 'displayName'>,
+   ) {
+      return this.enqueue(async () => {
+         const user = this.data.users.find((entry) => entry.id === userId);
+         if (!user) throw new Error('USER_NOT_FOUND');
+         const email = input.email.trim().toLowerCase();
+         const duplicate = this.data.users.some(
+            (entry) => entry.id !== userId && entry.email.toLowerCase() === email,
+         );
+         if (duplicate) throw new Error('USER_EXISTS');
+         user.email = email;
+         user.displayName = input.displayName.trim();
+         user.updatedAt = new Date().toISOString();
          this.data.passwordTokens = this.data.passwordTokens.filter(
             (entry) => entry.userId !== userId,
          );
@@ -459,13 +486,17 @@ export class AuthStore {
          if (index === -1) {
             throw new Error('USER_NOT_FOUND');
          }
+         const deletedEmail = this.data.users[index]!.email.trim().toLowerCase();
          this.data.users.splice(index, 1);
-         // Cascade: clean up tokens and sessions that belong to the deleted user.
+         // Cascade: clean up all authentication data tied to the deleted user.
          this.data.passwordTokens = this.data.passwordTokens.filter(
             (entry) => entry.userId !== userId,
          );
          this.data.sessions = this.data.sessions.filter(
             (entry) => entry.userId !== userId,
+         );
+         this.data.invitations = this.data.invitations.filter(
+            (entry) => entry.email !== deletedEmail && entry.invitedBy !== userId,
          );
       });
    }
@@ -668,6 +699,26 @@ export class AuthStore {
             position: membership.position,
          }];
       });
+   }
+
+   getHuntingDistrictContactName(revierId: string, creatorId: string) {
+      const activeAdministrators = this.data.users
+         .filter(
+            (user) =>
+               user.status === 'active' &&
+               user.memberships.some(
+                  (membership) =>
+                     membership.revierId === revierId &&
+                     membership.status === 'active' &&
+                     membership.isAdmin,
+               ),
+         )
+         .sort((left, right) => left.displayName.localeCompare(right.displayName, 'de'));
+      const creator = this.findUserById(creatorId);
+      const contact = activeAdministrators.find((user) => user.id === creatorId)
+         ?? activeAdministrators[0]
+         ?? (creator?.status === 'active' ? creator : undefined);
+      return contact?.displayName;
    }
 
    /**

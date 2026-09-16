@@ -47,7 +47,7 @@ const message = ref('')
 const isSubmitting = ref(false)
 const login = ref({ identifier: '', password: '' })
 const registration = ref({ username: '', displayName: '', email: '', revierId: '', invitationToken: invitationToken ?? '' })
-const publicReviere = ref<Array<{ id: string; name: string; municipalityName: string }>>([])
+const publicReviere = ref<Array<{ id: string; name: string; municipalityName: string; contactName?: string }>>([])
 const invitedRevierName = ref('')
 const forgotEmail = ref('')
 const resetPassword = ref('')
@@ -238,7 +238,7 @@ function submitResetPassword() {
           <IonSelect v-model="registration.revierId" label="Revier" label-placement="stacked" interface="popover" placeholder="Kein Revier ausgewählt">
             <IonSelectOption value="">Kein Revier / Systemanfrage</IonSelectOption>
             <IonSelectOption v-for="revier in publicReviere" :key="revier.id" :value="revier.id">
-              {{ revier.name }} · Gemeinde {{ revier.municipalityName }}
+              {{ revier.name }} · Gemeinde {{ revier.municipalityName }}{{ revier.contactName ? ` · Ansprechpartner: ${revier.contactName}` : '' }}
             </IonSelectOption>
           </IonSelect>
         </IonItem>

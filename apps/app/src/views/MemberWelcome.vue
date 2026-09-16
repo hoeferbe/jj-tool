@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { IonBadge, IonButton, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
 import AppLayout from '../components/AppLayout.vue'
 import NewJagdeinrichtungDialog from '../components/NewJagdeinrichtungDialog.vue'
@@ -63,6 +64,8 @@ const POSITION_LABELS = {
 }
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
+const route = useRoute()
+const router = useRouter()
 const reviere = ref<Revier[]>([])
 const selectedRevierId = ref(localStorage.getItem('jj-member-selected-revier') ?? '')
 const loading = ref(true)
@@ -92,9 +95,19 @@ const canCreateFacilities = computed(() => {
   ) === true
 })
 
+watch(() => route.query.action, (action) => {
+  if (action === 'new-revier') showNewRevierDialog.value = true
+}, { immediate: true })
+
+function closeNewRevierDialog() {
+  showNewRevierDialog.value = false
+  if (route.query.action === 'new-revier') router.replace({ path: route.path })
+}
+
 function handleCreatedRevier(revier: Revier) {
   reviere.value = [...reviere.value, revier]
   selectRevier(revier.id)
+  closeNewRevierDialog()
 }
 
 async function handleCreatedFacility() {
@@ -247,7 +260,6 @@ onMounted(async () => {
               {{ revier.name }}
             </IonSelectOption>
           </IonSelect>
-          <IonButton size="small" fill="outline" @click="showNewRevierDialog = true">Neues Revier</IonButton>
           <IonNote v-if="positioningFacilityId" class="map-hint">Einrichtung: Position wählen · Esc zum Abbrechen</IonNote>
           <IonNote v-else-if="selectedRevier && canCreateFacilities" class="map-hint">⌘-/Ctrl-Klick oder + auf der Karte: Einrichtung anlegen</IonNote>
         </div>
@@ -273,7 +285,7 @@ onMounted(async () => {
       </section>
       <NewRevierDialog
         :is-open="showNewRevierDialog"
-        @close="showNewRevierDialog = false"
+        @close="closeNewRevierDialog"
         @created="handleCreatedRevier"
       />
       <NewJagdeinrichtungDialog

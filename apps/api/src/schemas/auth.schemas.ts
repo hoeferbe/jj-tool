@@ -15,6 +15,10 @@ export const loginSchema = z.object({
    password: z.string().min(1),
 });
 export const emailSchema = z.object({ email: z.string().trim().email() });
+export const profileSchema = z.object({
+   email: z.string().trim().email(),
+   displayName: z.string().trim().min(2).max(80),
+});
 export const passwordSchema = z.object({
    token: z.string().min(1),
    password: z.string().min(12).max(128),

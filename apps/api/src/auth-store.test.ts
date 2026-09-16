@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { afterEach, describe, it } from 'node:test';
-import { access, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AuthStore } from './auth-store.js';
@@ -103,6 +103,19 @@ describe('AuthStore Revier assignments', () => {
       assert.equal('email' in store.getMemberDirectory('revier-a')[0]!, false);
    });
 
+   it('uses an active Revieradmin as the public district contact', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'jjtool-auth-'));
+      tempDirs.push(directory);
+      const store = new AuthStore(directory);
+      await store.initialize();
+      const creator = await store.createUser({ username: 'creator', email: 'creator@example.test', displayName: 'Creator', status: 'active' });
+      const administrator = await store.createUser({ username: 'contact', email: 'contact@example.test', displayName: 'Revier Admin', status: 'active' });
+
+      assert.equal(store.getHuntingDistrictContactName('revier-a', creator.id), 'Creator');
+      await store.upsertMembership(administrator.id, { revierId: 'revier-a', status: 'active', memberType: 'paechter', isAdmin: true });
+      assert.equal(store.getHuntingDistrictContactName('revier-a', creator.id), 'Revier Admin');
+   });
+
    it('requires a successor before the last Revieradmin can be removed', async () => {
       const directory = await mkdtemp(join(tmpdir(), 'jjtool-auth-'));
       tempDirs.push(directory);
@@ -160,6 +173,59 @@ describe('AuthStore Revier assignments', () => {
       await store.consumeHuntingDistrictInvitation(token);
       assert.equal(store.getHuntingDistrictInvitation(token), undefined);
       await assert.rejects(() => store.consumeHuntingDistrictInvitation(token), /INVITATION_INVALID/);
+      const persisted = JSON.parse(await readFile(join(directory, 'auth.json'), 'utf8')) as { invitations: unknown[] };
+      assert.deepEqual(persisted.invitations, []);
+   });
+
+   it('removes related invitations and releases the email when deleting a user', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'jjtool-auth-'));
+      tempDirs.push(directory);
+      const store = new AuthStore(directory);
+      await store.initialize();
+      const user = await store.createUser({
+         username: 'former-member',
+         email: 'member@example.test',
+         displayName: 'Former Member',
+         status: 'active',
+      });
+      const invitationToken = await store.createHuntingDistrictInvitation(
+         'revier-a',
+         'member@example.test',
+         'admin-a',
+      );
+
+      await store.deleteUser(user.id);
+
+      assert.equal(store.getHuntingDistrictInvitation(invitationToken), undefined);
+      const replacement = await store.createUser({
+         username: 'new-member',
+         email: 'member@example.test',
+         displayName: 'New Member',
+         status: 'pending',
+      });
+      assert.equal(replacement.email, 'member@example.test');
+   });
+
+   it('updates the own profile without changing the login name', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'jjtool-auth-'));
+      tempDirs.push(directory);
+      const store = new AuthStore(directory);
+      await store.initialize();
+      const user = await store.createUser({
+         username: 'fixed-login',
+         email: 'old@example.test',
+         displayName: 'Old Name',
+         status: 'active',
+      });
+
+      await store.updateOwnProfile(user.id, {
+         email: 'NEW@example.test',
+         displayName: 'New Name',
+      });
+
+      assert.equal(store.findUserById(user.id)?.username, 'fixed-login');
+      assert.equal(store.findUserById(user.id)?.email, 'new@example.test');
+      assert.equal(store.findUserById(user.id)?.displayName, 'New Name');
    });
 
    it('migrates legacy admins safely and creates a backup', async () => {

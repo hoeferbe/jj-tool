@@ -8,7 +8,12 @@ export function registerPublicRoutes(app: Hono, dependencies: { authStore: AuthS
    app.get('/public/reviere', async (context) => {
       const districts = await dependencies.huntingDistrictStore.getHuntingDistricts();
       return context.json({
-         reviere: districts.map(({ id, name, municipalityName }) => ({ id, name, municipalityName })),
+         reviere: districts.map(({ id, name, municipalityName, createdBy }) => ({
+            id,
+            name,
+            municipalityName,
+            contactName: dependencies.authStore.getHuntingDistrictContactName(id, createdBy),
+         })),
       });
    });
 

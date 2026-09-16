@@ -8,6 +8,7 @@ import {
    emailSchema,
    loginSchema,
    passwordSchema,
+   profileSchema,
    registrationSchema,
 } from '../schemas/auth.schemas.js';
 import type { AuthPayload } from '../middleware/auth.middleware.js';
@@ -211,5 +212,18 @@ export function registerAuthRoutes(app: Hono, dependencies: AuthRouteDependencie
       if (!user) return context.json({ message: 'Benutzer nicht gefunden.' }, 404);
       const { passwordHash: _passwordHash, ...profile } = user;
       return context.json({ user: profile });
+   });
+
+   app.patch('/auth/me', requireAuth, zValidator('json', profileSchema), async (context) => {
+      const payload = await getAuthenticatedPayload(context);
+      try {
+         const user = await authStore.updateOwnProfile(payload?.sub ?? '', context.req.valid('json'));
+         const { passwordHash: _passwordHash, ...profile } = user;
+         return context.json({ user: profile });
+      } catch (error) {
+         if ((error as Error).message === 'USER_NOT_FOUND') return context.json({ message: 'Benutzer nicht gefunden.' }, 404);
+         if ((error as Error).message === 'USER_EXISTS') return context.json({ message: 'Die E-Mail-Adresse ist bereits registriert.' }, 409);
+         throw error;
+      }
    });
 }

@@ -100,7 +100,11 @@ async function loadReviere() {
     const response = await fetch(`${apiUrl}/reviere`, { headers: { Authorization: `Bearer ${token}` } })
     if (!response.ok) throw new Error('Reviere konnten nicht geladen werden.')
     reviere.value = ((await response.json()) as { reviere: Revier[] }).reviere
-    if (!reviere.value.some((revier) => revier.id === selectedRevierId.value)) selectedRevierId.value = reviere.value[0]?.id ?? ''
+    if (!reviere.value.some((revier) => revier.id === selectedRevierId.value)) {
+      selectedRevierId.value = reviere.value[0]?.id ?? ''
+      if (selectedRevierId.value) localStorage.setItem('jj-member-selected-revier', selectedRevierId.value)
+      else localStorage.removeItem('jj-member-selected-revier')
+    }
     await loadRevierData()
   } catch (error) { errorMessage.value = error instanceof Error ? error.message : 'Reviere konnten nicht geladen werden.' }
 }

@@ -97,6 +97,8 @@ async function loadReviere() {
     reviere.value = data.reviere ?? []
     if (!reviere.value.some((revier) => revier.id === selectedRevierId.value)) {
       selectedRevierId.value = reviere.value[0]?.id ?? ''
+      if (selectedRevierId.value) localStorage.setItem('jj-member-selected-revier', selectedRevierId.value)
+      else localStorage.removeItem('jj-member-selected-revier')
     }
     await loadEntries()
   } catch (error) {
