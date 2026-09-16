@@ -57,6 +57,14 @@ describe('AuthStore Revier assignments', () => {
          false,
          ['revier-b', 'revier-c'],
       );
+      await assert.rejects(
+         () => store.upsertMembership(user.id, { revierId: 'revier-a', status: 'active', memberType: 'guest', isAdmin: true }),
+         /GUEST_PRIVILEGES/,
+      );
+      await assert.rejects(
+         () => store.upsertMembership(user.id, { revierId: 'revier-a', status: 'active', memberType: 'guest', position: 'kassenwart', isAdmin: false }),
+         /GUEST_PRIVILEGES/,
+      );
       await store.removeHuntingDistrictAssignments('revier-b');
 
       await store.setUserBlocked(user.id, true);
@@ -123,10 +131,10 @@ describe('AuthStore Revier assignments', () => {
       await store.initialize();
       const first = await store.createUser({ username: 'first-admin', email: 'first@example.test', displayName: 'First', status: 'active' });
       const successor = await store.createUser({ username: 'successor', email: 'successor@example.test', displayName: 'Successor', status: 'active' });
-      await store.upsertMembership(first.id, { revierId: 'revier-a', status: 'active', memberType: 'guest', isAdmin: true });
+      await store.upsertMembership(first.id, { revierId: 'revier-a', status: 'active', memberType: 'paechter', isAdmin: true });
 
       await assert.rejects(
-         () => store.upsertMembership(first.id, { revierId: 'revier-a', status: 'active', memberType: 'guest', isAdmin: false }),
+         () => store.upsertMembership(first.id, { revierId: 'revier-a', status: 'active', memberType: 'paechter', isAdmin: false }),
          /LAST_REVIER_ADMIN/,
       );
       await assert.rejects(
@@ -136,7 +144,7 @@ describe('AuthStore Revier assignments', () => {
 
       await store.upsertMembership(successor.id, { revierId: 'revier-a', status: 'active', memberType: 'bgs', isAdmin: true });
       assert.equal(store.countActiveHuntingDistrictAdmins('revier-a'), 2);
-      await store.upsertMembership(first.id, { revierId: 'revier-a', status: 'active', memberType: 'guest', isAdmin: false });
+      await store.upsertMembership(first.id, { revierId: 'revier-a', status: 'active', memberType: 'paechter', isAdmin: false });
       assert.deepEqual(store.getAdminHuntingDistrictIds(first.id), []);
       assert.deepEqual(store.getAdminHuntingDistrictIds(successor.id), ['revier-a']);
    });
@@ -147,7 +155,7 @@ describe('AuthStore Revier assignments', () => {
       const store = new AuthStore(directory);
       await store.initialize();
       const owner = await store.createUser({ username: 'owner', email: 'owner@example.test', displayName: 'Owner', status: 'active' });
-      await store.upsertMembership(owner.id, { revierId: 'revier-a', status: 'active', memberType: 'guest', isAdmin: true });
+      await store.upsertMembership(owner.id, { revierId: 'revier-a', status: 'active', memberType: 'guest', isAdmin: false });
 
       await store.ensureHuntingDistrictOwner(owner.id, 'revier-a');
 
@@ -236,6 +244,10 @@ describe('AuthStore Revier assignments', () => {
          users: [
             { id: 'system', username: 'admin', email: 'admin@example.test', displayName: 'Admin', role: 'admin', status: 'active', createdAt: now, updatedAt: now },
             { id: 'legacy', username: 'legacy', email: 'legacy@example.test', displayName: 'Legacy', role: 'bgs', status: 'active', isAdmin: true, createdAt: now, updatedAt: now },
+            {
+               id: 'guest', username: 'guest', email: 'guest@example.test', displayName: 'Guest', accountType: 'member', status: 'active', createdAt: now, updatedAt: now,
+               memberships: [{ revierId: 'revier-a', status: 'active', memberType: 'guest', position: 'kassenwart', isAdmin: true, source: 'systemAdmin', createdAt: now, updatedAt: now }],
+            },
          ],
          passwordTokens: [],
          sessions: [],
@@ -247,6 +259,8 @@ describe('AuthStore Revier assignments', () => {
       assert.equal(store.findUserById('system')?.accountType, 'systemAdmin');
       assert.equal(store.findUserById('legacy')?.accountType, 'member');
       assert.deepEqual(store.findUserById('legacy')?.memberships, []);
+      assert.equal(store.findUserById('guest')?.memberships[0]?.position, undefined);
+      assert.equal(store.findUserById('guest')?.memberships[0]?.isAdmin, false);
       await access(join(directory, 'auth.json.pre-memberships.bak'));
    });
 });

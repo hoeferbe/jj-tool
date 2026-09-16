@@ -65,6 +65,13 @@ const usageSaving = ref(false)
 const loadedReservation = ref<FacilityReservation | null>(props.reservation ?? null)
 const reservationStart = ref('')
 const reservationEnd = ref('')
+const reservationDate = ref('')
+const reservationTime = ref('')
+const reservationTimeOptions = Array.from({ length: 48 }, (_, index) => {
+  const hours = Math.floor(index / 2).toString().padStart(2, '0')
+  const minutes = index % 2 === 0 ? '00' : '30'
+  return `${hours}:${minutes}`
+})
 const showReservationFields = ref(false)
 const tasks = ref<FacilityTask[]>([])
 const members = ref<FacilityMember[]>([])
@@ -93,8 +100,7 @@ function reset() {
   message.value = ''
   usageMessage.value = ''
   loadedReservation.value = props.reservation ?? null
-  reservationStart.value = toLocalDateTime(props.reservation?.startAt) ?? defaultReservationStart()
-  reservationEnd.value = toLocalDateTime(props.reservation?.endAt) ?? defaultReservationEnd(reservationStart.value)
+  setReservationStart(toLocalDateTime(props.reservation?.startAt) ?? defaultReservationStart())
   showReservationFields.value = false
   showTaskHistory.value = false
 }
@@ -120,6 +126,24 @@ function defaultReservationEnd(start: string) {
   return toLocalDateTime(date.toISOString()) ?? ''
 }
 
+function setReservationStart(start: string) {
+  reservationStart.value = start
+  const [date = '', time = ''] = start.split('T')
+  reservationDate.value = date
+  reservationTime.value = time
+  reservationEnd.value = defaultReservationEnd(start)
+}
+
+function handleReservationStartChange() {
+  if (!reservationDate.value || !reservationTime.value) {
+    reservationStart.value = ''
+    reservationEnd.value = ''
+    return
+  }
+  reservationStart.value = `${reservationDate.value}T${reservationTime.value}`
+  reservationEnd.value = defaultReservationEnd(reservationStart.value)
+}
+
 function reservationPayload() {
   return {
     startAt: new Date(reservationStart.value).toISOString(),
@@ -134,8 +158,7 @@ async function loadUsage() {
   if (!response.ok) return
   const data = await response.json() as { reservierungen: Array<FacilityReservation & { jagdeinrichtungId: string }> }
   loadedReservation.value = data.reservierungen.find((entry) => entry.jagdeinrichtungId === props.facility?.id) ?? null
-  reservationStart.value = toLocalDateTime(loadedReservation.value?.startAt) ?? defaultReservationStart()
-  reservationEnd.value = toLocalDateTime(loadedReservation.value?.endAt) ?? defaultReservationEnd(reservationStart.value)
+  setReservationStart(toLocalDateTime(loadedReservation.value?.startAt) ?? defaultReservationStart())
 }
 
 async function loadTasks() {
@@ -211,8 +234,7 @@ async function reserve() {
 
 function beginReservation() {
   showReservationFields.value = true
-  reservationStart.value = defaultReservationStart()
-  reservationEnd.value = defaultReservationEnd(reservationStart.value)
+  setReservationStart(defaultReservationStart())
 }
 
 function beginReservationEdit() {
@@ -302,8 +324,9 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
         <p v-else-if="loadedReservation">Reserviert von {{ loadedReservation.reservedBy === currentUserId() ? 'dir' : loadedReservation.reservedByName ?? 'Unbekanntes Mitglied' }} für {{ toLocalDateTime(loadedReservation.startAt)?.replace('T', ' ') }}{{ loadedReservation.endAt ? ` bis ${toLocalDateTime(loadedReservation.endAt)?.replace('T', ' ')}` : '' }}.</p>
         <p v-else>Die Einrichtung ist frei. Lege einen Tag und Zeitraum für die Reservierung fest.</p>
         <div v-if="showReservationFields" class="reservation-period">
-          <label class="field-label"><span>Von</span><input v-model="reservationStart" class="form-control" type="datetime-local" step="1800"></label>
-          <label class="field-label"><span>Bis</span><input v-model="reservationEnd" class="form-control" type="datetime-local" step="1800"></label>
+          <label class="field-label"><span>Datum</span><input v-model="reservationDate" class="form-control" type="date" @change="handleReservationStartChange"></label>
+          <label class="field-label"><span>Von</span><select v-model="reservationTime" class="form-control" @change="handleReservationStartChange"><option v-for="time in reservationTimeOptions" :key="time" :value="time">{{ time }}</option></select></label>
+          <label class="field-label"><span>Bis (3 Stunden)</span><input v-model="reservationEnd" class="form-control" type="datetime-local" readonly></label>
         </div>
         <div class="usage-actions">
           <IonButton v-if="loadedReservation?.checkedInBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'DELETE')">Auschecken</IonButton>

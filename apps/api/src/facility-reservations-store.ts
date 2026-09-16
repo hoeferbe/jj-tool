@@ -95,16 +95,15 @@ export class FacilityReservationsStore {
 
    async reserve(input: Omit<FacilityReservation, 'id' | 'reservedAt'>) {
       return this.enqueue(async () => {
-         const startAt = input.startAt ?? new Date().toISOString();
-         this.validatePeriod(startAt, input.endAt);
+         const { startAt, endAt } = this.createReservationPeriod(input.startAt);
          const overlaps = this.data.reservierungen.some((entry) =>
             entry.jagdeinrichtungId === input.jagdeinrichtungId && !entry.releasedAt
             && (!entry.endAt || new Date(entry.endAt).getTime() > Date.now())
-            && this.periodsOverlap(entry.startAt, entry.endAt, startAt, input.endAt),
+            && this.periodsOverlap(entry.startAt, entry.endAt, startAt, endAt),
          );
          if (overlaps) throw new Error('ALREADY_RESERVED');
          const reservation: FacilityReservation = {
-            id: randomUUID(), ...input, startAt, reservedAt: new Date().toISOString(),
+            id: randomUUID(), ...input, startAt, endAt, reservedAt: new Date().toISOString(),
          };
          this.data.reservierungen.push(reservation);
          return reservation;
@@ -115,15 +114,15 @@ export class FacilityReservationsStore {
       return this.enqueue(async () => {
          const reservation = this.data.reservierungen.find((entry) => entry.id === id && !entry.releasedAt);
          if (!reservation) return null;
-         this.validatePeriod(input.startAt, input.endAt);
+         const { startAt, endAt } = this.createReservationPeriod(input.startAt);
          const overlaps = this.data.reservierungen.some((entry) =>
             entry.id !== id && entry.jagdeinrichtungId === reservation.jagdeinrichtungId && !entry.releasedAt
             && (!entry.endAt || new Date(entry.endAt).getTime() > Date.now())
-            && this.periodsOverlap(entry.startAt, entry.endAt, input.startAt, input.endAt),
+            && this.periodsOverlap(entry.startAt, entry.endAt, startAt, endAt),
          );
          if (overlaps) throw new Error('ALREADY_RESERVED');
-         reservation.startAt = input.startAt;
-         reservation.endAt = input.endAt;
+         reservation.startAt = startAt;
+         reservation.endAt = endAt;
          return reservation;
       });
    }
@@ -158,11 +157,17 @@ export class FacilityReservationsStore {
       return firstFrom < secondTo && secondFrom < firstTo;
    }
 
-   private validatePeriod(startAt?: string, endAt?: string) {
-      if (!startAt || Number.isNaN(new Date(startAt).getTime())) throw new Error('INVALID_PERIOD');
-      if (endAt && (Number.isNaN(new Date(endAt).getTime()) || new Date(endAt).getTime() <= new Date(startAt).getTime())) {
+   private createReservationPeriod(requestedStart?: string) {
+      const start = requestedStart ? new Date(requestedStart) : new Date();
+      if (Number.isNaN(start.getTime())) throw new Error('INVALID_PERIOD');
+      if (requestedStart && (start.getUTCMinutes() % 30 !== 0 || start.getUTCSeconds() !== 0 || start.getUTCMilliseconds() !== 0)) {
          throw new Error('INVALID_PERIOD');
       }
+      if (!requestedStart) {
+         start.setUTCMinutes(Math.ceil(start.getUTCMinutes() / 30) * 30, 0, 0);
+      }
+      const end = new Date(start.getTime() + 3 * 60 * 60 * 1000);
+      return { startAt: start.toISOString(), endAt: end.toISOString() };
    }
 
    private async enqueue<T>(operation: () => Promise<T>) {

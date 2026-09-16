@@ -28,12 +28,16 @@ export const approveSchema = z.object({
    position: z.enum(POSITIONS).optional(),
    isAdmin: z.boolean().optional(),
    revierIds: z.array(z.string().uuid()).default([]),
+}).refine((input) => input.role !== 'guest' || (!input.position && !input.isAdmin), {
+   message: 'Gäste dürfen keine Funktion oder Revieradmin-Rechte erhalten.',
 });
 export const updateRoleSchema = z.object({
    role: z.enum(ROLES),
    position: z.enum(POSITIONS).nullable().optional(),
    isAdmin: z.boolean().optional(),
    revierIds: z.array(z.string().uuid()).optional(),
+}).refine((input) => input.role !== 'guest' || (!input.position && !input.isAdmin), {
+   message: 'Gäste dürfen keine Funktion oder Revieradmin-Rechte erhalten.',
 });
 export const updateUserStatusSchema = z.object({ blocked: z.boolean() });
 export const membershipSchema = z.object({
@@ -41,4 +45,6 @@ export const membershipSchema = z.object({
    position: z.enum(POSITIONS).nullable().optional(),
    isAdmin: z.boolean().default(false),
    status: z.enum(['pending', 'active']).default('active'),
+}).refine((input) => input.memberType !== 'guest' || (!input.position && !input.isAdmin), {
+   message: 'Gäste dürfen keine Funktion oder Revieradmin-Rechte erhalten.',
 });

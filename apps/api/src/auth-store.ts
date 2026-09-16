@@ -149,7 +149,17 @@ export class AuthStore {
                delete (legacy as { revierIds?: string[] }).revierIds;
             }
          }
-         if (legacyUsers.length > 0 || invitationCount !== this.data.invitations.length) await this.persist();
+         let normalizedGuestMemberships = false;
+         for (const user of this.data.users) {
+            for (const membership of user.memberships) {
+               if (membership.memberType !== 'guest' || (!membership.position && !membership.isAdmin)) continue;
+               membership.position = undefined;
+               membership.isAdmin = false;
+               membership.updatedAt = new Date().toISOString();
+               normalizedGuestMemberships = true;
+            }
+         }
+         if (legacyUsers.length > 0 || normalizedGuestMemberships || invitationCount !== this.data.invitations.length) await this.persist();
       } catch (error: unknown) {
          // ENOENT means first run – bootstrap an empty file.
          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -451,6 +461,9 @@ export class AuthStore {
          if (!user) {
             throw new Error('USER_NOT_FOUND');
          }
+         if (role === 'guest' && (position || isAdmin)) {
+            throw new Error('GUEST_PRIVILEGES');
+         }
          user.status = 'active';
          if (role === 'admin') {
             user.accountType = 'systemAdmin';
@@ -462,8 +475,8 @@ export class AuthStore {
                revierId,
                status: 'active',
                memberType: role,
-               position: position ?? undefined,
-               isAdmin,
+               position: role === 'guest' ? undefined : position ?? undefined,
+               isAdmin: role === 'guest' ? false : isAdmin,
                source: 'systemAdmin',
                createdAt: now,
                updatedAt: now,
@@ -534,6 +547,9 @@ export class AuthStore {
          if (!user) {
             throw new Error('USER_NOT_FOUND');
          }
+         if (role === 'guest' && (position || isAdmin)) {
+            throw new Error('GUEST_PRIVILEGES');
+         }
          if (role === 'admin') {
             user.accountType = 'systemAdmin';
             user.memberships = [];
@@ -545,8 +561,8 @@ export class AuthStore {
                revierId,
                status: 'active',
                memberType: role,
-               position: position ?? undefined,
-               isAdmin: isAdmin ?? existing.get(revierId)?.isAdmin ?? false,
+               position: role === 'guest' ? undefined : position ?? undefined,
+               isAdmin: role === 'guest' ? false : isAdmin ?? existing.get(revierId)?.isAdmin ?? false,
                source: existing.get(revierId)?.source ?? 'systemAdmin',
                createdAt: existing.get(revierId)?.createdAt ?? now,
                updatedAt: now,
@@ -617,6 +633,9 @@ export class AuthStore {
          if (!user) throw new Error('USER_NOT_FOUND');
          if (user.accountType === 'systemAdmin') throw new Error('SYSTEM_ADMIN_MEMBERSHIP');
          const now = new Date().toISOString();
+         if (input.memberType === 'guest' && (input.position || input.isAdmin)) {
+            throw new Error('GUEST_PRIVILEGES');
+         }
          const existing = user.memberships.find((membership) => membership.revierId === input.revierId);
          if (
             existing?.status === 'active' &&

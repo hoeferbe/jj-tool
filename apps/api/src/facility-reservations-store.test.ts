@@ -60,11 +60,17 @@ describe('FacilityReservationsStore', () => {
       });
 
       assert.equal(reservation.startAt, '2030-06-15T18:00:00.000Z');
+      assert.equal(reservation.endAt, '2030-06-15T21:00:00.000Z');
       await store.updateReservation(reservation.id, {
-         startAt: '2030-06-16T18:00:00.000Z',
-         endAt: '2030-06-16T20:00:00.000Z',
+         startAt: '2030-06-16T18:30:00.000Z',
       });
-      assert.equal((await store.getActiveByFacilityId('facility-3'))?.startAt, '2030-06-16T18:00:00.000Z');
+      const updated = await store.getActiveByFacilityId('facility-3');
+      assert.equal(updated?.startAt, '2030-06-16T18:30:00.000Z');
+      assert.equal(updated?.endAt, '2030-06-16T21:30:00.000Z');
+      await assert.rejects(
+         store.updateReservation(reservation.id, { startAt: '2030-06-16T18:15:00.000Z' }),
+         /INVALID_PERIOD/,
+      );
       await store.releaseById(reservation.id);
       assert.equal(await store.getActiveByFacilityId('facility-3'), null);
    });

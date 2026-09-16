@@ -52,6 +52,7 @@ export function registerAdminRoutes(app: Hono, dependencies: AdminRouteDependenc
          return context.json({ message: 'Benutzer freigeschaltet. Ein Passwort-Link wurde versendet.' });
       } catch (error) {
          if ((error as Error).message === 'USER_NOT_FOUND') return context.json({ message: 'Benutzer nicht gefunden.' }, 404);
+         if ((error as Error).message === 'GUEST_PRIVILEGES') return context.json({ message: 'Gäste dürfen keine Funktion oder Revieradmin-Rechte erhalten.' }, 400);
          throw error;
       }
    });
@@ -92,6 +93,7 @@ export function registerAdminRoutes(app: Hono, dependencies: AdminRouteDependenc
          return context.json({ user });
       } catch (error) {
          if ((error as Error).message === 'USER_NOT_FOUND') return context.json({ message: 'Benutzer nicht gefunden.' }, 404);
+         if ((error as Error).message === 'GUEST_PRIVILEGES') return context.json({ message: 'Gäste dürfen keine Funktion oder Revieradmin-Rechte erhalten.' }, 400);
          throw error;
       }
    });
@@ -112,6 +114,7 @@ export function registerAdminRoutes(app: Hono, dependencies: AdminRouteDependenc
       } catch (error) {
          if ((error as Error).message === 'USER_NOT_FOUND') return context.json({ message: 'Benutzer nicht gefunden.' }, 404);
          if ((error as Error).message === 'LAST_REVIER_ADMIN') return context.json({ message: 'Zuerst muss ein anderes Mitglied zum Revieradmin ernannt werden.' }, 409);
+         if ((error as Error).message === 'GUEST_PRIVILEGES') return context.json({ message: 'Gäste dürfen keine Funktion oder Revieradmin-Rechte erhalten.' }, 400);
          return context.json({ message: 'Mitgliedschaft konnte nicht gespeichert werden.' }, 400);
       }
    });

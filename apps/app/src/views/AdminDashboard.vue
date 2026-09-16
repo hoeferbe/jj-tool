@@ -797,6 +797,20 @@ async function changeMembership(user: User, membership: RevierMembership, change
   }
 }
 
+function changeMembershipType(user: User, membership: RevierMembership, event: Event) {
+  const memberType = (event.target as HTMLSelectElement).value as RevierMembership['memberType']
+  changeMembership(user, membership, memberType === 'guest'
+    ? { memberType, position: undefined, isAdmin: false }
+    : { memberType })
+}
+
+function changePendingRole(userId: string) {
+  const approval = approvalData.value[userId]
+  if (approval?.role !== 'guest') return
+  approval.position = ''
+  approval.isAdmin = false
+}
+
 async function setMemberBlocked(user: User, blocked: boolean) {
   const confirmed = window.confirm(
     blocked
@@ -900,7 +914,7 @@ onBeforeUnmount(() => {
               <div v-if="approvalData[user.id]" class="role-controls">
                 <div class="field-group">
                   <span class="field-label">Rolle</span>
-                  <select v-model="approvalData[user.id].role" class="native-select">
+                  <select v-model="approvalData[user.id].role" class="native-select" @change="changePendingRole(user.id)">
                     <option value="guest">Gast</option>
                     <option value="paechter">Pächter</option>
                     <option value="bgs">BGS</option>
@@ -908,7 +922,7 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="field-group">
                   <span class="field-label">Funktion</span>
-                  <select v-model="approvalData[user.id].position" class="native-select" :disabled="approvalData[user.id].isAdmin">
+                  <select v-model="approvalData[user.id].position" class="native-select" :disabled="approvalData[user.id].isAdmin || approvalData[user.id].role === 'guest'">
                     <option value="">Keine</option>
                     <option value="revierleiter">Revierleiter</option>
                     <option value="kassenwart">Kassenwart</option>
@@ -1003,7 +1017,7 @@ onBeforeUnmount(() => {
                     <template v-if="canManageMembership(membership)">
                       <div class="field-group">
                         <span class="field-label">Typ</span>
-                        <select class="native-select" :value="membership.memberType" @change="changeMembership(user, membership, { memberType: ($event.target as HTMLSelectElement).value as RevierMembership['memberType'] })">
+                        <select class="native-select" :value="membership.memberType" @change="changeMembershipType(user, membership, $event)">
                           <option value="guest">Gast</option>
                           <option value="paechter">Pächter</option>
                           <option value="bgs">BGS</option>
@@ -1011,14 +1025,14 @@ onBeforeUnmount(() => {
                       </div>
                       <div class="field-group">
                         <span class="field-label">Funktion</span>
-                        <select class="native-select" :value="membership.position ?? ''" @change="changeMembership(user, membership, { position: (($event.target as HTMLSelectElement).value || undefined) as UserPosition | undefined })">
+                        <select class="native-select" :value="membership.position ?? ''" :disabled="membership.memberType === 'guest'" @change="changeMembership(user, membership, { position: (($event.target as HTMLSelectElement).value || undefined) as UserPosition | undefined })">
                           <option value="">Keine</option>
                           <option value="revierleiter">Revierleiter</option>
                           <option value="kassenwart">Kassenwart</option>
                           <option value="schriftfuehrer">Schriftführer</option>
                         </select>
                       </div>
-                      <IonCheckbox :checked="membership.isAdmin" class="admin-checkbox" @ion-change="changeMembership(user, membership, { isAdmin: ($event as CustomEvent<{ checked: boolean }>).detail.checked })">Revieradmin</IonCheckbox>
+                      <IonCheckbox :checked="membership.isAdmin" :disabled="membership.memberType === 'guest'" class="admin-checkbox" @ion-change="changeMembership(user, membership, { isAdmin: ($event as CustomEvent<{ checked: boolean }>).detail.checked })">Revieradmin</IonCheckbox>
                     </template>
                     <div v-else class="membership-summary">
                       <IonBadge color="medium">{{ ROLE_LABELS[membership.memberType] }}</IonBadge>
