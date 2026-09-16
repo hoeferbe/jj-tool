@@ -28,7 +28,8 @@ const props = withDefaults(defineProps<{
   entry?: Streckeneintrag | null
   revierName?: string
   revierBoundary?: GeoJsonFeatureCollection
-}>(), {})
+  canModify?: boolean
+}>(), { canModify: false })
 
 const emit = defineEmits<{
   close: []
@@ -233,12 +234,12 @@ watch(() => props.isOpen, (isOpen) => {
 
         <!-- Actions -->
         <div class="dialog-actions">
-          <IonButton color="danger" fill="outline" size="small" @click="handleDelete">
+          <IonButton v-if="props.canModify" color="danger" fill="outline" size="small" @click="handleDelete">
             <IonIcon slot="start" :icon="trashOutline" /> Löschen
           </IonButton>
           <div class="action-right">
             <IonButton fill="clear" @click="close">Schließen</IonButton>
-            <IonButton @click="handleEdit">
+            <IonButton v-if="props.canModify" @click="handleEdit">
               <IonIcon slot="start" :icon="createOutline" /> Bearbeiten
             </IonButton>
           </div>

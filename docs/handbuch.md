@@ -48,6 +48,8 @@ Das Benutzer-Menü oben rechts führt zu den wichtigsten Bereichen:
 - **Reviermitglieder**: aktive Mitglieder des ausgewählten Reviers
 - **Reviereinrichtungen**: Liste, Aufgaben und Reservierungen der Einrichtungen
 - **Streckeneinträge**: Erfassung, Bearbeitung und Übersicht der Strecke
+- **Neues Revier**: Dialog zum Anlegen eines weiteren Reviers
+- **Mein Profil**: eigenen Namen und die E-Mail-Adresse ändern; der Loginname bleibt unveränderlich
 - **Administration**: Verwaltung für Nutzer mit den entsprechenden Rechten
 - **Abmelden**: aktuelle Sitzung beenden
 
@@ -130,7 +132,7 @@ Nach Abschluss wird **Erledigt** ausgewählt. Der aktuelle Bearbeitungsstand ist
 
 ## 7. Reservierungen
 
-Kanzeln, Böcke und Leitern können reserviert werden. Eine Einrichtung kann immer nur von einer Person gleichzeitig gebucht sein.
+Kanzeln, Böcke und Leitern können reserviert werden. Die Startzeit wird in einem festen 30-Minuten-Raster gewählt; das Ende liegt automatisch drei Stunden später. Überschneidende Buchungen sind nicht möglich.
 
 ### Einrichtung reservieren
 
@@ -138,7 +140,7 @@ In der Liste **Reviereinrichtungen** steht bei einer freien reservierbaren Einri
 
 ### Reservierung beenden
 
-Die eigene aktive Reservierung wird über **Ausbuchen** beendet. Danach ist die Einrichtung wieder frei buchbar.
+Die eigene aktive Reservierung kann geändert oder storniert und eine laufende Nutzung über **Auschecken** beendet werden. Nach Ablauf wird eine Reservierung nicht mehr als aktiv angezeigt; sie bleibt für eine spätere Historie gespeichert.
 
 Röhrenfallen und Kirrungen sind nicht als reservierbare Einrichtungen vorgesehen.
 
@@ -149,6 +151,7 @@ Die Ansicht **Reviermitglieder** zeigt die aktiven Mitglieder des ausgewählten 
 Mögliche Mitgliedstypen sind **Pächter**, **BGS**, **Mitglied** und **Gast**. Zusätzlich können Funktionen wie **Revierleiter**, **Kassenwart** oder **Schriftführer** hinterlegt sein.
 
 Gäste können Revierdaten ansehen, haben aber keine Berechtigung, neue Jagdeinrichtungen anzulegen.
+Gäste können außerdem keine organisatorische Funktion und keine Revieradmin-Rechte erhalten.
 
 ## 9. Administration
 
@@ -186,7 +189,7 @@ Der Ersteller wird automatisch als Pächter und Revieradministrator dieses Revie
 
 ### Revier bearbeiten oder löschen
 
-Administratoren können den Reviernamen ändern. Vor dem Löschen eines Reviers sollte geprüft werden, ob es noch benötigt wird, da dabei die zugehörige Revierzuordnung entfernt wird.
+Administratoren können den Reviernamen ändern. Ein Revier kann erst gelöscht werden, wenn ihm keine weiteren Mitglieder mehr zugeordnet sind. Beim bestätigten Löschen werden das Revier sowie alle zugehörigen Jagdeinrichtungen, Aufgaben, Reservierungen, Streckeneinträge und Mitgliedschaften endgültig entfernt.
 
 ### Aktueller Verwaltungsstand
 
@@ -234,7 +237,7 @@ Die Karte bietet eine Straßen- und eine Satellitenansicht. Für die Darstellung
 
 - Die Streckeneinträge werden absteigend nach **Datum und Uhrzeit** sortiert dargestellt.
 - Kennzeichnungen für **VO** und **Bescheinigung** werden als farbige Badges hervorgehoben.
-- Zu jedem Eintrag stehen Aktionen für **Bearbeiten** (✏️) zur nachträglichen Änderung aller Daten (z. B. nachträgliche Gewichtseingabe) sowie **Löschen** (🗑️) zur Verfügung.
+- Der Ersteller sowie zuständige Revier- und Systemadministratoren können einen Eintrag **bearbeiten** oder **löschen**. Andere Reviermitglieder können den Eintrag ansehen, erhalten aber keine Änderungsaktionen.
 
 ## 12. Aktueller Funktionsstand
 
@@ -258,7 +261,7 @@ Derzeit ist die App im produktiven MVP-Bereich nutzbar und umfasst bereits die K
 - GPS-Aufzeichnung und Darstellung von Fährten / Nachsuchen
 - Fotos an Einrichtungen oder Streckeneinträgen
 - Push-Mitteilungen und Telegram-Benachrichtigungen
-- zeitlich begrenzte Reservierungen und eine Reservierungshistorie
+- sichtbare Reservierungshistorie
 - Zusammenfassende Streckenberichte und Exporte
 - Capacitor-/Android-Integration und App-Verteilung außerhalb der webbasierten PWA-Umgebung
 
@@ -270,5 +273,5 @@ Folgende Funktionen gehören zur weiteren Planung und sind noch nicht Bestandtei
 - GPS-Aufzeichnung und Darstellung von Fährten / Nachsuchen
 - Fotos an Einrichtungen oder Streckeneinträgen
 - Push-Mitteilungen und Telegram-Benachrichtigungen
-- zeitlich begrenzte Reservierungen und eine Reservierungshistorie
+- sichtbare Reservierungshistorie
 - Zusammenfassende Streckenberichte und Exporte

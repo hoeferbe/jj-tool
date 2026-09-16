@@ -22,6 +22,12 @@ interface Revier {
   boundary?: GeoJsonFeatureCollection
 }
 
+interface CurrentUser {
+  id: string
+  accountType: 'systemAdmin' | 'member'
+  memberships: Array<{ revierId: string; status: 'active' | 'pending'; isAdmin: boolean }>
+}
+
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 const reviere = ref<Revier[]>([])
 const entries = ref<Streckeneintrag[]>([])
@@ -29,6 +35,7 @@ const selectedRevierId = ref(localStorage.getItem('jj-member-selected-revier') ?
 const loading = ref(true)
 const errorMessage = ref('')
 const successMessage = ref('')
+const currentUser = ref<CurrentUser | null>(null)
 
 const isDialogOpen = ref(false)
 const isDetailOpen = ref(false)
@@ -37,6 +44,14 @@ const selectedEntryForDetail = ref<Streckeneintrag | null>(null)
 const deletingId = ref<string | null>(null)
 
 const selectedRevier = computed(() => reviere.value.find((revier) => revier.id === selectedRevierId.value) ?? null)
+const canAdministerSelectedRevier = computed(() => currentUser.value?.accountType === 'systemAdmin'
+  || currentUser.value?.memberships.some((membership) =>
+    membership.revierId === selectedRevierId.value && membership.status === 'active' && membership.isAdmin,
+  ) === true)
+
+function canModifyEntry(entry: Streckeneintrag) {
+  return entry.createdBy === currentUser.value?.id || canAdministerSelectedRevier.value
+}
 
 function formatDateTime(datum: string, uhrzeit?: string) {
   if (!datum) return ''
@@ -91,9 +106,14 @@ async function loadEntries() {
 async function loadReviere() {
   const token = localStorage.getItem('accessToken')
   try {
-    const response = await fetch(`${apiUrl}/reviere`, { headers: { Authorization: `Bearer ${token}` } })
+    const headers = { Authorization: `Bearer ${token}` }
+    const [response, userResponse] = await Promise.all([
+      fetch(`${apiUrl}/reviere`, { headers }),
+      fetch(`${apiUrl}/auth/me`, { headers, cache: 'no-store' }),
+    ])
     const data = await response.json() as { reviere?: Revier[]; message?: string }
     if (!response.ok) throw new Error(data.message ?? 'Reviere konnten nicht geladen werden.')
+    if (userResponse.ok) currentUser.value = ((await userResponse.json()) as { user: CurrentUser }).user
     reviere.value = data.reviere ?? []
     if (!reviere.value.some((revier) => revier.id === selectedRevierId.value)) {
       selectedRevierId.value = reviere.value[0]?.id ?? ''
@@ -238,7 +258,7 @@ onMounted(loadReviere)
 
               <p v-if="entry.notiz" class="entry-notes">{{ entry.notiz }}</p>
 
-              <div class="entry-actions">
+              <div v-if="canModifyEntry(entry)" class="entry-actions">
                 <button type="button" class="action-btn" @click.stop="openEditEntryDialog(entry)">✏️ Bearbeiten</button>
                 <button type="button" class="action-btn danger" :disabled="deletingId === entry.id" @click.stop="deleteEntry(entry)">
                   {{ deletingId === entry.id ? 'Lösche...' : '🗑️ Löschen' }}
@@ -277,6 +297,7 @@ onMounted(loadReviere)
         :entry="selectedEntryForDetail"
         :revier-name="selectedRevier ? `${selectedRevier.name} · ${selectedRevier.municipalityName}` : undefined"
         :revier-boundary="selectedRevier?.boundary"
+        :can-modify="selectedEntryForDetail ? canModifyEntry(selectedEntryForDetail) : false"
         @close="isDetailOpen = false"
         @edit="handleEditFromDetail"
         @delete="handleDeleteFromDetail"

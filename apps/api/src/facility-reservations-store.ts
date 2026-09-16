@@ -40,20 +40,23 @@ export class FacilityReservationsStore {
    }
 
    async getActiveByHuntingDistrictId(revierId: string) {
-      return this.data.reservierungen.filter((entry) => entry.revierId === revierId && !entry.releasedAt);
+      return this.data.reservierungen.filter((entry) => entry.revierId === revierId && this.isActive(entry));
    }
 
    async getActiveByFacilityId(jagdeinrichtungId: string) {
-      const now = Date.now();
       return this.data.reservierungen
-         .filter((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && !entry.releasedAt)
+         .filter((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && this.isActive(entry))
          .sort((first, second) => this.reservationStart(first) - this.reservationStart(second))
-         .find((entry) => !entry.endAt || new Date(entry.endAt).getTime() >= now) ?? null;
+         .at(0) ?? null;
+   }
+
+   async getActiveById(id: string) {
+      return this.data.reservierungen.find((entry) => entry.id === id && this.isActive(entry)) ?? null;
    }
 
    async checkIn(input: { revierId: string; jagdeinrichtungId: string; reservedBy?: string; checkedInBy: string }) {
       return this.enqueue(async () => {
-         const active = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === input.jagdeinrichtungId && !entry.releasedAt);
+         const active = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === input.jagdeinrichtungId && this.isActive(entry));
          if (active) {
             if ((active.checkedInBy && active.checkedInBy !== input.checkedInBy) || (active.reservedBy && active.reservedBy !== input.checkedInBy)) {
                throw new Error('ALREADY_IN_USE');
@@ -83,7 +86,7 @@ export class FacilityReservationsStore {
 
    async checkOut(jagdeinrichtungId: string) {
       return this.enqueue(async () => {
-         const reservation = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && !entry.releasedAt);
+         const reservation = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && this.isActive(entry));
          if (!reservation) return null;
          reservation.checkedOutAt = new Date().toISOString();
          reservation.releasedAt = reservation.checkedOutAt;
@@ -129,7 +132,7 @@ export class FacilityReservationsStore {
 
    async release(jagdeinrichtungId: string) {
       return this.enqueue(async () => {
-         const reservation = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && !entry.releasedAt);
+         const reservation = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && this.isActive(entry));
          if (!reservation) return null;
          reservation.releasedAt = new Date().toISOString();
          return reservation;
@@ -145,8 +148,20 @@ export class FacilityReservationsStore {
       });
    }
 
+   async deleteByHuntingDistrictId(revierId: string) {
+      return this.enqueue(async () => {
+         const initialLength = this.data.reservierungen.length;
+         this.data.reservierungen = this.data.reservierungen.filter((entry) => entry.revierId !== revierId);
+         return initialLength - this.data.reservierungen.length;
+      });
+   }
+
    private reservationStart(reservation: FacilityReservation) {
       return reservation.startAt ? new Date(reservation.startAt).getTime() : new Date(reservation.reservedAt).getTime();
+   }
+
+   private isActive(reservation: FacilityReservation) {
+      return !reservation.releasedAt && (!reservation.endAt || new Date(reservation.endAt).getTime() >= Date.now());
    }
 
    private periodsOverlap(firstStart?: string, firstEnd?: string, secondStart?: string, secondEnd?: string) {

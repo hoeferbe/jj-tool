@@ -11,10 +11,11 @@ interface KillEntryRouteDependencies {
    getAuthenticatedPayload: (context: import('hono').Context) => Promise<AuthPayload | null>;
    requireAuth: MiddlewareHandler;
    canAccessHuntingDistrict: (user: User, revierId: string) => boolean;
+   canAdministerHuntingDistrict: (user: User, revierId: string) => boolean;
 }
 
 export function registerKillEntryRoutes(app: Hono, dependencies: KillEntryRouteDependencies) {
-   const { authStore, killEntryStore, getAuthenticatedPayload, requireAuth, canAccessHuntingDistrict } = dependencies;
+   const { authStore, killEntryStore, getAuthenticatedPayload, requireAuth, canAccessHuntingDistrict, canAdministerHuntingDistrict } = dependencies;
 
    app.get('/reviere/:revierId/streckeneintraege', requireAuth, async (context) => {
       const payload = await getAuthenticatedPayload(context);
@@ -49,8 +50,10 @@ export function registerKillEntryRoutes(app: Hono, dependencies: KillEntryRouteD
       const revierId = context.req.param('revierId');
       const id = context.req.param('id');
       if (!revierId || !id || !user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      const existing = await killEntryStore.getById(id, revierId);
+      if (!existing) return context.json({ message: 'Streckeneintrag nicht gefunden.' }, 404);
+      if (existing.createdBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Dieser Streckeneintrag darf nicht bearbeitet werden.' }, 403);
       const updated = await killEntryStore.update(id, revierId, context.req.valid('json'));
-      if (!updated) return context.json({ message: 'Streckeneintrag nicht gefunden.' }, 404);
       return context.json({ streckeneintrag: updated });
    });
 
@@ -60,8 +63,10 @@ export function registerKillEntryRoutes(app: Hono, dependencies: KillEntryRouteD
       const revierId = context.req.param('revierId');
       const id = context.req.param('id');
       if (!revierId || !id || !user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      const existing = await killEntryStore.getById(id, revierId);
+      if (!existing) return context.json({ message: 'Streckeneintrag nicht gefunden.' }, 404);
+      if (existing.createdBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Dieser Streckeneintrag darf nicht gelöscht werden.' }, 403);
       const deleted = await killEntryStore.delete(id, revierId);
-      if (!deleted) return context.json({ message: 'Streckeneintrag nicht gefunden.' }, 404);
       return context.json({ message: 'Streckeneintrag gelöscht.' });
    });
 }

@@ -122,6 +122,14 @@ export class FacilityStore {
       });
    }
 
+   async deleteByHuntingDistrictId(revierId: string) {
+      return this.enqueue(async () => {
+         const initialLength = this.data.jagdeinrichtungen.length;
+         this.data.jagdeinrichtungen = this.data.jagdeinrichtungen.filter((entry) => entry.revierId !== revierId);
+         return initialLength - this.data.jagdeinrichtungen.length;
+      });
+   }
+
    private async enqueue<T>(operation: () => Promise<T>) {
       let result: T;
       const operationPromise = this.writeQueue.then(async () => {

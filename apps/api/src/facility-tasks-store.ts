@@ -91,6 +91,14 @@ export class FacilityTasksStore {
       });
    }
 
+   async deleteByHuntingDistrictId(revierId: string) {
+      return this.enqueue(async () => {
+         const initialLength = this.data.aufgaben.length;
+         this.data.aufgaben = this.data.aufgaben.filter((entry) => entry.revierId !== revierId);
+         return initialLength - this.data.aufgaben.length;
+      });
+   }
+
    private async enqueue<T>(operation: () => Promise<T>) {
       let result: T;
       const operationPromise = this.writeQueue.then(async () => {

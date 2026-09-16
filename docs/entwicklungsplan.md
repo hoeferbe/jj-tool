@@ -1,5 +1,7 @@
 # Mein Jagdrevier: Produkt- und Entwicklungsplan
 
+Der überprüfte Soll-Ist-Vergleich mit Fundstellen und offenen Arbeiten steht in [umsetzungsstand.md](umsetzungsstand.md).
+
 ## Zielbild
 
 Mein Jagdrevier ist eine private App fuer Android als installierbare Capacitor-App und fuer iOS als Progressive Web App (PWA). Sie unterstuetzt die sichere Koordination im Revier, das Aufzeichnen von Nachsuchen und Uebungsfaehrten sowie die Kommunikation mit der Gruppe auch bei eingeschraenkter Netzabdeckung.
@@ -82,7 +84,9 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 - Bestehende `auth.json`-Daten werden mit Backup sicher migriert; unspezifische alte Adminflags werden nicht zu globalen Systemrechten hochgestuft.
 - Systemadministratoren verwalten alle Konten und Reviere. Revieradmins sehen und bearbeiten ausschließlich Mitgliedschaften ihrer administrierten Reviere; Policies lesen immer den aktuellen Store-Zustand.
 - Konten können durch Systemadministratoren gesperrt, entsperrt und gelöscht werden. Sperren widerruft laufende Sessions; Selbstsperre und Verlust des letzten Systemadministrators werden verhindert.
+- Mitglieder können Anzeigenamen und E-Mail-Adresse im eigenen Profil ändern; der Loginname bleibt unveränderlich.
 - Mitglieder erhalten über die API nur aktive zugeordnete Reviere. Gemeinsame Reviermitglieder werden datensparsam mit Name, Typ und Funktion ausgeliefert; Gäste sehen nur „Mitglied“ oder „Gast“.
+- Gäste können weder eine organisatorische Funktion noch Revieradmin-Rechte erhalten. Ungültige Altdaten werden beim Start bereinigt.
 - Passwort-Erfassung und -Reset mit interaktiver Kriterien-Checkliste (mind. 12 Zeichen, Groß-/Kleinbuchstaben, Zahlen/Sonderzeichen, Bestätigung) und Umschaltung zwischen Klartext und verdeckter Passworteingabe (Auge-Icon) umgesetzt.
 
 #### Registrierung, Einladung und Admin-Dashboard
@@ -98,7 +102,7 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 - Jagdeinrichtungen mit Bezeichnung, Typ, Kartenposition, Status, Zustandsinfo und Notiz anlegen und bearbeiten.
 - Jagdeinrichtungen auf der Karte und in einer Listenansicht anzeigen.
 - Aufgaben an Einrichtungen anlegen, Mitgliedern zuweisen, übernehmen und als erledigt markieren.
-- Kanzeln, Böcke und Leitern reservieren und wieder freigeben.
+- Kanzeln, Böcke und Leitern in einem 30-Minuten-Raster für drei Stunden reservieren, ändern, stornieren sowie ein- und auschecken. Abgelaufene Reservierungen bleiben historisch gespeichert, werden aber nicht als aktiv ausgeliefert.
 - Die Listenansicht zeigt zusätzlich den Reservierungsstatus und den Zuständigkeitsstatus der Aufgaben an.
 
 #### Streckeneinträge
@@ -107,12 +111,13 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 - Absteigende Sortierung der Streckenliste nach Datum und Uhrzeit.
 - Dialog für Neuanlage und nachträgliche Bearbeitung sowie Löschfunktion integriert.
 - Geschützte API-Routen (GET, POST, PUT, DELETE) und persistente Speicherung für Streckeneinträge umgesetzt.
+- Bearbeiten und Löschen sind auf den Ersteller sowie zuständige Revier- oder Systemadmins beschränkt.
 - Die Detailansicht einer Strecke zeigt zusätzlich Badges, Mini-Karten-Vorschau, Datum, Ort und Notiz.
 
 #### Qualitätssicherung
 
 - Store-Tests für Mehr-Revier-Persistenz, Migration, Mitgliedschaften, Rechtescopes, Einladungen, System-/Revieradmin-Kontinuität sowie Streckeneintrag-CRUD und -Sortierung implementiert.
-- Aktueller Stand: 18 automatisierte API-Tests sowie erfolgreiche Workspace-Typechecks und Produktionsbuilds.
+- Die kanonischen API-Store-Tests sowie Workspace-Typechecks und Produktionsbuilds laufen erfolgreich. Die genaue Testzahl wird nicht festgeschrieben, da sie sich laufend ändert.
 
 ### Als Nächstes umzusetzen
 

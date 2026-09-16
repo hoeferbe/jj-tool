@@ -518,7 +518,7 @@ async function createRevier() {
 async function deleteSelectedRevier() {
   const id = selectedRevierId.value
   if (!id) return
-  const confirmed = window.confirm('Soll dieses Revier gelöscht werden?')
+  const confirmed = window.confirm('Soll dieses Revier endgültig gelöscht werden? Dabei werden auch alle Jagdeinrichtungen, Aufgaben, Reservierungen und Streckeneinträge dieses Reviers gelöscht.')
   if (!confirmed) return
   revierDeleting.value = true
   const token = localStorage.getItem('accessToken')

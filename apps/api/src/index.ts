@@ -124,6 +124,7 @@ registerKillEntryRoutes(app, {
    getAuthenticatedPayload,
    requireAuth,
    canAccessHuntingDistrict,
+   canAdministerHuntingDistrict,
 });
 registerAdminRoutes(app, {
    authStore,
@@ -140,6 +141,10 @@ registerAdminRoutes(app, {
 registerHuntingDistrictRoutes(app, {
    authStore,
    huntingDistrictStore,
+   facilityStore,
+   taskStore,
+   reservationStore,
+   killEntryStore,
    getAuthenticatedPayload,
    requireAuth,
    requireAdmin,

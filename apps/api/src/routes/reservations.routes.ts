@@ -62,8 +62,8 @@ export function registerReservationRoutes(app: Hono, dependencies: ReservationRo
       const reservationId = context.req.param('reservationId');
       if (!revierId || !id || !reservationId) return context.json({ message: 'Reservierungs-ID fehlt.' }, 400);
       if (!user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
-      const reservation = await reservationStore.getActiveByFacilityId(id);
-      if (!reservation || reservation.id !== reservationId || reservation.revierId !== revierId) return context.json({ message: 'Reservierung nicht gefunden.' }, 404);
+      const reservation = await reservationStore.getActiveById(reservationId);
+      if (!reservation || reservation.jagdeinrichtungId !== id || reservation.revierId !== revierId) return context.json({ message: 'Reservierung nicht gefunden.' }, 404);
       if (reservation.reservedBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Diese Reservierung darf nicht geändert werden.' }, 403);
       try {
          const body = await context.req.json() as { startAt?: string; endAt?: string };
@@ -84,8 +84,8 @@ export function registerReservationRoutes(app: Hono, dependencies: ReservationRo
       const reservationId = context.req.param('reservationId');
       if (!revierId || !id || !reservationId) return context.json({ message: 'Reservierungs-ID fehlt.' }, 400);
       if (!user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
-      const reservation = await reservationStore.getActiveByFacilityId(id);
-      if (!reservation || reservation.id !== reservationId || reservation.revierId !== revierId) return context.json({ message: 'Reservierung nicht gefunden.' }, 404);
+      const reservation = await reservationStore.getActiveById(reservationId);
+      if (!reservation || reservation.jagdeinrichtungId !== id || reservation.revierId !== revierId) return context.json({ message: 'Reservierung nicht gefunden.' }, 404);
       if (reservation.reservedBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Diese Reservierung darf nicht storniert werden.' }, 403);
       await reservationStore.releaseById(reservationId);
       return context.json({ message: 'Reservierung storniert.' });

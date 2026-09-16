@@ -23,5 +23,12 @@ describe('FacilityTasksStore', () => {
       const completed = await store.update(task.id, { status: 'erledigt' });
       assert.equal(completed?.completedAt !== undefined, true);
       assert.equal((await store.getByHuntingDistrictId('revier-1')).length, 1);
+      await store.create({
+         revierId: 'revier-2', jagdeinrichtungId: 'facility-2', titel: 'Kanzel prüfen',
+         status: 'offen', assignedBy: 'user-1',
+      });
+      assert.equal(await store.deleteByHuntingDistrictId('revier-1'), 1);
+      assert.deepEqual(await store.getByHuntingDistrictId('revier-1'), []);
+      assert.equal((await store.getByHuntingDistrictId('revier-2')).length, 1);
    });
 });

@@ -126,6 +126,14 @@ export class KillEntryStore {
       });
    }
 
+   async deleteByHuntingDistrictId(revierId: string) {
+      return this.enqueue(async () => {
+         const initialLength = this.data.streckeneintraege.length;
+         this.data.streckeneintraege = this.data.streckeneintraege.filter((entry) => entry.revierId !== revierId);
+         return initialLength - this.data.streckeneintraege.length;
+      });
+   }
+
    private async enqueue<T>(operation: () => Promise<T>) {
       let result: T;
       const operationPromise = this.writeQueue.then(async () => {

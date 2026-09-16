@@ -42,5 +42,10 @@ describe('FacilityStore', () => {
       await reloaded.initialize();
       assert.equal((await reloaded.getByHuntingDistrictId('revier-1'))[0]?.name, 'Kanzel Nord defekt');
       assert.equal(JSON.parse(await readFile(join(directory, 'jagdeinrichtungen.json'), 'utf8')).jagdeinrichtungen.length, 1);
+
+      const retained = await reloaded.create(createInput('Kanzel West', 'revier-2'));
+      assert.equal(await reloaded.deleteByHuntingDistrictId('revier-1'), 1);
+      assert.deepEqual(await reloaded.getByHuntingDistrictId('revier-1'), []);
+      assert.deepEqual((await reloaded.getByHuntingDistrictId('revier-2')).map((entry) => entry.id), [retained.id]);
    });
 });

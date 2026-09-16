@@ -74,4 +74,35 @@ describe('FacilityReservationsStore', () => {
       await store.releaseById(reservation.id);
       assert.equal(await store.getActiveByFacilityId('facility-3'), null);
    });
+
+   it('keeps expired reservations as history but excludes them from active results', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'jjtool-expired-reservierungen-'));
+      tempDirs.push(directory);
+      const store = new FacilityReservationsStore(directory);
+      await store.initialize();
+      const reservation = await store.reserve({
+         revierId: 'revier-1',
+         jagdeinrichtungId: 'facility-4',
+         reservedBy: 'user-1',
+         startAt: '2020-06-15T18:00:00.000Z',
+      });
+
+      assert.deepEqual(await store.getActiveByHuntingDistrictId('revier-1'), []);
+      assert.equal(await store.getActiveById(reservation.id), null);
+      const checkedIn = await store.checkIn({ revierId: 'revier-1', jagdeinrichtungId: 'facility-4', checkedInBy: 'user-2' });
+      assert.equal(checkedIn.id === reservation.id, false);
+   });
+
+   it('deletes reservations for one district without affecting another', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'jjtool-delete-reservierungen-'));
+      tempDirs.push(directory);
+      const store = new FacilityReservationsStore(directory);
+      await store.initialize();
+      await store.checkIn({ revierId: 'revier-1', jagdeinrichtungId: 'facility-1', checkedInBy: 'user-1' });
+      await store.checkIn({ revierId: 'revier-2', jagdeinrichtungId: 'facility-2', checkedInBy: 'user-1' });
+
+      assert.equal(await store.deleteByHuntingDistrictId('revier-1'), 1);
+      assert.deepEqual(await store.getActiveByHuntingDistrictId('revier-1'), []);
+      assert.equal((await store.getActiveByHuntingDistrictId('revier-2')).length, 1);
+   });
 });

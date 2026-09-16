@@ -5,7 +5,11 @@ import type { Feature, MultiPolygon, Polygon } from 'geojson';
 import type { Hono, MiddlewareHandler } from 'hono';
 import { type AuthStore, type User } from '../auth-store.js';
 import type { AuthPayload } from '../middleware/auth.middleware.js';
+import { type FacilityReservationsStore } from '../facility-reservations-store.js';
+import { type FacilityStore } from '../facility-store.js';
+import { type FacilityTasksStore } from '../facility-tasks-store.js';
 import { type HuntingDistrictStore } from '../hunting-district-store.js';
+import { type KillEntryStore } from '../kill-entry-store.js';
 import { huntingDistrictSchema } from '../schemas/hunting-district.schemas.js';
 
 const stateCodes: Record<string, string> = {
@@ -18,6 +22,10 @@ const stateCodes: Record<string, string> = {
 interface HuntingDistrictRouteDependencies {
    authStore: AuthStore;
    huntingDistrictStore: HuntingDistrictStore;
+   facilityStore: FacilityStore;
+   taskStore: FacilityTasksStore;
+   reservationStore: FacilityReservationsStore;
+   killEntryStore: KillEntryStore;
    getAuthenticatedPayload: (context: import('hono').Context) => Promise<AuthPayload | null>;
    requireAuth: MiddlewareHandler;
    requireAdmin: MiddlewareHandler;
@@ -25,7 +33,7 @@ interface HuntingDistrictRouteDependencies {
 }
 
 export function registerHuntingDistrictRoutes(app: Hono, dependencies: HuntingDistrictRouteDependencies) {
-   const { authStore, huntingDistrictStore, getAuthenticatedPayload, requireAuth, requireAdmin, canAdministerHuntingDistrict } = dependencies;
+   const { authStore, huntingDistrictStore, facilityStore, taskStore, reservationStore, killEntryStore, getAuthenticatedPayload, requireAuth, requireAdmin, canAdministerHuntingDistrict } = dependencies;
 
    app.get('/reviere', requireAuth, async (context) => {
       const payload = await getAuthenticatedPayload(context);
@@ -132,9 +140,14 @@ export function registerHuntingDistrictRoutes(app: Hono, dependencies: HuntingDi
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
       if (!user || !canAdministerHuntingDistrict(user, id)) return context.json({ message: 'Dieses Revier darf nicht administriert werden.' }, 403);
       if (authStore.getAllUsers().some((candidate) => candidate.id !== user.id && candidate.memberships.some((membership) => membership.revierId === id))) return context.json({ message: 'Das Revier kann erst gelöscht werden, wenn keine Mitglieder mehr zugeordnet sind.' }, 409);
+      if (!(await huntingDistrictStore.getHuntingDistricts()).some((district) => district.id === id)) return context.json({ message: 'Revier nicht gefunden.' }, 404);
+      await taskStore.deleteByHuntingDistrictId(id);
+      await reservationStore.deleteByHuntingDistrictId(id);
+      await killEntryStore.deleteByHuntingDistrictId(id);
+      await facilityStore.deleteByHuntingDistrictId(id);
       const deleted = await huntingDistrictStore.deleteHuntingDistrict(id);
-      if (!deleted) return context.json({ message: 'Revier nicht gefunden.' }, 404);
+      if (!deleted) return context.json({ message: 'Revier konnte nicht gelöscht werden.' }, 500);
       await authStore.removeHuntingDistrictAssignments(id);
-      return context.json({ message: 'Revier gelöscht.' });
+      return context.json({ message: 'Revier und zugehörige Daten gelöscht.' });
    });
 }

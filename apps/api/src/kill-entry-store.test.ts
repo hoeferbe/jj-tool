@@ -57,4 +57,17 @@ describe('KillEntryStore', () => {
       const remaining = await store.getByHuntingDistrictId('revier-1');
       assert.equal(remaining.length, 0);
    });
+
+   it('deletes entries for one district without affecting another', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'jjtool-delete-strecke-'));
+      tempDirectories.push(directory);
+      const store = new KillEntryStore(directory);
+      await store.initialize();
+      await store.create({ revierId: 'revier-1', datum: '2026-09-16', wildart: 'Reh', createdBy: 'user-1' });
+      await store.create({ revierId: 'revier-2', datum: '2026-09-16', wildart: 'Fuchs', createdBy: 'user-1' });
+
+      assert.equal(await store.deleteByHuntingDistrictId('revier-1'), 1);
+      assert.deepEqual(await store.getByHuntingDistrictId('revier-1'), []);
+      assert.equal((await store.getByHuntingDistrictId('revier-2')).length, 1);
+   });
 });
