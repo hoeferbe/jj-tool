@@ -708,8 +708,8 @@ async function updateUserRoleAndPosition(
   revierIds?: string[],
 ) {
   const token = localStorage.getItem('accessToken')
-  const body: Record<string, string | boolean | string[]> = { role }
-  if (position) body.position = position
+  const body: Record<string, string | boolean | string[] | null> = { role }
+  body.position = position || null
   // Only send isAdmin when the caller explicitly passes a value.
   if (isAdmin !== undefined) body.isAdmin = isAdmin
   if (revierIds !== undefined) body.revierIds = revierIds
@@ -770,7 +770,7 @@ async function saveMemberReviere(user: User) {
 async function updateMembership(
   userId: string,
   revierId: string,
-  membership: { memberType: string; position?: string; isAdmin: boolean; status: string } | null,
+  membership: { memberType: string; position?: string | null; isAdmin: boolean; status: string } | null,
 ) {
   const token = localStorage.getItem('accessToken')
   const response = await fetch(`${apiUrl}/reviere/${revierId}/members/${userId}`, {
@@ -787,7 +787,8 @@ async function updateMembership(
 async function changeMembership(user: User, membership: RevierMembership, changes: Partial<RevierMembership>) {
   memberActionId.value = user.id
   try {
-    await updateMembership(user.id, membership.revierId, { ...membership, ...changes })
+    const merged = { ...membership, ...changes }
+    await updateMembership(user.id, membership.revierId, { ...merged, position: merged.position ?? null })
     await loadUsers()
   } catch (error) {
     errorMessage.value = (error as Error).message

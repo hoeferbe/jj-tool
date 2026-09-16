@@ -415,7 +415,7 @@ export class AuthStore {
    async approveUser(
       userId: string,
       role: UserRole,
-      position?: OrganizationalRole,
+      position?: OrganizationalRole | null,
       isAdmin = false,
       revierIds: string[] = [],
    ) {
@@ -435,7 +435,7 @@ export class AuthStore {
                revierId,
                status: 'active',
                memberType: role,
-               position,
+               position: position ?? undefined,
                isAdmin,
                source: 'systemAdmin',
                createdAt: now,
@@ -494,7 +494,7 @@ export class AuthStore {
    async updateUserRoleAndPosition(
       userId: string,
       role: UserRole,
-      position?: OrganizationalRole,
+      position?: OrganizationalRole | null,
       isAdmin?: boolean,
       revierIds?: string[],
    ) {
@@ -514,7 +514,7 @@ export class AuthStore {
                revierId,
                status: 'active',
                memberType: role,
-               position,
+               position: position ?? undefined,
                isAdmin: isAdmin ?? existing.get(revierId)?.isAdmin ?? false,
                source: existing.get(revierId)?.source ?? 'systemAdmin',
                createdAt: existing.get(revierId)?.createdAt ?? now,
@@ -576,8 +576,9 @@ export class AuthStore {
 
    async upsertMembership(
       userId: string,
-      input: Omit<HuntingDistrictMembership, 'createdAt' | 'updatedAt' | 'source'> & {
+      input: Omit<HuntingDistrictMembership, 'createdAt' | 'updatedAt' | 'source' | 'position'> & {
          source?: HuntingDistrictMembership['source'];
+         position?: OrganizationalRole | null;
       },
    ) {
       return this.enqueue(async () => {
@@ -596,6 +597,7 @@ export class AuthStore {
          }
          const membership: HuntingDistrictMembership = {
             ...input,
+            position: input.position ?? undefined,
             source: input.source ?? existing?.source ?? 'systemAdmin',
             createdAt: existing?.createdAt ?? now,
             updatedAt: now,

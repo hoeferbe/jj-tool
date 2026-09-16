@@ -88,7 +88,7 @@ export function registerAdminRoutes(app: Hono, dependencies: AdminRouteDependenc
       const { role, position, isAdmin, revierIds } = context.req.valid('json');
       try {
          if (!(await hasOnlyExistingHuntingDistricts(revierIds))) return context.json({ message: 'Mindestens ein Revier ist nicht mehr vorhanden.' }, 400);
-         const user = await authStore.updateUserRoleAndPosition(userId, role, position, isAdmin, revierIds);
+         const user = await authStore.updateUserRoleAndPosition(userId, role, position ?? undefined, isAdmin, revierIds);
          return context.json({ user });
       } catch (error) {
          if ((error as Error).message === 'USER_NOT_FOUND') return context.json({ message: 'Benutzer nicht gefunden.' }, 404);
@@ -104,7 +104,8 @@ export function registerAdminRoutes(app: Hono, dependencies: AdminRouteDependenc
       if (!administrator || !canAdministerHuntingDistrict(administrator, revierId)) return context.json({ message: 'Diese Mitgliedschaft darf nicht administriert werden.' }, 403);
       try {
          const targetWasPending = authStore.findUserById(userId)?.status === 'pending';
-         const membership = await authStore.upsertMembership(userId, { revierId, ...context.req.valid('json') });
+         const input = context.req.valid('json');
+         const membership = await authStore.upsertMembership(userId, { revierId, ...input });
          const target = authStore.findUserById(userId);
          if (targetWasPending && membership.status === 'active' && target) await createPasswordLink(target);
          return context.json({ membership });

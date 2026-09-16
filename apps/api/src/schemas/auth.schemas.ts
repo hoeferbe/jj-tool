@@ -27,14 +27,14 @@ export const approveSchema = z.object({
 });
 export const updateRoleSchema = z.object({
    role: z.enum(ROLES),
-   position: z.enum(POSITIONS).optional(),
+   position: z.enum(POSITIONS).nullable().optional(),
    isAdmin: z.boolean().optional(),
    revierIds: z.array(z.string().uuid()).optional(),
 });
 export const updateUserStatusSchema = z.object({ blocked: z.boolean() });
 export const membershipSchema = z.object({
    memberType: z.enum(['paechter', 'bgs', 'guest']),
-   position: z.enum(POSITIONS).optional(),
+   position: z.enum(POSITIONS).nullable().optional(),
    isAdmin: z.boolean().default(false),
    status: z.enum(['pending', 'active']).default('active'),
 });
