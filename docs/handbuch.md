@@ -132,7 +132,7 @@ Nach Abschluss wird **Erledigt** ausgewählt. Der aktuelle Bearbeitungsstand ist
 
 ## 7. Reservierungen
 
-Kanzeln, Böcke und Leitern können reserviert werden. Die Startzeit wird in einem festen 30-Minuten-Raster gewählt; das Ende liegt automatisch drei Stunden später. Überschneidende Buchungen sind nicht möglich.
+Kanzeln, Böcke und Leitern können reserviert werden. Die Startzeit wird in einem festen 30-Minuten-Raster gewählt; das Ende liegt automatisch drei Stunden später. Mehrere nicht überlappende zukünftige Buchungen sind möglich und werden chronologisch angezeigt.
 
 ### Einrichtung reservieren
 
@@ -140,7 +140,7 @@ In der Liste **Reviereinrichtungen** steht bei einer freien reservierbaren Einri
 
 ### Reservierung beenden
 
-Die eigene aktive Reservierung kann geändert oder storniert und eine laufende Nutzung über **Auschecken** beendet werden. Nach Ablauf wird eine Reservierung nicht mehr als aktiv angezeigt; sie bleibt für eine spätere Historie gespeichert.
+Jede eigene zukünftige Reservierung kann einzeln geändert oder storniert und eine laufende Nutzung über **Auschecken** beendet werden. Nach Ablauf wird eine Reservierung nicht mehr als aktiv angezeigt. Über **Reservierungshistorie** lassen sich abgelaufene, stornierte und beendete Buchungen der Einrichtung anzeigen.
 
 Röhrenfallen und Kirrungen sind nicht als reservierbare Einrichtungen vorgesehen.
 
@@ -261,7 +261,6 @@ Derzeit ist die App im produktiven MVP-Bereich nutzbar und umfasst bereits die K
 - GPS-Aufzeichnung und Darstellung von Fährten / Nachsuchen
 - Fotos an Einrichtungen oder Streckeneinträgen
 - Push-Mitteilungen und Telegram-Benachrichtigungen
-- sichtbare Reservierungshistorie
 - Zusammenfassende Streckenberichte und Exporte
 - Capacitor-/Android-Integration und App-Verteilung außerhalb der webbasierten PWA-Umgebung
 
@@ -273,5 +272,4 @@ Folgende Funktionen gehören zur weiteren Planung und sind noch nicht Bestandtei
 - GPS-Aufzeichnung und Darstellung von Fährten / Nachsuchen
 - Fotos an Einrichtungen oder Streckeneinträgen
 - Push-Mitteilungen und Telegram-Benachrichtigungen
-- sichtbare Reservierungshistorie
 - Zusammenfassende Streckenberichte und Exporte

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { IonBadge, IonButton, IonContent, IonItem, IonLabel, IonList, IonModal, IonNote, IonSelect, IonSelectOption, IonTextarea } from '@ionic/vue'
 
 interface Point { lat: number; lng: number }
@@ -24,6 +24,8 @@ interface FacilityReservation {
   checkedInByName?: string
   startAt?: string
   endAt?: string
+  releasedAt?: string
+  checkedOutAt?: string
 }
 interface FacilityTask {
   id: string
@@ -62,7 +64,10 @@ const saving = ref(false)
 const message = ref('')
 const usageMessage = ref('')
 const usageSaving = ref(false)
-const loadedReservation = ref<FacilityReservation | null>(props.reservation ?? null)
+const activeReservations = ref<FacilityReservation[]>(props.reservation ? [props.reservation] : [])
+const reservationHistory = ref<FacilityReservation[]>([])
+const loadedReservation = computed(() => activeReservations.value[0] ?? null)
+const editingReservation = ref<FacilityReservation | null>(null)
 const reservationStart = ref('')
 const reservationEnd = ref('')
 const reservationDate = ref('')
@@ -73,6 +78,7 @@ const reservationTimeOptions = Array.from({ length: 48 }, (_, index) => {
   return `${hours}:${minutes}`
 })
 const showReservationFields = ref(false)
+const showReservationHistory = ref(false)
 const tasks = ref<FacilityTask[]>([])
 const members = ref<FacilityMember[]>([])
 const taskTitle = ref('')
@@ -99,9 +105,12 @@ function reset() {
   position.value = props.facility ? { ...props.facility.position } : { ...(props.position ?? props.center) }
   message.value = ''
   usageMessage.value = ''
-  loadedReservation.value = props.reservation ?? null
+  activeReservations.value = props.reservation ? [props.reservation] : []
+  reservationHistory.value = []
+  editingReservation.value = null
   setReservationStart(toLocalDateTime(props.reservation?.startAt) ?? defaultReservationStart())
   showReservationFields.value = false
+  showReservationHistory.value = false
   showTaskHistory.value = false
 }
 
@@ -151,14 +160,33 @@ function reservationPayload() {
   }
 }
 
+function formatReservationPeriod(reservation: FacilityReservation) {
+  const start = toLocalDateTime(reservation.startAt)?.replace('T', ' ') ?? 'Sofort'
+  const end = toLocalDateTime(reservation.endAt)?.replace('T', ' ')
+  return end ? `${start} bis ${end}` : start
+}
+
+function reservationHistoryStatus(reservation: FacilityReservation) {
+  if (reservation.checkedOutAt) return 'Ausgecheckt'
+  if (reservation.releasedAt) return 'Storniert oder freigegeben'
+  return 'Abgelaufen'
+}
+
 async function loadUsage() {
   if (!props.facility || !reservable()) return
   const token = localStorage.getItem('accessToken')
-  const response = await fetch(`${apiUrl}/reviere/${props.revierId}/jagdeinrichtung-reservierungen`, { headers: { Authorization: `Bearer ${token}` } })
-  if (!response.ok) return
-  const data = await response.json() as { reservierungen: Array<FacilityReservation & { jagdeinrichtungId: string }> }
-  loadedReservation.value = data.reservierungen.find((entry) => entry.jagdeinrichtungId === props.facility?.id) ?? null
-  setReservationStart(toLocalDateTime(loadedReservation.value?.startAt) ?? defaultReservationStart())
+  const headers = { Authorization: `Bearer ${token}` }
+  const [activeResponse, historyResponse] = await Promise.all([
+    fetch(`${apiUrl}/reviere/${props.revierId}/jagdeinrichtung-reservierungen`, { headers }),
+    fetch(`${apiUrl}/reviere/${props.revierId}/jagdeinrichtung-reservierungen/historie`, { headers }),
+  ])
+  if (!activeResponse.ok || !historyResponse.ok) return
+  const activeData = await activeResponse.json() as { reservierungen: Array<FacilityReservation & { jagdeinrichtungId: string }> }
+  const historyData = await historyResponse.json() as { reservierungen: Array<FacilityReservation & { jagdeinrichtungId: string }> }
+  activeReservations.value = activeData.reservierungen.filter((entry) => entry.jagdeinrichtungId === props.facility?.id)
+  reservationHistory.value = historyData.reservierungen.filter((entry) => entry.jagdeinrichtungId === props.facility?.id)
+  editingReservation.value = null
+  setReservationStart(defaultReservationStart())
 }
 
 async function loadTasks() {
@@ -234,21 +262,24 @@ async function reserve() {
 
 function beginReservation() {
   showReservationFields.value = true
+  editingReservation.value = null
   setReservationStart(defaultReservationStart())
 }
 
-function beginReservationEdit() {
+function beginReservationEdit(reservation: FacilityReservation) {
   showReservationFields.value = true
+  editingReservation.value = reservation
+  setReservationStart(toLocalDateTime(reservation.startAt) ?? defaultReservationStart())
 }
 
 async function updateReservation() {
-  if (!props.facility || !loadedReservation.value || !reservationStart.value) return
-  await changeReservation('PATCH', reservationPayload(), loadedReservation.value.id)
+  if (!props.facility || !editingReservation.value || !reservationStart.value) return
+  await changeReservation('PATCH', reservationPayload(), editingReservation.value.id)
 }
 
-async function cancelReservation() {
-  if (!props.facility || !loadedReservation.value) return
-  await changeReservation('DELETE', undefined, loadedReservation.value.id)
+async function cancelReservation(reservation: FacilityReservation) {
+  if (!props.facility) return
+  await changeReservation('DELETE', undefined, reservation.id)
 }
 
 async function changeReservation(method: 'POST' | 'PATCH' | 'DELETE', body?: { startAt: string; endAt?: string }, reservationId?: string) {
@@ -266,6 +297,7 @@ async function changeReservation(method: 'POST' | 'PATCH' | 'DELETE', body?: { s
     if (!response.ok) throw new Error(((await response.json()) as { message?: string }).message ?? 'Reservierung konnte nicht geändert werden.')
     await loadUsage()
     showReservationFields.value = false
+    editingReservation.value = null
     emit('usageChanged')
   } catch (error) {
     usageMessage.value = error instanceof Error ? error.message : 'Reservierung konnte nicht geändert werden.'
@@ -321,8 +353,19 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
           <IonBadge v-else color="medium">Frei</IonBadge>
         </div>
         <p v-if="loadedReservation?.checkedInBy">Eingecheckt von {{ loadedReservation.checkedInBy === currentUserId() ? 'dir' : loadedReservation.checkedInByName ?? 'Unbekanntes Mitglied' }}.</p>
-        <p v-else-if="loadedReservation">Reserviert von {{ loadedReservation.reservedBy === currentUserId() ? 'dir' : loadedReservation.reservedByName ?? 'Unbekanntes Mitglied' }} für {{ toLocalDateTime(loadedReservation.startAt)?.replace('T', ' ') }}{{ loadedReservation.endAt ? ` bis ${toLocalDateTime(loadedReservation.endAt)?.replace('T', ' ')}` : '' }}.</p>
-        <p v-else>Die Einrichtung ist frei. Lege einen Tag und Zeitraum für die Reservierung fest.</p>
+        <p v-if="!activeReservations.length">Die Einrichtung ist frei. Lege einen Tag und Zeitraum für die Reservierung fest.</p>
+        <div v-else class="reservation-list">
+          <article v-for="reservation in activeReservations" :key="reservation.id" class="reservation-entry">
+            <div>
+              <strong>{{ reservation.checkedInBy ? 'Aktuelle Nutzung' : formatReservationPeriod(reservation) }}</strong>
+              <p>{{ reservation.checkedInBy ? `Eingecheckt von ${reservation.checkedInBy === currentUserId() ? 'dir' : reservation.checkedInByName ?? 'Unbekanntes Mitglied'}` : `Reserviert von ${reservation.reservedBy === currentUserId() ? 'dir' : reservation.reservedByName ?? 'Unbekanntes Mitglied'}` }}</p>
+            </div>
+            <div v-if="reservation.reservedBy === currentUserId() && !reservation.checkedInBy" class="reservation-entry-actions">
+              <IonButton size="small" fill="clear" :disabled="usageSaving" @click="beginReservationEdit(reservation)">Ändern</IonButton>
+              <IonButton size="small" fill="clear" color="danger" :disabled="usageSaving" @click="cancelReservation(reservation)">Stornieren</IonButton>
+            </div>
+          </article>
+        </div>
         <div v-if="showReservationFields" class="reservation-period">
           <label class="field-label"><span>Datum</span><input v-model="reservationDate" class="form-control" type="date" @change="handleReservationStartChange"></label>
           <label class="field-label"><span>Von</span><select v-model="reservationTime" class="form-control" @change="handleReservationStartChange"><option v-for="time in reservationTimeOptions" :key="time" :value="time">{{ time }}</option></select></label>
@@ -331,11 +374,17 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
         <div class="usage-actions">
           <IonButton v-if="loadedReservation?.checkedInBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'DELETE')">Auschecken</IonButton>
           <IonButton v-else-if="!loadedReservation || loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'POST')">Einchecken</IonButton>
-          <IonButton v-if="!loadedReservation && !showReservationFields" size="small" fill="outline" :disabled="usageSaving" @click="beginReservation">Reservieren</IonButton>
-          <IonButton v-else-if="!loadedReservation && showReservationFields" size="small" fill="outline" :disabled="usageSaving || !reservationStart || !reservationEnd" @click="reserve">Reservierung speichern</IonButton>
-          <IonButton v-else-if="loadedReservation?.reservedBy === currentUserId() && !loadedReservation?.checkedInBy && !showReservationFields" size="small" fill="outline" :disabled="usageSaving" @click="beginReservationEdit">Ändern</IonButton>
-          <IonButton v-else-if="loadedReservation?.reservedBy === currentUserId() && !loadedReservation?.checkedInBy && showReservationFields" size="small" fill="outline" :disabled="usageSaving || !reservationStart || !reservationEnd" @click="updateReservation">Änderung speichern</IonButton>
-          <IonButton v-if="loadedReservation && !loadedReservation.checkedInBy && loadedReservation.reservedBy === currentUserId()" size="small" fill="outline" color="danger" :disabled="usageSaving" @click="cancelReservation">Stornieren</IonButton>
+          <IonButton v-if="!showReservationFields" size="small" fill="outline" :disabled="usageSaving" @click="beginReservation">{{ activeReservations.length ? 'Weitere Reservierung' : 'Reservieren' }}</IonButton>
+          <IonButton v-else-if="!editingReservation" size="small" fill="outline" :disabled="usageSaving || !reservationStart || !reservationEnd" @click="reserve">Reservierung speichern</IonButton>
+          <IonButton v-else size="small" fill="outline" :disabled="usageSaving || !reservationStart || !reservationEnd" @click="updateReservation">Änderung speichern</IonButton>
+        </div>
+        <IonButton v-if="reservationHistory.length" size="small" fill="clear" @click="showReservationHistory = !showReservationHistory">
+          {{ showReservationHistory ? 'Reservierungshistorie ausblenden' : `Reservierungshistorie (${reservationHistory.length})` }}
+        </IonButton>
+        <div v-if="showReservationHistory" class="reservation-history">
+          <article v-for="reservation in reservationHistory" :key="reservation.id" class="reservation-entry history-entry">
+            <div><strong>{{ formatReservationPeriod(reservation) }}</strong><p>{{ reservation.reservedByName ?? 'Unbekanntes Mitglied' }} · {{ reservationHistoryStatus(reservation) }}</p></div>
+          </article>
         </div>
         <p v-if="usageMessage" class="message">{{ usageMessage }}</p>
       </section>
@@ -448,6 +497,10 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
 .usage-heading, .usage-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .reservation-period { display: flex; gap: 10px; }
 .reservation-period .field-label { flex: 1; min-width: 0; }
+.reservation-list, .reservation-history { display: grid; gap: 8px; }
+.reservation-entry { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border: 1px solid var(--ion-color-light-shade); border-radius: 6px; }
+.reservation-entry-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; }
+.history-entry { background: var(--ion-color-light, #f1f3ed); }
 .usage-section p { margin: 0; color: var(--ion-color-medium-shade); }
 .tasks-section { display: flex; flex-direction: column; gap: 8px; }
 .tasks-section h3 { margin: 0; }

@@ -10,7 +10,7 @@ type FacilityType = 'Kanzel' | 'Bock' | 'Leiter' | 'Roehrenfalle' | 'Kirrung'
 type FacilityStatus = 'aktiv' | 'defekt' | 'ausser Betrieb'
 interface Facility { id: string; revierId: string; name: string; typ: FacilityType; status: FacilityStatus; position: { lat: number; lng: number }; zustandsInfo?: string; notiz?: string; createdBy: string; createdAt: string; updatedAt: string }
 interface Task { id: string; jagdeinrichtungId: string; titel: string; beschreibung?: string; status: 'offen' | 'in Bearbeitung' | 'erledigt'; assignedTo?: string; assignedBy: string }
-interface Reservation { id: string; jagdeinrichtungId: string; reservedBy: string; reservedAt: string; checkedInBy?: string; checkedInAt?: string; checkedOutAt?: string }
+interface Reservation { id: string; jagdeinrichtungId: string; reservedBy: string; reservedAt: string; startAt?: string; endAt?: string; checkedInBy?: string; checkedInAt?: string; checkedOutAt?: string }
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 const reviere = ref<Revier[]>([])
@@ -37,14 +37,19 @@ const currentUserId = computed(() => {
 })
 const facilityTasks = (facilityId: string) => tasks.value.filter((task) => task.jagdeinrichtungId === facilityId && task.status !== 'erledigt')
 const memberName = (id?: string) => members.value.find((member) => member.id === id)?.displayName ?? 'Alle Mitglieder'
-const reservationFor = (facilityId: string) => reservations.value.find((reservation) => reservation.jagdeinrichtungId === facilityId)
+const reservationsFor = (facilityId: string) => reservations.value.filter((reservation) => reservation.jagdeinrichtungId === facilityId)
+const reservationFor = (facilityId: string) => reservationsFor(facilityId)[0]
 const reservable = (facility: Facility) => ['Kanzel', 'Bock', 'Leiter'].includes(facility.typ)
+const formatReservationStart = (value?: string) => value
+  ? new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+  : 'sofort'
 const reservationLabel = (facility: Facility) => {
-  const reservation = reservationFor(facility.id)
+  const facilityReservations = reservationsFor(facility.id)
+  const reservation = facilityReservations[0]
   if (!reservation) return 'Frei'
   if (reservation.checkedInBy) return reservation.checkedInBy === currentUserId.value ? 'Eingebucht von dir' : `Eingebucht von ${memberName(reservation.checkedInBy)}`
-  if (reservation.reservedBy === currentUserId.value) return 'Von dir reserviert'
-  return `Reserviert von ${memberName(reservation.reservedBy)}`
+  const count = facilityReservations.length > 1 ? ` · ${facilityReservations.length} Buchungen` : ''
+  return `Nächste Buchung: ${formatReservationStart(reservation.startAt)}${count}`
 }
 function openFacility(facility: Facility) {
   selectedFacility.value = facility
@@ -194,6 +199,7 @@ onMounted(loadReviere)
           <div class="facility-header"><div><h2>{{ facility.name }}</h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'warning' : 'medium'">{{ facility.status }}</IonBadge><IonButton size="small" fill="clear" @click="openFacility(facility)">Öffnen</IonButton></div>
           <p v-if="facility.zustandsInfo" class="condition"><strong>Zustand:</strong> {{ facility.zustandsInfo }}</p>
           <p v-if="facility.notiz" class="note">{{ facility.notiz }}</p>
+          <div v-if="reservable(facility)" class="reservation"><strong>Nutzung</strong><span>{{ reservationLabel(facility) }}</span></div>
           <div class="task-heading"><strong>Aufgaben</strong></div>
           <IonList v-if="facilityTasks(facility.id).length" lines="full">
             <IonItem v-for="task in facilityTasks(facility.id)" :key="task.id">

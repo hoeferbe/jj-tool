@@ -1,6 +1,6 @@
 import type { Hono, MiddlewareHandler } from 'hono';
 import { type AuthStore, type User } from '../auth-store.js';
-import { type FacilityReservationsStore } from '../facility-reservations-store.js';
+import { type FacilityReservation, type FacilityReservationsStore } from '../facility-reservations-store.js';
 import { type FacilityStore } from '../facility-store.js';
 import type { AuthPayload } from '../middleware/auth.middleware.js';
 
@@ -17,6 +17,14 @@ interface ReservationRouteDependencies {
 export function registerReservationRoutes(app: Hono, dependencies: ReservationRouteDependencies) {
    const { authStore, reservationStore, facilityStore, getAuthenticatedPayload, requireAuth, canAccessHuntingDistrict, canAdministerHuntingDistrict } = dependencies;
 
+   const withMemberNames = (reservation: FacilityReservation) => ({
+      ...reservation,
+      reservedByName: authStore.findUserById(reservation.reservedBy)?.displayName ?? 'Unbekanntes Mitglied',
+      checkedInByName: reservation.checkedInBy
+         ? authStore.findUserById(reservation.checkedInBy)?.displayName ?? 'Unbekanntes Mitglied'
+         : undefined,
+   });
+
    app.get('/reviere/:revierId/jagdeinrichtung-reservierungen', requireAuth, async (context) => {
       const payload = await getAuthenticatedPayload(context);
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
@@ -24,14 +32,17 @@ export function registerReservationRoutes(app: Hono, dependencies: ReservationRo
       if (!revierId || !user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
       const reservierungen = await reservationStore.getActiveByHuntingDistrictId(revierId);
       return context.json({
-         reservierungen: reservierungen.map((reservation) => ({
-            ...reservation,
-            reservedByName: authStore.findUserById(reservation.reservedBy)?.displayName ?? 'Unbekanntes Mitglied',
-            checkedInByName: reservation.checkedInBy
-               ? authStore.findUserById(reservation.checkedInBy)?.displayName ?? 'Unbekanntes Mitglied'
-               : undefined,
-         })),
+         reservierungen: reservierungen.map(withMemberNames),
       });
+   });
+
+   app.get('/reviere/:revierId/jagdeinrichtung-reservierungen/historie', requireAuth, async (context) => {
+      const payload = await getAuthenticatedPayload(context);
+      const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+      const revierId = context.req.param('revierId');
+      if (!revierId || !user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      const reservierungen = await reservationStore.getHistoryByHuntingDistrictId(revierId);
+      return context.json({ reservierungen: reservierungen.map(withMemberNames) });
    });
 
    app.post('/reviere/:revierId/jagdeinrichtungen/:id/reservieren', requireAuth, async (context) => {

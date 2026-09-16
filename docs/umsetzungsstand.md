@@ -81,9 +81,9 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 | Allgemeine Revierinformationen und Aufgaben | Teilweise | Aufgabenmodell existiert nur an Jagdeinrichtungen | Allgemeine Einträge, Fälligkeit, Priorität und Kategorien fehlen |
 | Einrichtungen reservieren | Fertig | Reservieren, Ändern, Stornieren sowie Ein- und Auschecken | Keine wesentliche MVP-Lücke |
 | Einheitliches Zeitraster | Fertig | Start in festen 30-Minuten-Schritten; Ende automatisch drei Stunden später; API erzwingt dieselbe Regel | Dauer ist derzeit bewusst fest und nicht konfigurierbar |
-| Reservierungskonflikte verhindern | Fertig | Zeitraumüberschneidungen werden im Store geprüft | Mehrere zukünftige Reservierungen je Einrichtung in der UI prüfen |
-| Reservierungshistorie | Teilweise | Beendete Reservierungen bleiben in der JSON-Datei | Historien-API, Anzeige, Filter und Aufbewahrungsregel fehlen |
-| Alte Reservierungen behandeln | Fertig | Abgelaufene Reservierungen bleiben historisch gespeichert, werden aber nicht mehr als aktiv ausgeliefert oder zur Bearbeitung angeboten | Eine sichtbare Reservierungshistorie bleibt offen |
+| Reservierungskonflikte verhindern | Fertig | Zeitraumüberschneidungen werden im Store geprüft; mehrere nicht überlappende Zukunftsbuchungen werden chronologisch angezeigt und einzeln bearbeitet oder storniert | Keine bekannte MVP-Lücke |
+| Reservierungshistorie | Fertig | Beendete und abgelaufene Reservierungen bleiben gespeichert und werden pro Einrichtung in einer ausklappbaren Historie angezeigt | Optionale Filter und eine Aufbewahrungsfrist können später ergänzt werden |
+| Alte Reservierungen behandeln | Fertig | Abgelaufene Reservierungen werden nicht mehr als aktiv ausgeliefert, bleiben aber in der Historie erhalten | Keine bekannte MVP-Lücke |
 
 ## 7. Streckeneinträge
 
@@ -132,11 +132,10 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 
 ## Empfohlene nächste Reihenfolge
 
-1. Reservierungshistorie und Darstellung mehrerer zukünftiger Buchungen ergänzen.
-2. Allgemeine Revieraufgaben mit Fälligkeit und Priorität ergänzen.
-3. Offline-Queue zunächst für Streckeneinträge entwickeln.
-4. PWA-Manifest, Service Worker und Capacitor-Grundlage einrichten.
-5. Danach Bilder, Auswertungen, Telegram, Push und Fährtenaufzeichnung angehen.
+1. Allgemeine Revieraufgaben mit Fälligkeit und Priorität ergänzen.
+2. Offline-Queue zunächst für Streckeneinträge entwickeln.
+3. PWA-Manifest, Service Worker und Capacitor-Grundlage einrichten.
+4. Danach Bilder, Auswertungen, Telegram, Push und Fährtenaufzeichnung angehen.
 
 ## Kurzfazit
 

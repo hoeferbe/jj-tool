@@ -58,13 +58,21 @@ describe('FacilityReservationsStore', () => {
          startAt: '2030-06-15T18:00:00.000Z',
          endAt: '2030-06-15T20:00:00.000Z',
       });
+      const laterReservation = await store.reserve({
+         revierId: 'revier-1',
+         jagdeinrichtungId: 'facility-3',
+         reservedBy: 'user-2',
+         startAt: '2030-06-15T22:00:00.000Z',
+      });
 
       assert.equal(reservation.startAt, '2030-06-15T18:00:00.000Z');
       assert.equal(reservation.endAt, '2030-06-15T21:00:00.000Z');
+      assert.deepEqual((await store.getActiveByHuntingDistrictId('revier-1')).map((entry) => entry.id), [reservation.id, laterReservation.id]);
+      assert.equal((await store.getActiveById(laterReservation.id))?.reservedBy, 'user-2');
       await store.updateReservation(reservation.id, {
          startAt: '2030-06-16T18:30:00.000Z',
       });
-      const updated = await store.getActiveByFacilityId('facility-3');
+      const updated = await store.getActiveById(reservation.id);
       assert.equal(updated?.startAt, '2030-06-16T18:30:00.000Z');
       assert.equal(updated?.endAt, '2030-06-16T21:30:00.000Z');
       await assert.rejects(
@@ -72,7 +80,8 @@ describe('FacilityReservationsStore', () => {
          /INVALID_PERIOD/,
       );
       await store.releaseById(reservation.id);
-      assert.equal(await store.getActiveByFacilityId('facility-3'), null);
+      assert.equal(await store.getActiveById(reservation.id), null);
+      assert.equal((await store.getActiveByFacilityId('facility-3'))?.id, laterReservation.id);
    });
 
    it('keeps expired reservations as history but excludes them from active results', async () => {
@@ -89,6 +98,7 @@ describe('FacilityReservationsStore', () => {
 
       assert.deepEqual(await store.getActiveByHuntingDistrictId('revier-1'), []);
       assert.equal(await store.getActiveById(reservation.id), null);
+      assert.deepEqual((await store.getHistoryByHuntingDistrictId('revier-1')).map((entry) => entry.id), [reservation.id]);
       const checkedIn = await store.checkIn({ revierId: 'revier-1', jagdeinrichtungId: 'facility-4', checkedInBy: 'user-2' });
       assert.equal(checkedIn.id === reservation.id, false);
    });

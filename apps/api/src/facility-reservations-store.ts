@@ -40,7 +40,15 @@ export class FacilityReservationsStore {
    }
 
    async getActiveByHuntingDistrictId(revierId: string) {
-      return this.data.reservierungen.filter((entry) => entry.revierId === revierId && this.isActive(entry));
+      return this.data.reservierungen
+         .filter((entry) => entry.revierId === revierId && this.isActive(entry))
+         .sort((first, second) => this.reservationStart(first) - this.reservationStart(second));
+   }
+
+   async getHistoryByHuntingDistrictId(revierId: string) {
+      return this.data.reservierungen
+         .filter((entry) => entry.revierId === revierId && !this.isActive(entry))
+         .sort((first, second) => this.reservationStart(second) - this.reservationStart(first));
    }
 
    async getActiveByFacilityId(jagdeinrichtungId: string) {
