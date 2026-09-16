@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { IonButton, IonItem, IonList, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
 import AppLayout from '../components/AppLayout.vue'
+import SatelliteThumbnail from '../components/SatelliteThumbnail.vue'
 import StreckeneintragDialog, { type Streckeneintrag } from '../components/StreckeneintragDialog.vue'
 import StreckeneintragDetailDialog from '../components/StreckeneintragDetailDialog.vue'
 
@@ -65,14 +66,6 @@ function formatDateTime(datum: string, uhrzeit?: string) {
 function formatGewicht(gewicht?: number) {
   if (gewicht === undefined || gewicht === null) return ''
   return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(gewicht) + ' kg'
-}
-
-function getOsmTileUrl(lat: number, lng: number, zoom = 14) {
-  const n = Math.pow(2, zoom)
-  const x = Math.floor(((lng + 180) / 360) * n)
-  const latRad = (lat * Math.PI) / 180
-  const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n)
-  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`
 }
 
 function sortEntries(list: Streckeneintrag[]) {
@@ -266,16 +259,7 @@ onMounted(loadReviere)
               </div>
             </div>
 
-            <!-- Mini Map Preview Thumbnail -->
-            <div v-if="entry.position" class="map-thumb-wrapper" title="Abschussort auf Karte anzeigen">
-              <img
-                :src="getOsmTileUrl(entry.position.lat, entry.position.lng)"
-                alt="Karten-Vorschau"
-                class="map-thumb-img"
-                loading="lazy"
-              />
-              <div class="map-thumb-pin">📍</div>
-            </div>
+            <SatelliteThumbnail v-if="entry.position" :position="entry.position" :label="`Satellitenbild des Abschussorts von ${entry.wildart}`" />
           </div>
         </IonItem>
       </IonList>
@@ -345,45 +329,10 @@ onMounted(loadReviere)
 .action-btn:hover { text-decoration: underline; }
 .action-btn.danger { color: var(--ion-color-danger, #eb445a); }
 
-/* Map Thumbnail */
-.map-thumb-wrapper {
-  position: relative;
-  width: 76px;
-  height: 76px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--ion-color-light-shade, #ccc);
-  flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.map-thumb-wrapper:hover {
-  transform: scale(1.05);
-  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
-}
-
-.map-thumb-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.map-thumb-pin {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 1.3rem;
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
-  pointer-events: none;
-}
-
 @media (max-width: 600px) {
   .page-heading { flex-direction: column; align-items: stretch; gap: 12px; }
   .heading-actions { flex-direction: column; align-items: stretch; }
   .entry-header { flex-direction: column; align-items: flex-start; gap: 4px; }
-  .map-thumb-wrapper { width: 60px; height: 60px; }
+  :deep(.satellite-thumbnail) { width: 92px; }
 }
 </style>

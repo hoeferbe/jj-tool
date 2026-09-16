@@ -5,6 +5,7 @@ import AppLayout from '../components/AppLayout.vue'
 
 interface Revier { id: string; name: string; municipalityName: string }
 interface Member { id: string; displayName: string }
+interface Facility { id: string; name: string }
 interface CurrentUser { id: string; accountType: 'systemAdmin' | 'member'; memberships: Array<{ revierId: string; status: 'active' | 'pending'; isAdmin: boolean }> }
 interface Task {
   id: string
@@ -22,6 +23,7 @@ interface Task {
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 const reviere = ref<Revier[]>([])
 const members = ref<Member[]>([])
+const facilities = ref<Facility[]>([])
 const tasks = ref<Task[]>([])
 const selectedRevierId = ref(localStorage.getItem('jj-member-selected-revier') ?? '')
 const currentUser = ref<CurrentUser | null>(null)
@@ -36,12 +38,11 @@ const selectedRevier = computed(() => reviere.value.find((revier) => revier.id =
 const currentUserId = computed(() => currentUser.value?.id ?? '')
 const canAdministerSelectedRevier = computed(() => currentUser.value?.accountType === 'systemAdmin'
   || currentUser.value?.memberships.some((membership) => membership.revierId === selectedRevierId.value && membership.status === 'active' && membership.isAdmin) === true)
-const generalTasks = computed(() => tasks.value.filter((task) => !task.jagdeinrichtungId))
-const openTasks = computed(() => generalTasks.value
+const openTasks = computed(() => tasks.value
   .filter((task) => task.status !== 'erledigt')
   .sort((left, right) => priorityRank(right.prioritaet) - priorityRank(left.prioritaet)
     || (left.faelligAm ?? '9999-12-31').localeCompare(right.faelligAm ?? '9999-12-31')))
-const completedTasks = computed(() => generalTasks.value.filter((task) => task.status === 'erledigt'))
+const completedTasks = computed(() => tasks.value.filter((task) => task.status === 'erledigt'))
 
 function priorityRank(priority?: Task['prioritaet']) {
   return priority === 'hoch' ? 3 : priority === 'niedrig' ? 1 : 2
@@ -57,6 +58,10 @@ function priorityColor(priority?: Task['prioritaet']) {
 
 function memberName(id?: string) {
   return members.value.find((member) => member.id === id)?.displayName ?? 'Alle Mitglieder'
+}
+
+function facilityName(id?: string) {
+  return id ? facilities.value.find((facility) => facility.id === id)?.name ?? 'Unbekannte Einrichtung' : 'Allgemeine Revieraufgabe'
 }
 
 function canManageTask(task: Task) {
@@ -91,13 +96,15 @@ async function loadTaskData() {
   const token = localStorage.getItem('accessToken')
   const headers = { Authorization: `Bearer ${token}` }
   try {
-    const [tasksResponse, membersResponse] = await Promise.all([
+    const [tasksResponse, membersResponse, facilitiesResponse] = await Promise.all([
       fetch(`${apiUrl}/reviere/${selectedRevierId.value}/jagdeinrichtungs-aufgaben`, { headers, cache: 'no-store' }),
       fetch(`${apiUrl}/reviere/${selectedRevierId.value}/members`, { headers, cache: 'no-store' }),
+      fetch(`${apiUrl}/reviere/${selectedRevierId.value}/jagdeinrichtungen`, { headers, cache: 'no-store' }),
     ])
-    if (!tasksResponse.ok || !membersResponse.ok) throw new Error('Aufgaben konnten nicht geladen werden.')
+    if (!tasksResponse.ok || !membersResponse.ok || !facilitiesResponse.ok) throw new Error('Aufgaben konnten nicht geladen werden.')
     tasks.value = ((await tasksResponse.json()) as { aufgaben: Task[] }).aufgaben
     members.value = ((await membersResponse.json()) as { members: Member[] }).members
+    facilities.value = ((await facilitiesResponse.json()) as { jagdeinrichtungen: Facility[] }).jagdeinrichtungen
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Aufgaben konnten nicht geladen werden.'
   } finally {
@@ -193,7 +200,7 @@ onMounted(loadReviere)
 
       <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
       <section class="task-editor">
-        <h2>{{ editingTask ? 'Aufgabe bearbeiten' : 'Neue Aufgabe' }}</h2>
+        <h2>{{ editingTask ? 'Aufgabe bearbeiten' : 'Neue allgemeine Aufgabe' }}</h2>
         <label class="field"><span>Titel</span><input v-model="draft.titel" type="text" maxlength="160"></label>
         <IonTextarea v-model="draft.beschreibung" label="Beschreibung" label-placement="stacked" :auto-grow="true" />
         <div class="editor-row">
@@ -219,7 +226,7 @@ onMounted(loadReviere)
             <div class="task-content">
               <div class="task-title"><h3>{{ task.titel }}</h3><IonBadge :color="priorityColor(task.prioritaet)">{{ priorityLabel(task.prioritaet) }}</IonBadge></div>
               <p v-if="task.beschreibung">{{ task.beschreibung }}</p>
-              <div class="task-meta"><span>{{ formatDueDate(task.faelligAm) }}</span><span>{{ task.assignedTo ? `Zuständig: ${memberName(task.assignedTo)}` : 'Für alle Mitglieder' }}</span><span>{{ task.status }}</span></div>
+              <div class="task-meta"><span>{{ facilityName(task.jagdeinrichtungId) }}</span><span>{{ formatDueDate(task.faelligAm) }}</span><span>{{ task.assignedTo ? `Zuständig: ${memberName(task.assignedTo)}` : 'Für alle Mitglieder' }}</span><span>{{ task.status }}</span></div>
               <div class="task-actions">
                 <IonButton v-if="!task.assignedTo" size="small" fill="outline" @click="updateTask(task, '/uebernehmen', 'POST')">Übernehmen</IonButton>
                 <IonButton v-if="canManageTask(task)" size="small" @click="updateTask(task, '', 'PATCH', { status: 'erledigt' })">Erledigt</IonButton>
@@ -233,7 +240,7 @@ onMounted(loadReviere)
       <section v-if="completedTasks.length" class="task-section">
         <IonButton fill="clear" @click="showCompleted = !showCompleted">{{ showCompleted ? 'Erledigte ausblenden' : `Erledigte anzeigen (${completedTasks.length})` }}</IonButton>
         <IonList v-if="showCompleted" lines="none" class="task-list completed-list">
-          <IonItem v-for="task in completedTasks" :key="task.id"><IonLabel><h3>{{ task.titel }}</h3><p>{{ priorityLabel(task.prioritaet) }} · {{ memberName(task.assignedTo) }}</p></IonLabel></IonItem>
+          <IonItem v-for="task in completedTasks" :key="task.id"><IonLabel><h3>{{ task.titel }}</h3><p>{{ facilityName(task.jagdeinrichtungId) }} · {{ priorityLabel(task.prioritaet) }} · {{ memberName(task.assignedTo) }}</p></IonLabel></IonItem>
         </IonList>
       </section>
     </div>

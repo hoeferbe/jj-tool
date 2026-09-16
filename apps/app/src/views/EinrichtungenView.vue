@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { IonBadge, IonButton, IonItem, IonLabel, IonList, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
 import AppLayout from '../components/AppLayout.vue'
 import NewJagdeinrichtungDialog from '../components/NewJagdeinrichtungDialog.vue'
+import SatelliteThumbnail from '../components/SatelliteThumbnail.vue'
 
 interface Revier { id: string; name: string; municipalityName: string; center: { lat: number; lng: number } }
 interface Member { id: string; displayName: string }
@@ -196,7 +197,7 @@ onMounted(loadReviere)
       <IonNote v-else-if="!facilities.length">Noch keine Jagdeinrichtungen angelegt.</IonNote>
       <div v-else class="facility-list">
         <article v-for="facility in facilities" :key="facility.id" class="facility-entry">
-          <div class="facility-header"><div><h2>{{ facility.name }}</h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'warning' : 'medium'">{{ facility.status }}</IonBadge><IonButton size="small" fill="clear" @click="openFacility(facility)">Öffnen</IonButton></div>
+          <div class="facility-header"><div class="facility-title"><h2>{{ facility.name }}</h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'warning' : 'medium'">{{ facility.status }}</IonBadge><SatelliteThumbnail class="facility-thumbnail" :position="facility.position" :label="`Satellitenbild der Einrichtung ${facility.name}`" /><IonButton size="small" fill="clear" @click="openFacility(facility)">Öffnen</IonButton></div>
           <p v-if="facility.zustandsInfo" class="condition"><strong>Zustand:</strong> {{ facility.zustandsInfo }}</p>
           <p v-if="facility.notiz" class="note">{{ facility.notiz }}</p>
           <div v-if="reservable(facility)" class="reservation"><strong>Nutzung</strong><span>{{ reservationLabel(facility) }}</span></div>
@@ -234,6 +235,7 @@ onMounted(loadReviere)
 .page-banner p { color: #536142; }
 .page-content { padding: 24px 0 36px; }
 .facility-header, .reservation, .task-heading, .dialog-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.facility-title { flex: 1; min-width: 0; }
 .facility-list { display: grid; gap: 16px; }
 .facility-entry { border: 1px solid var(--ion-color-light-shade); border-radius: 8px; padding: 16px; }
 .condition { margin: 12px 0 4px; }
@@ -248,5 +250,7 @@ onMounted(loadReviere)
   .page-banner-inner, .page-content { width: min(100% - 28px, 1120px); }
   .page-banner-inner { align-items: stretch; flex-direction: column; padding: 16px 0; }
   .facility-header { align-items: flex-start; }
+  .facility-header { flex-wrap: wrap; }
+  :deep(.facility-thumbnail) { order: 4; width: 100%; }
 }
 </style>

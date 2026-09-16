@@ -102,7 +102,7 @@ Der Status einer Einrichtung wird farblich hervorgehoben:
 
 ## 5. Reviereinrichtungen
 
-Die Ansicht **Reviereinrichtungen** zeigt alle Einrichtungen des aktiven Reviers in einer Liste. Zu jedem Eintrag werden Typ, Status, Zustandsinfo und Notiz angezeigt.
+Die Ansicht **Reviereinrichtungen** zeigt alle Einrichtungen des aktiven Reviers in einer Liste. Zu jedem Eintrag werden Typ, Status, Zustandsinfo, Notiz und eine auf die Position zentrierte Satellitenvorschau angezeigt.
 
 Die derzeit verfügbaren Typen sind:
 
@@ -135,7 +135,7 @@ Nach Abschluss wird **Erledigt** ausgewählt. Der aktuelle Bearbeitungsstand ist
 
 ### Allgemeine Revieraufgaben
 
-Die Ansicht **Revieraufgaben** enthält Arbeiten, die keiner bestimmten Jagdeinrichtung zugeordnet sind, zum Beispiel die Vorbereitung einer Veranstaltung oder eine revierweite Kontrolle.
+Die Ansicht **Revieraufgaben** zeigt alle offenen Aufgaben des ausgewählten Reviers, unabhängig davon, welchem Mitglied sie zugewiesen sind. Dazu gehören allgemeine Aufgaben und Aufgaben an Jagdeinrichtungen; bei Einrichtungsaufgaben wird der Name der Einrichtung angezeigt.
 
 Beim Anlegen werden Titel und optional eine Beschreibung, ein Fälligkeitsdatum, die Priorität **Niedrig**, **Normal** oder **Hoch** sowie ein zuständiges Mitglied angegeben. Ohne feste Zuweisung steht die Aufgabe allen Mitgliedern zur Übernahme offen.
 
@@ -247,6 +247,7 @@ Die Karte bietet eine Straßen- und eine Satellitenansicht. Für die Darstellung
 ### Streckenliste, Sortierung und Nachbearbeitung
 
 - Die Streckeneinträge werden absteigend nach **Datum und Uhrzeit** sortiert dargestellt.
+- Einträge mit Position zeigen in der Liste eine zentrierte Satellitenvorschau mit Positionsmarker.
 - Kennzeichnungen für **VO** und **Bescheinigung** werden als farbige Badges hervorgehoben.
 - Der Ersteller sowie zuständige Revier- und Systemadministratoren können einen Eintrag **bearbeiten** oder **löschen**. Andere Reviermitglieder können den Eintrag ansehen, erhalten aber keine Änderungsaktionen.
 
