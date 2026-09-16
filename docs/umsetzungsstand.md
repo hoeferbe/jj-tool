@@ -78,7 +78,8 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 | Gewünschte Funktion | Status | Vorhanden und Fundstelle | Noch zu erledigen |
 | --- | --- | --- | --- |
 | Aufgaben an Einrichtungen | Fertig | Anlegen, Zuweisen, Übernehmen und Erledigen in `facility-tasks-store.ts`, `tasks.routes.ts` und `NewJagdeinrichtungDialog.vue` | Optionale Lösch- und Wiedereröffnungsabläufe prüfen |
-| Allgemeine Revierinformationen und Aufgaben | Teilweise | Aufgabenmodell existiert nur an Jagdeinrichtungen | Allgemeine Einträge, Fälligkeit, Priorität und Kategorien fehlen |
+| Allgemeine Revieraufgaben | Fertig | Eigene Ansicht mit Titel, Beschreibung, Fälligkeit, Priorität, Zuständigkeit, Übernehmen, Bearbeiten und Erledigen | Optionale Kategorien und Benachrichtigungen können später ergänzt werden |
+| Allgemeine Revierinformationen | Offen | Aufgaben sind umgesetzt, reine Informationsmeldungen noch nicht | Informationskategorien, Gültigkeitszeitraum und Sichtbarkeit fachlich festlegen |
 | Einrichtungen reservieren | Fertig | Reservieren, Ändern, Stornieren sowie Ein- und Auschecken | Keine wesentliche MVP-Lücke |
 | Einheitliches Zeitraster | Fertig | Start in festen 30-Minuten-Schritten; Ende automatisch drei Stunden später; API erzwingt dieselbe Regel | Dauer ist derzeit bewusst fest und nicht konfigurierbar |
 | Reservierungskonflikte verhindern | Fertig | Zeitraumüberschneidungen werden im Store geprüft; mehrere nicht überlappende Zukunftsbuchungen werden chronologisch angezeigt und einzeln bearbeitet oder storniert | Keine bekannte MVP-Lücke |
@@ -132,10 +133,9 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 
 ## Empfohlene nächste Reihenfolge
 
-1. Allgemeine Revieraufgaben mit Fälligkeit und Priorität ergänzen.
-2. Offline-Queue zunächst für Streckeneinträge entwickeln.
-3. PWA-Manifest, Service Worker und Capacitor-Grundlage einrichten.
-4. Danach Bilder, Auswertungen, Telegram, Push und Fährtenaufzeichnung angehen.
+1. Offline-Queue zunächst für Streckeneinträge entwickeln.
+2. PWA-Manifest, Service Worker und Capacitor-Grundlage einrichten.
+3. Danach Bilder, Auswertungen, Telegram, Push und Fährtenaufzeichnung angehen.
 
 ## Kurzfazit
 

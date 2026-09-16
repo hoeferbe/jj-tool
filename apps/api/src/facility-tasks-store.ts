@@ -4,13 +4,17 @@ import { dirname, join } from 'node:path';
 
 export const TASK_STATUSES = ['offen', 'in Bearbeitung', 'erledigt'] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
+export const TASK_PRIORITIES = ['niedrig', 'normal', 'hoch'] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
 export interface FacilityTask {
    id: string;
    revierId: string;
-   jagdeinrichtungId: string;
+   jagdeinrichtungId?: string;
    titel: string;
    beschreibung?: string;
+   faelligAm?: string;
+   prioritaet: TaskPriority;
    status: TaskStatus;
    assignedTo?: string;
    assignedBy: string;
@@ -21,9 +25,11 @@ export interface FacilityTask {
 
 export interface CreateTaskInput {
    revierId: string;
-   jagdeinrichtungId: string;
+   jagdeinrichtungId?: string;
    titel: string;
    beschreibung?: string;
+   faelligAm?: string;
+   prioritaet: TaskPriority;
    status: TaskStatus;
    assignedTo?: string;
    assignedBy: string;
@@ -46,6 +52,9 @@ export class FacilityTasksStore {
       try {
          const stored = JSON.parse(await readFile(this.filePath, 'utf8')) as Partial<TaskData>;
          this.data = { aufgaben: Array.isArray(stored.aufgaben) ? stored.aufgaben : [] };
+         const needsMigration = this.data.aufgaben.some((task) => !task.prioritaet);
+         for (const task of this.data.aufgaben) task.prioritaet ??= 'normal';
+         if (needsMigration) await this.persist();
       } catch (error: unknown) {
          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
          await this.persist();
@@ -69,15 +78,21 @@ export class FacilityTasksStore {
       });
    }
 
-   async update(id: string, input: Partial<Pick<FacilityTask, 'titel' | 'beschreibung' | 'status'>> & { assignedTo?: string | null }) {
+   async update(id: string, input: Partial<Pick<FacilityTask, 'titel' | 'prioritaet' | 'status'>> & { beschreibung?: string | null; assignedTo?: string | null; faelligAm?: string | null }) {
       return this.enqueue(async () => {
          const aufgabe = this.data.aufgaben.find((entry) => entry.id === id);
          if (!aufgabe) return null;
-         const normalizedInput = { ...input, assignedTo: input.assignedTo ?? undefined };
-         Object.assign(aufgabe, normalizedInput, {
-            updatedAt: new Date().toISOString(),
-            completedAt: input.status === 'erledigt' ? new Date().toISOString() : undefined,
-         });
+         const { assignedTo, beschreibung, faelligAm, ...changes } = input;
+         const normalizedInput: Partial<FacilityTask> = { ...changes };
+         if ('assignedTo' in input) normalizedInput.assignedTo = assignedTo ?? undefined;
+         if ('beschreibung' in input) normalizedInput.beschreibung = beschreibung ?? undefined;
+         if ('faelligAm' in input) normalizedInput.faelligAm = faelligAm ?? undefined;
+         Object.assign(aufgabe, normalizedInput, { updatedAt: new Date().toISOString() });
+         if ('status' in input) {
+            aufgabe.completedAt = input.status === 'erledigt'
+               ? aufgabe.completedAt ?? new Date().toISOString()
+               : undefined;
+         }
          return aufgabe;
       });
    }

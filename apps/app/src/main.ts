@@ -7,6 +7,7 @@ import AdminDashboard from './views/AdminDashboard.vue';
 import MemberWelcome from './views/MemberWelcome.vue';
 import EinrichtungenView from './views/EinrichtungenView.vue';
 import StreckeneintraegeView from './views/StreckeneintraegeView.vue';
+import AufgabenView from './views/AufgabenView.vue';
 
 import 'leaflet/dist/leaflet.css';
 import '@ionic/vue/css/core.css';
@@ -93,6 +94,11 @@ const router = createRouter({
       {
          path: '/reviere/strecke',
          component: StreckeneintraegeView,
+         meta: { requiresAuth: true },
+      },
+      {
+         path: '/reviere/aufgaben',
+         component: AufgabenView,
          meta: { requiresAuth: true },
       },
       { path: '/welcome', redirect: '/reviere/karte' },

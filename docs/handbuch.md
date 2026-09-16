@@ -47,6 +47,7 @@ Das Benutzer-Menü oben rechts führt zu den wichtigsten Bereichen:
 - **Revierkarte**: Karte des ausgewählten Reviers mit seinen Einrichtungen
 - **Reviermitglieder**: aktive Mitglieder des ausgewählten Reviers
 - **Reviereinrichtungen**: Liste, Aufgaben und Reservierungen der Einrichtungen
+- **Revieraufgaben**: allgemeine Aufgaben des ausgewählten Reviers
 - **Streckeneinträge**: Erfassung, Bearbeitung und Übersicht der Strecke
 - **Neues Revier**: Dialog zum Anlegen eines weiteren Reviers
 - **Mein Profil**: eigenen Namen und die E-Mail-Adresse ändern; der Loginname bleibt unveränderlich
@@ -113,7 +114,9 @@ Die derzeit verfügbaren Typen sind:
 
 Die Liste ist besonders für die Übersicht unterwegs geeignet. Die Karte bietet zusätzlich die räumliche Orientierung.
 
-## 6. Aufgaben an Einrichtungen
+## 6. Aufgaben
+
+### Aufgaben an Einrichtungen
 
 Zu jeder Einrichtung können Aufgaben hinterlegt werden, zum Beispiel eine Reparatur, eine Kontrolle oder das Freischneiden eines Zugangs.
 
@@ -129,6 +132,14 @@ Zu jeder Einrichtung können Aufgaben hinterlegt werden, zum Beispiel eine Repar
 Eine nicht zugewiesene Aufgabe kann mit **Übernehmen** für sich beansprucht werden. Danach wird sie als **In Bearbeitung** geführt.
 
 Nach Abschluss wird **Erledigt** ausgewählt. Der aktuelle Bearbeitungsstand ist für die Mitglieder des Reviers sichtbar.
+
+### Allgemeine Revieraufgaben
+
+Die Ansicht **Revieraufgaben** enthält Arbeiten, die keiner bestimmten Jagdeinrichtung zugeordnet sind, zum Beispiel die Vorbereitung einer Veranstaltung oder eine revierweite Kontrolle.
+
+Beim Anlegen werden Titel und optional eine Beschreibung, ein Fälligkeitsdatum, die Priorität **Niedrig**, **Normal** oder **Hoch** sowie ein zuständiges Mitglied angegeben. Ohne feste Zuweisung steht die Aufgabe allen Mitgliedern zur Übernahme offen.
+
+Offene Aufgaben werden zuerst nach Priorität und anschließend nach Fälligkeit sortiert. Ersteller, zuständige Mitglieder sowie Revier- und Systemadministratoren können Aufgaben bearbeiten oder als erledigt markieren. Abgeschlossene Aufgaben bleiben über **Erledigte anzeigen** nachvollziehbar.
 
 ## 7. Reservierungen
 

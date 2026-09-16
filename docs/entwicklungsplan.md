@@ -102,6 +102,7 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 - Jagdeinrichtungen mit Bezeichnung, Typ, Kartenposition, Status, Zustandsinfo und Notiz anlegen und bearbeiten.
 - Jagdeinrichtungen auf der Karte und in einer Listenansicht anzeigen.
 - Aufgaben an Einrichtungen anlegen, Mitgliedern zuweisen, übernehmen und als erledigt markieren.
+- Allgemeine Revieraufgaben mit Beschreibung, Fälligkeit, Priorität und optionaler Zuweisung anlegen, übernehmen, bearbeiten und erledigen.
 - Kanzeln, Böcke und Leitern in einem 30-Minuten-Raster für drei Stunden reservieren, ändern, stornieren sowie ein- und auschecken. Mehrere nicht überlappende Zukunftsbuchungen und eine ausklappbare Historie werden pro Einrichtung angezeigt.
 - Die Listenansicht zeigt zusätzlich den Reservierungsstatus und den Zuständigkeitsstatus der Aufgaben an.
 

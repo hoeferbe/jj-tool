@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonList, IonModal, IonNote, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
-import { addCircleOutline, chevronDownOutline, constructOutline, logOutOutline, mapOutline, peopleOutline, personCircleOutline, settingsOutline, trailSignOutline } from 'ionicons/icons'
+import { addCircleOutline, chevronDownOutline, clipboardOutline, constructOutline, logOutOutline, mapOutline, peopleOutline, personCircleOutline, settingsOutline, trailSignOutline } from 'ionicons/icons'
 
 const router = useRouter()
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
@@ -136,6 +136,10 @@ async function logout() {
           <IonItem button @click="navigate('/reviere/strecke')">
             <IonIcon slot="start" :icon="trailSignOutline" />
             Streckeneinträge
+          </IonItem>
+          <IonItem button @click="navigate('/reviere/aufgaben')">
+            <IonIcon slot="start" :icon="clipboardOutline" />
+            Revieraufgaben
           </IonItem>
           <IonItem button @click="navigate('/reviere/karte?action=new-revier')">
             <IonIcon slot="start" :icon="addCircleOutline" />

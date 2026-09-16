@@ -16,19 +16,40 @@ describe('FacilityTasksStore', () => {
       await store.initialize();
       const task = await store.create({
          revierId: 'revier-1', jagdeinrichtungId: 'facility-1', titel: 'Leiter prüfen',
-         status: 'offen', assignedBy: 'user-1',
+         prioritaet: 'normal', status: 'offen', assignedBy: 'user-1',
       });
       const claimed = await store.update(task.id, { assignedTo: 'user-2', status: 'in Bearbeitung' });
       assert.equal(claimed?.assignedTo, 'user-2');
       const completed = await store.update(task.id, { status: 'erledigt' });
       assert.equal(completed?.completedAt !== undefined, true);
+      assert.equal(completed?.assignedTo, 'user-2');
       assert.equal((await store.getByHuntingDistrictId('revier-1')).length, 1);
       await store.create({
          revierId: 'revier-2', jagdeinrichtungId: 'facility-2', titel: 'Kanzel prüfen',
-         status: 'offen', assignedBy: 'user-1',
+         prioritaet: 'normal', status: 'offen', assignedBy: 'user-1',
       });
       assert.equal(await store.deleteByHuntingDistrictId('revier-1'), 1);
       assert.deepEqual(await store.getByHuntingDistrictId('revier-1'), []);
       assert.equal((await store.getByHuntingDistrictId('revier-2')).length, 1);
+   });
+
+   it('stores general district tasks with due date and priority', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'jjtool-revier-aufgaben-'));
+      tempDirs.push(directory);
+      const store = new FacilityTasksStore(directory);
+      await store.initialize();
+
+      const task = await store.create({
+         revierId: 'revier-1', titel: 'Treibjagd vorbereiten', faelligAm: '2026-11-01',
+         prioritaet: 'hoch', status: 'offen', assignedBy: 'user-1',
+      });
+
+      assert.equal(task.jagdeinrichtungId, undefined);
+      assert.equal(task.faelligAm, '2026-11-01');
+      assert.equal(task.prioritaet, 'hoch');
+      const updated = await store.update(task.id, { prioritaet: 'normal', faelligAm: null, beschreibung: null });
+      assert.equal(updated?.prioritaet, 'normal');
+      assert.equal(updated?.faelligAm, undefined);
+      assert.equal(updated?.beschreibung, undefined);
    });
 });

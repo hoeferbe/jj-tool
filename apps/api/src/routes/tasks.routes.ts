@@ -36,8 +36,10 @@ export function registerTaskRoutes(app: Hono, dependencies: TaskRouteDependencie
       if (!revierId || !user) return context.json({ message: 'Revier-ID fehlt.' }, 400);
       if (!canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
       const input = context.req.valid('json');
-      const facility = await facilityStore.getById(input.jagdeinrichtungId);
-      if (!facility || facility.revierId !== revierId) return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
+      if (input.jagdeinrichtungId) {
+         const facility = await facilityStore.getById(input.jagdeinrichtungId);
+         if (!facility || facility.revierId !== revierId) return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
+      }
       if (input.assignedTo && !isActiveHuntingDistrictMember(input.assignedTo, revierId)) return context.json({ message: 'Zugewiesenes Mitglied ist nicht aktiv in diesem Revier.' }, 400);
       return context.json({ aufgabe: await taskStore.create({ ...input, revierId, assignedBy: user.id }) }, 201);
    });
