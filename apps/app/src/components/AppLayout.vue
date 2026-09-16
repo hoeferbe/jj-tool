@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonList, IonModal, IonNote, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
+import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonItemDivider, IonList, IonModal, IonNote, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
 import { addCircleOutline, chevronDownOutline, clipboardOutline, constructOutline, logOutOutline, mapOutline, peopleOutline, personCircleOutline, settingsOutline, trailSignOutline } from 'ionicons/icons'
 
 const router = useRouter()
@@ -141,10 +141,12 @@ async function logout() {
             <IonIcon slot="start" :icon="clipboardOutline" />
             Revieraufgaben
           </IonItem>
+          <IonItemDivider />
           <IonItem button @click="navigate('/reviere/karte?action=new-revier')">
             <IonIcon slot="start" :icon="addCircleOutline" />
             Neues Revier
           </IonItem>
+          <IonItemDivider />
           <IonItem button @click="openProfile">
             <IonIcon slot="start" :icon="personCircleOutline" />
             Mein Profil
@@ -153,6 +155,7 @@ async function logout() {
             <IonIcon slot="start" :icon="settingsOutline" />
             Administration
           </IonItem>
+          <IonItemDivider />
           <IonItem button @click="logout">
             <IonIcon slot="start" :icon="logOutOutline" />
             Abmelden
@@ -189,4 +192,5 @@ async function logout() {
 <style scoped>
 .motd { padding: 7px 16px; border-bottom: 1px solid #d3d8c7; background: #eef1e7; color: #536142; font-size: 0.85rem; text-align: center; }
 .profile-form { display: grid; gap: 16px; max-width: 560px; margin: 0 auto; }
+:deep(ion-popover ion-item-divider) { min-height: 1px; --min-height: 1px; --padding-start: 0; --inner-padding-end: 0; --background: var(--ion-color-light-shade, #d7d8da); }
 </style>
