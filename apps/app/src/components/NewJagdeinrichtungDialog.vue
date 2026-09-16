@@ -196,11 +196,15 @@ function reservationPayload() {
 function formatReservationPeriod(reservation: FacilityReservation) {
   if (!reservation.startAt) return 'Sofort'
   const start = new Date(reservation.startAt)
-  const startText = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' }).format(start)
+  const dateFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const timeFormatter = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' })
+  const startText = `${dateFormatter.format(start)}, ${timeFormatter.format(start)}`
   if (!reservation.endAt) return startText
   const end = new Date(reservation.endAt)
   const sameDay = start.toDateString() === end.toDateString()
-  const endText = new Intl.DateTimeFormat('de-DE', sameDay ? { timeStyle: 'short' } : { dateStyle: 'medium', timeStyle: 'short' }).format(end)
+  const endText = sameDay
+    ? timeFormatter.format(end)
+    : `${dateFormatter.format(end)}, ${timeFormatter.format(end)}`
   return `${startText} bis ${endText}`
 }
 
