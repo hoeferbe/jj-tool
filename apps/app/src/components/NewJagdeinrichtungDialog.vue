@@ -50,13 +50,15 @@ const props = withDefaults(defineProps<{
   position?: Point
   positionWasSelected?: boolean
   reservation?: FacilityReservation | null
-}>(), {})
+  canReposition?: boolean
+}>(), { canReposition: false })
 const emit = defineEmits<{
   close: []
   created: [facility: Jagdeinrichtung]
   updated: [facility: Jagdeinrichtung]
   deleted: [facilityId: string]
   repositionRequested: [facility: Jagdeinrichtung]
+  showOnMapRequested: [facility: Jagdeinrichtung]
   usageChanged: []
 }>()
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
@@ -80,11 +82,16 @@ const reservationStart = ref('')
 const reservationEnd = ref('')
 const reservationDate = ref('')
 const reservationTime = ref('')
+const reservationDurationHours = ref(3)
 const reservationTimeOptions = Array.from({ length: 48 }, (_, index) => {
   const hours = Math.floor(index / 2).toString().padStart(2, '0')
   const minutes = index % 2 === 0 ? '00' : '30'
   return `${hours}:${minutes}`
 })
+const reservationDurationOptions = Array.from({ length: 24 }, (_, index) => (index + 1) / 2)
+const localizedReservationDate = computed(() => reservationDate.value
+  ? new Intl.DateTimeFormat('de-DE', { dateStyle: 'full' }).format(new Date(`${reservationDate.value}T12:00:00`))
+  : '')
 const showReservationFields = ref(false)
 const showReservationHistory = ref(false)
 const tasks = ref<FacilityTask[]>([])
@@ -126,6 +133,7 @@ function reset() {
   activeReservations.value = props.reservation ? [props.reservation] : []
   reservationHistory.value = []
   editingReservation.value = null
+  reservationDurationHours.value = 3
   setReservationStart(toLocalDateTime(props.reservation?.startAt) ?? defaultReservationStart())
   showReservationFields.value = false
   showReservationHistory.value = false
@@ -146,19 +154,16 @@ function defaultReservationStart() {
   return toLocalDateTime(date.toISOString()) ?? ''
 }
 
-function defaultReservationEnd(start: string) {
-  if (!start) return ''
-  const date = new Date(start)
-  date.setHours(date.getHours() + 3)
-  return toLocalDateTime(date.toISOString()) ?? ''
-}
-
-function setReservationStart(start: string) {
+function setReservationStart(start: string, end?: string) {
   reservationStart.value = start
   const [date = '', time = ''] = start.split('T')
   reservationDate.value = date
   reservationTime.value = time
-  reservationEnd.value = defaultReservationEnd(start)
+  if (end) {
+    const duration = (new Date(end).getTime() - new Date(start).getTime()) / (60 * 60 * 1000)
+    reservationDurationHours.value = duration > 0 && duration % 0.5 === 0 ? duration : 3
+  }
+  updateReservationEnd()
 }
 
 function handleReservationStartChange() {
@@ -168,7 +173,17 @@ function handleReservationStartChange() {
     return
   }
   reservationStart.value = `${reservationDate.value}T${reservationTime.value}`
-  reservationEnd.value = defaultReservationEnd(reservationStart.value)
+  updateReservationEnd()
+}
+
+function updateReservationEnd() {
+  if (!reservationStart.value) {
+    reservationEnd.value = ''
+    return
+  }
+  const date = new Date(reservationStart.value)
+  date.setMinutes(date.getMinutes() + reservationDurationHours.value * 60)
+  reservationEnd.value = toLocalDateTime(date.toISOString()) ?? ''
 }
 
 function reservationPayload() {
@@ -179,9 +194,14 @@ function reservationPayload() {
 }
 
 function formatReservationPeriod(reservation: FacilityReservation) {
-  const start = toLocalDateTime(reservation.startAt)?.replace('T', ' ') ?? 'Sofort'
-  const end = toLocalDateTime(reservation.endAt)?.replace('T', ' ')
-  return end ? `${start} bis ${end}` : start
+  if (!reservation.startAt) return 'Sofort'
+  const start = new Date(reservation.startAt)
+  const startText = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' }).format(start)
+  if (!reservation.endAt) return startText
+  const end = new Date(reservation.endAt)
+  const sameDay = start.toDateString() === end.toDateString()
+  const endText = new Intl.DateTimeFormat('de-DE', sameDay ? { timeStyle: 'short' } : { dateStyle: 'medium', timeStyle: 'short' }).format(end)
+  return `${startText} bis ${endText}`
 }
 
 function reservationHistoryStatus(reservation: FacilityReservation) {
@@ -287,13 +307,14 @@ async function reserve() {
 function beginReservation() {
   showReservationFields.value = true
   editingReservation.value = null
+  reservationDurationHours.value = 3
   setReservationStart(defaultReservationStart())
 }
 
 function beginReservationEdit(reservation: FacilityReservation) {
   showReservationFields.value = true
   editingReservation.value = reservation
-  setReservationStart(toLocalDateTime(reservation.startAt) ?? defaultReservationStart())
+  setReservationStart(toLocalDateTime(reservation.startAt) ?? defaultReservationStart(), toLocalDateTime(reservation.endAt))
 }
 
 async function updateReservation() {
@@ -413,9 +434,10 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
           </article>
         </div>
         <div v-if="showReservationFields" class="reservation-period">
-          <label class="field-label"><span>Datum</span><input v-model="reservationDate" class="form-control" type="date" @change="handleReservationStartChange"></label>
+          <label class="field-label"><span>Datum</span><input v-model="reservationDate" class="form-control" type="date" lang="de" @change="handleReservationStartChange"><small v-if="localizedReservationDate">{{ localizedReservationDate }}</small></label>
           <label class="field-label"><span>Von</span><select v-model="reservationTime" class="form-control" @change="handleReservationStartChange"><option v-for="time in reservationTimeOptions" :key="time" :value="time">{{ time }}</option></select></label>
-          <label class="field-label"><span>Bis (3 Stunden)</span><input v-model="reservationEnd" class="form-control" type="datetime-local" readonly></label>
+          <label class="field-label"><span>Dauer</span><select v-model.number="reservationDurationHours" class="form-control" @change="updateReservationEnd"><option v-for="duration in reservationDurationOptions" :key="duration" :value="duration">{{ duration.toLocaleString('de-DE') }} {{ duration === 1 ? 'Stunde' : 'Stunden' }}</option></select></label>
+          <label class="field-label"><span>Bis</span><input v-model="reservationEnd" class="form-control" type="datetime-local" readonly></label>
         </div>
         <div class="usage-actions">
           <IonButton v-if="loadedReservation?.checkedInBy === currentUserId()" size="small" fill="outline" :disabled="usageSaving" @click="changeUsage('einchecken', 'DELETE')">Auschecken</IonButton>
@@ -511,7 +533,10 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
           <h3>Position</h3>
           <span class="coordinates">{{ position.lat.toFixed(6) }}, {{ position.lng.toFixed(6) }}</span>
         </div>
-        <IonButton v-if="props.facility && canEditFacility" fill="outline" size="small" @click="emit('repositionRequested', props.facility)">Auf Karte wählen</IonButton>
+        <div v-if="props.facility" class="position-actions">
+          <IonButton fill="outline" size="small" @click="emit('showOnMapRequested', props.facility)">Auf Karte anzeigen</IonButton>
+          <IonButton v-if="canEditFacility && props.canReposition" fill="outline" size="small" @click="emit('repositionRequested', props.facility)">Position ändern</IonButton>
+        </div>
       </section>
       <IonNote v-if="props.positionWasSelected" class="position-confirmation" color="success">Neue Position übernommen. Bitte mit „Speichern“ bestätigen.</IonNote>
       <p v-if="message" class="message">{{ message }}</p>
@@ -541,6 +566,7 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
 .status-defekt { border-color: #b58a00; background: #fff7d6; }
 .status-ausser-Betrieb { border-color: #5f6368; background: #eef0f2; }
 .position-section { align-items: center; padding: 14px; border: 1px solid var(--ion-color-light-shade); border-radius: 8px; background: var(--ion-color-light, #f1f3ed); }
+.position-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .usage-section { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--ion-color-light-shade); border-radius: 8px; }
 .usage-heading, .usage-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .reservation-period { display: flex; gap: 10px; }

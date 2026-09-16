@@ -64,6 +64,14 @@ Die Revierkarte zeigt die Grenze des aktiven Reviers und die darin angelegten Ja
 
 Über die Ebenenauswahl auf der Karte kann zwischen **Straßenkarte** und **Satellit** gewechselt werden. Die zuletzt verwendete Kartenansicht bleibt auf dem Gerät gespeichert.
 
+### Einrichtung auf der Karte anzeigen
+
+Im Einrichtungsdialog führt **Auf Karte anzeigen** zur Revierkarte. Die Karte wird auf die ausgewählte Einrichtung zentriert und maßvoll vergrößert. Berechtigte Nutzer können in der Kartenansicht zusätzlich **Position ändern** wählen.
+
+### Distanzringe zum aktuellen Standort
+
+Die Schaltfläche **◎** rechts oben auf der Revierkarte ermittelt nach Zustimmung den aktuellen Gerätestandort und zeigt Ringe mit 100, 250 und 500 Metern Entfernung. Ein erneuter Klick blendet die Ringe aus. Der Standort wird dabei nicht dauerhaft gespeichert oder an die API übertragen.
+
 ### Jagdeinrichtung auf der Karte öffnen
 
 Ein Symbol auf der Karte steht für eine Jagdeinrichtung. Durch Anklicken werden Bezeichnung, Typ und Status angezeigt. Ein erneuter Klick beziehungsweise die Auswahl des Symbols öffnet die Detailansicht zur Bearbeitung, sofern die erforderliche Berechtigung vorhanden ist.
@@ -147,7 +155,7 @@ Offene Aufgaben werden zuerst nach Priorität und anschließend nach Fälligkeit
 
 ## 7. Reservierungen
 
-Kanzeln, Böcke und Leitern können reserviert werden. Die Startzeit wird in einem festen 30-Minuten-Raster gewählt; das Ende liegt automatisch drei Stunden später. Mehrere nicht überlappende zukünftige Buchungen sind möglich und werden chronologisch angezeigt.
+Kanzeln, Böcke und Leitern können reserviert werden. Die Startzeit und die Dauer werden in einem festen 30-Minuten-Raster gewählt; voreingestellt sind drei Stunden, auswählbar sind 30 Minuten bis 12 Stunden. Das berechnete Ende wird direkt angezeigt. Mehrere nicht überlappende zukünftige Buchungen sind möglich und werden chronologisch angezeigt.
 
 ### Einrichtung reservieren
 
@@ -251,6 +259,7 @@ Die Karte bietet eine Straßen- und eine Satellitenansicht. Für die Darstellung
 ### Streckenliste, Sortierung und Nachbearbeitung
 
 - Die Streckeneinträge werden absteigend nach **Datum und Uhrzeit** sortiert dargestellt.
+- In Liste und Detailansicht wird angezeigt, welches Mitglied den Eintrag erfasst hat.
 - Einträge mit Position zeigen in der Liste eine zentrierte Satellitenvorschau mit Positionsmarker.
 - Kennzeichnungen für **VO** und **Bescheinigung** werden als farbige Badges hervorgehoben.
 - Der Ersteller sowie zuständige Revier- und Systemadministratoren können einen Eintrag **bearbeiten** oder **löschen**. Andere Reviermitglieder können den Eintrag ansehen, erhalten aber keine Änderungsaktionen.

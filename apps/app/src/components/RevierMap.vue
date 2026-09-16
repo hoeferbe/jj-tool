@@ -29,6 +29,7 @@ const props = withDefaults(defineProps<{
   boundary: GeoJsonFeatureCollection
   sourceYear: number
   facilities?: Jagdeinrichtung[]
+  focusFacilityId?: string | null
   positioningFacilityId?: string | null
   facilityPlacementMode?: boolean
   canCreateFacilities?: boolean
@@ -42,9 +43,12 @@ const emit = defineEmits<{
 }>()
 const container = ref<HTMLElement | null>(null)
 const tileError = ref(false)
+const locationError = ref('')
 let map: L.Map | null = null
 let placementButton: HTMLButtonElement | null = null
+let distanceButton: HTMLButtonElement | null = null
 let facilityLayer: L.LayerGroup | null = null
+let distanceLayer: L.LayerGroup | null = null
 let savedView: { center: L.LatLng; zoom: number } | null = null
 let renderedBoundary: GeoJsonFeatureCollection | null = null
 const mapLayerStorageKey = 'jj-revier-map-layer'
@@ -98,6 +102,70 @@ function addFacilityPlacementControl() {
     L.DomEvent.on(placementButton, 'click', () => emit('facilityPlacementRequested'))
     updatePlacementButton()
     return placementButton
+  }
+  control.addTo(map)
+}
+
+function focusFacility(facilityId?: string | null) {
+  if (!map || !facilityId) return
+  const facility = props.facilities.find((entry) => entry.id === facilityId)
+  if (facility) map.setView([facility.position.lat, facility.position.lng], 17, { animate: true })
+}
+
+function toggleDistanceRings() {
+  if (!map) return
+  if (distanceLayer) {
+    distanceLayer.remove()
+    distanceLayer = null
+    distanceButton?.classList.remove('active')
+    return
+  }
+  if (!navigator.geolocation) {
+    locationError.value = 'Der aktuelle Standort ist auf diesem Gerät nicht verfügbar.'
+    return
+  }
+  locationError.value = ''
+  navigator.geolocation.getCurrentPosition((position) => {
+    if (!map) return
+    const center = L.latLng(position.coords.latitude, position.coords.longitude)
+    const layer = L.layerGroup()
+    L.circleMarker(center, { radius: 6, color: '#ffffff', weight: 2, fillColor: '#1976d2', fillOpacity: 1 })
+      .bindTooltip('Aktueller Standort')
+      .addTo(layer)
+    for (const radius of [100, 250, 500]) {
+      L.circle(center, { radius, color: '#ffffff', weight: 2, opacity: 0.9, fillColor: '#1976d2', fillOpacity: 0.04 })
+        .addTo(layer)
+      L.marker([center.lat + radius / 111320, center.lng], {
+        interactive: false,
+        icon: L.divIcon({
+          className: 'distance-ring-label',
+          html: `<span>${radius} m</span>`,
+          iconSize: [48, 18],
+          iconAnchor: [24, 9],
+        }),
+      }).addTo(layer)
+    }
+    layer.addTo(map)
+    distanceLayer = layer
+    distanceButton?.classList.add('active')
+    map.setView(center, 16, { animate: true })
+  }, () => {
+    locationError.value = 'Der aktuelle Standort konnte nicht ermittelt werden.'
+  }, { enableHighAccuracy: true, timeout: 10000 })
+}
+
+function addDistanceControl() {
+  if (!map) return
+  const control = new L.Control({ position: 'topright' })
+  control.onAdd = () => {
+    distanceButton = L.DomUtil.create('button', 'distance-ring-control') as HTMLButtonElement
+    distanceButton.type = 'button'
+    distanceButton.title = 'Distanzringe um aktuellen Standort'
+    distanceButton.setAttribute('aria-label', 'Distanzringe um aktuellen Standort')
+    distanceButton.textContent = '◎'
+    L.DomEvent.disableClickPropagation(distanceButton)
+    L.DomEvent.on(distanceButton, 'click', toggleDistanceRings)
+    return distanceButton
   }
   control.addTo(map)
 }
@@ -186,6 +254,8 @@ async function renderMap() {
   savedView = null
   map?.remove()
   facilityLayer = null
+  distanceLayer = null
+  distanceButton = null
   map = null
   tileError.value = false
   await nextTick()
@@ -210,6 +280,7 @@ async function renderMap() {
     localStorage.setItem(mapLayerStorageKey, event.name === 'Satellit' ? 'satellite' : 'streets')
   })
   if (props.canCreateFacilities) addFacilityPlacementControl()
+  addDistanceControl()
   map.on('click', (event: L.LeafletMouseEvent) => {
     if (props.facilityPlacementMode || event.originalEvent.metaKey || event.originalEvent.ctrlKey) {
       if (!pointInBoundary(event.latlng.lat, event.latlng.lng)) {
@@ -237,6 +308,7 @@ async function renderMap() {
   requestAnimationFrame(() => {
     map?.invalidateSize()
     if (savedView) map?.setView(savedView.center, savedView.zoom, { animate: false })
+    else if (props.focusFacilityId) focusFacility(props.focusFacilityId)
     else if (bounds.isValid()) map?.fitBounds(bounds, { padding: [24, 24] })
     savedView = null
   })
@@ -249,6 +321,7 @@ watch(() => props.facilities, () => {
 }, { deep: true })
 watch(() => props.boundary, renderMap, { deep: true })
 watch(() => props.facilityPlacementMode, updatePlacementButton)
+watch(() => props.focusFacilityId, focusFacility)
 onMounted(renderMap)
 onMounted(() => window.addEventListener('keydown', handleEscape))
 onBeforeUnmount(() => {
@@ -267,6 +340,7 @@ onBeforeUnmount(() => {
   </div>
   <BkgAttribution :year="sourceYear" />
   <p v-if="tileError" class="map-error">Die Kartenkacheln konnten nicht geladen werden.</p>
+  <p v-if="locationError" class="map-error">{{ locationError }}</p>
 </template>
 
 <style scoped>
@@ -339,5 +413,20 @@ onBeforeUnmount(() => {
   background: #52652d;
   color: #ffffff;
 }
+
+:global(.distance-ring-control) {
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1976d2;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+:global(.distance-ring-control.active) { background: #1976d2; color: #ffffff; }
+:global(.distance-ring-label span) { display: block; width: max-content; padding: 1px 4px; border-radius: 3px; background: rgba(255, 255, 255, 0.88); color: #184f82; font: 700 10px/1.4 sans-serif; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
 
 </style>

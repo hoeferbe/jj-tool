@@ -106,7 +106,7 @@ export class FacilityReservationsStore {
 
    async reserve(input: Omit<FacilityReservation, 'id' | 'reservedAt'>) {
       return this.enqueue(async () => {
-         const { startAt, endAt } = this.createReservationPeriod(input.startAt);
+         const { startAt, endAt } = this.createReservationPeriod(input.startAt, input.endAt);
          const overlaps = this.data.reservierungen.some((entry) =>
             entry.jagdeinrichtungId === input.jagdeinrichtungId && !entry.releasedAt
             && (!entry.endAt || new Date(entry.endAt).getTime() > Date.now())
@@ -125,7 +125,7 @@ export class FacilityReservationsStore {
       return this.enqueue(async () => {
          const reservation = this.data.reservierungen.find((entry) => entry.id === id && !entry.releasedAt);
          if (!reservation) return null;
-         const { startAt, endAt } = this.createReservationPeriod(input.startAt);
+         const { startAt, endAt } = this.createReservationPeriod(input.startAt, input.endAt);
          const overlaps = this.data.reservierungen.some((entry) =>
             entry.id !== id && entry.jagdeinrichtungId === reservation.jagdeinrichtungId && !entry.releasedAt
             && (!entry.endAt || new Date(entry.endAt).getTime() > Date.now())
@@ -188,7 +188,7 @@ export class FacilityReservationsStore {
       return firstFrom < secondTo && secondFrom < firstTo;
    }
 
-   private createReservationPeriod(requestedStart?: string) {
+   private createReservationPeriod(requestedStart?: string, requestedEnd?: string) {
       const start = requestedStart ? new Date(requestedStart) : new Date();
       if (Number.isNaN(start.getTime())) throw new Error('INVALID_PERIOD');
       if (requestedStart && (start.getUTCMinutes() % 30 !== 0 || start.getUTCSeconds() !== 0 || start.getUTCMilliseconds() !== 0)) {
@@ -197,7 +197,19 @@ export class FacilityReservationsStore {
       if (!requestedStart) {
          start.setUTCMinutes(Math.ceil(start.getUTCMinutes() / 30) * 30, 0, 0);
       }
-      const end = new Date(start.getTime() + 3 * 60 * 60 * 1000);
+      const end = requestedEnd ? new Date(requestedEnd) : new Date(start.getTime() + 3 * 60 * 60 * 1000);
+      const duration = end.getTime() - start.getTime();
+      if (
+         Number.isNaN(end.getTime()) ||
+         end.getUTCMinutes() % 30 !== 0 ||
+         end.getUTCSeconds() !== 0 ||
+         end.getUTCMilliseconds() !== 0 ||
+         duration < 30 * 60 * 1000 ||
+         duration > 12 * 60 * 60 * 1000 ||
+         duration % (30 * 60 * 1000) !== 0
+      ) {
+         throw new Error('INVALID_PERIOD');
+      }
       return { startAt: start.toISOString(), endAt: end.toISOString() };
    }
 

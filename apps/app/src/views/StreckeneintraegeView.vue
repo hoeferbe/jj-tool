@@ -243,6 +243,7 @@ onMounted(loadReviere)
               </div>
 
               <div class="entry-details">
+                <span class="detail-pill">Erfasst von {{ entry.createdByName ?? 'Unbekanntes Mitglied' }}</span>
                 <span v-if="entry.gewicht" class="detail-pill">⚖️ {{ formatGewicht(entry.gewicht) }}</span>
                 <span v-if="entry.geschaetztesAlter" class="detail-pill">⏳ Alter: {{ entry.geschaetztesAlter }}</span>
                 <span v-if="entry.ortName" class="detail-pill">📍 {{ entry.ortName }}</span>

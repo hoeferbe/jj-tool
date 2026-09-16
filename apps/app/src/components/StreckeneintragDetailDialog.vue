@@ -191,6 +191,14 @@ watch(() => props.isOpen, (isOpen) => {
             </div>
           </div>
 
+          <div class="info-card">
+            <div class="info-icon"><IonIcon :icon="documentTextOutline" /></div>
+            <div class="info-text">
+              <span class="info-label">Erfasst von</span>
+              <span class="info-value">{{ props.entry.createdByName ?? 'Unbekanntes Mitglied' }}</span>
+            </div>
+          </div>
+
           <div v-if="props.entry.gewicht" class="info-card">
             <div class="info-icon"><IonIcon :icon="scaleOutline" /></div>
             <div class="info-text">

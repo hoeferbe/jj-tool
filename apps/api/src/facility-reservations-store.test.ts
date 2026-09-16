@@ -66,17 +66,26 @@ describe('FacilityReservationsStore', () => {
       });
 
       assert.equal(reservation.startAt, '2030-06-15T18:00:00.000Z');
-      assert.equal(reservation.endAt, '2030-06-15T21:00:00.000Z');
+      assert.equal(reservation.endAt, '2030-06-15T20:00:00.000Z');
       assert.deepEqual((await store.getActiveByHuntingDistrictId('revier-1')).map((entry) => entry.id), [reservation.id, laterReservation.id]);
       assert.equal((await store.getActiveById(laterReservation.id))?.reservedBy, 'user-2');
       await store.updateReservation(reservation.id, {
          startAt: '2030-06-16T18:30:00.000Z',
+         endAt: '2030-06-16T23:00:00.000Z',
       });
       const updated = await store.getActiveById(reservation.id);
       assert.equal(updated?.startAt, '2030-06-16T18:30:00.000Z');
-      assert.equal(updated?.endAt, '2030-06-16T21:30:00.000Z');
+      assert.equal(updated?.endAt, '2030-06-16T23:00:00.000Z');
       await assert.rejects(
          store.updateReservation(reservation.id, { startAt: '2030-06-16T18:15:00.000Z' }),
+         /INVALID_PERIOD/,
+      );
+      await assert.rejects(
+         store.updateReservation(reservation.id, { startAt: '2030-06-16T18:30:00.000Z', endAt: '2030-06-16T18:45:00.000Z' }),
+         /INVALID_PERIOD/,
+      );
+      await assert.rejects(
+         store.updateReservation(reservation.id, { startAt: '2030-06-16T18:30:00.000Z', endAt: '2030-06-17T07:00:00.000Z' }),
          /INVALID_PERIOD/,
       );
       await store.releaseById(reservation.id);

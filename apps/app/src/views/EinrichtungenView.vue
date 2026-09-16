@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { IonBadge, IonButton, IonItem, IonLabel, IonList, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
 import AppLayout from '../components/AppLayout.vue'
 import NewJagdeinrichtungDialog from '../components/NewJagdeinrichtungDialog.vue'
@@ -11,9 +12,10 @@ type FacilityType = 'Kanzel' | 'Bock' | 'Leiter' | 'Roehrenfalle' | 'Kirrung'
 type FacilityStatus = 'aktiv' | 'defekt' | 'ausser Betrieb'
 interface Facility { id: string; revierId: string; name: string; typ: FacilityType; status: FacilityStatus; position: { lat: number; lng: number }; zustandsInfo?: string; notiz?: string; createdBy: string; createdAt: string; updatedAt: string }
 interface Task { id: string; jagdeinrichtungId: string; titel: string; beschreibung?: string; status: 'offen' | 'in Bearbeitung' | 'erledigt'; assignedTo?: string; assignedBy: string }
-interface Reservation { id: string; jagdeinrichtungId: string; reservedBy: string; reservedAt: string; startAt?: string; endAt?: string; checkedInBy?: string; checkedInAt?: string; checkedOutAt?: string }
+interface Reservation { id: string; jagdeinrichtungId: string; reservedBy: string; reservedByName?: string; reservedAt: string; startAt?: string; endAt?: string; checkedInBy?: string; checkedInByName?: string; checkedInAt?: string; checkedOutAt?: string }
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
+const router = useRouter()
 const reviere = ref<Revier[]>([])
 const members = ref<Member[]>([])
 const facilities = ref<Facility[]>([])
@@ -44,13 +46,20 @@ const reservable = (facility: Facility) => ['Kanzel', 'Bock', 'Leiter'].includes
 const formatReservationStart = (value?: string) => value
   ? new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
   : 'sofort'
-const reservationLabel = (facility: Facility) => {
+const reservationBadge = (facility: Facility) => {
+  const reservation = reservationFor(facility.id)
+  if (reservation?.checkedInBy) return { label: 'Eingecheckt', color: 'success' }
+  if (reservation) return { label: 'Reserviert', color: 'warning' }
+  return { label: 'Frei', color: 'medium' }
+}
+const reservationDetails = (facility: Facility) => {
   const facilityReservations = reservationsFor(facility.id)
   const reservation = facilityReservations[0]
-  if (!reservation) return 'Frei'
-  if (reservation.checkedInBy) return reservation.checkedInBy === currentUserId.value ? 'Eingebucht von dir' : `Eingebucht von ${memberName(reservation.checkedInBy)}`
+  if (!reservation) return 'Keine aktive Buchung'
+  if (reservation.checkedInBy) return `Von ${reservation.checkedInByName ?? memberName(reservation.checkedInBy)}`
+  const person = reservation.reservedByName ?? memberName(reservation.reservedBy)
   const count = facilityReservations.length > 1 ? ` · ${facilityReservations.length} Buchungen` : ''
-  return `Nächste Buchung: ${formatReservationStart(reservation.startAt)}${count}`
+  return `${person} · ${formatReservationStart(reservation.startAt)}${count}`
 }
 function openFacility(facility: Facility) {
   selectedFacility.value = facility
@@ -60,6 +69,12 @@ function openFacility(facility: Facility) {
 function closeFacilityDialog() {
   facilityDialogOpen.value = false
   selectedFacility.value = null
+}
+
+async function showFacilityOnMap(facility: Facility) {
+  localStorage.setItem('jj-member-selected-revier', facility.revierId)
+  closeFacilityDialog()
+  await router.push({ path: '/reviere/karte', query: { facility: facility.id } })
 }
 
 function handleUpdatedFacility(facility: Facility) {
@@ -218,7 +233,7 @@ onMounted(loadReviere)
           <div class="facility-header"><div class="facility-title"><h2>{{ facility.name }}</h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'warning' : 'medium'">{{ facility.status }}</IonBadge><SatelliteThumbnail class="facility-thumbnail" :position="facility.position" :label="`Satellitenbild der Einrichtung ${facility.name}`" /><IonButton size="small" fill="clear" @click="openFacility(facility)">Öffnen</IonButton></div>
           <p v-if="facility.zustandsInfo" class="condition"><strong>Zustand:</strong> {{ facility.zustandsInfo }}</p>
           <p v-if="facility.notiz" class="note">{{ facility.notiz }}</p>
-          <div v-if="reservable(facility)" class="reservation"><strong>Nutzung</strong><span>{{ reservationLabel(facility) }}</span></div>
+          <div v-if="reservable(facility)" class="reservation"><strong>Nutzung</strong><div class="reservation-summary"><IonBadge :color="reservationBadge(facility).color">{{ reservationBadge(facility).label }}</IonBadge><span>{{ reservationDetails(facility) }}</span></div></div>
           <div class="task-heading"><strong>Aufgaben</strong></div>
           <IonList v-if="facilityTasks(facility.id).length" lines="full">
             <IonItem v-for="task in facilityTasks(facility.id)" :key="task.id">
@@ -237,6 +252,7 @@ onMounted(loadReviere)
         @close="closeFacilityDialog"
         @updated="handleUpdatedFacility"
         @deleted="handleDeletedFacility"
+        @show-on-map-requested="showFacilityOnMap"
         @usage-changed="handleUsageChanged"
       />
       </main>
@@ -260,6 +276,7 @@ onMounted(loadReviere)
 .condition { margin: 12px 0 4px; }
 .note, .reservation, .task-heading { margin-top: 12px; }
 .reservation { border-top: 1px solid var(--ion-color-light-shade); padding-top: 10px; }
+.reservation-summary { display: flex; align-items: center; justify-content: flex-end; gap: 8px; text-align: right; }
 .reservation-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .task-dialog { padding: 20px; }
 .task-dialog h2 { margin-top: 0; }

@@ -81,7 +81,7 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 | Allgemeine Revieraufgaben | Fertig | Eigene Ansicht mit Titel, Beschreibung, Fälligkeit, Priorität, Zuständigkeit, Übernehmen, Bearbeiten und Erledigen | Optionale Kategorien und Benachrichtigungen können später ergänzt werden |
 | Allgemeine Revierinformationen | Offen | Aufgaben sind umgesetzt, reine Informationsmeldungen noch nicht | Informationskategorien, Gültigkeitszeitraum und Sichtbarkeit fachlich festlegen |
 | Einrichtungen reservieren | Fertig | Reservieren, Ändern, Stornieren sowie Ein- und Auschecken | Keine wesentliche MVP-Lücke |
-| Einheitliches Zeitraster | Fertig | Start in festen 30-Minuten-Schritten; Ende automatisch drei Stunden später; API erzwingt dieselbe Regel | Dauer ist derzeit bewusst fest und nicht konfigurierbar |
+| Einheitliches Zeitraster | Fertig | Start und Dauer werden in 30-Minuten-Schritten gewählt; voreingestellt sind drei Stunden, möglich sind 30 Minuten bis 12 Stunden; die API validiert Start und Ende | Keine bekannte MVP-Lücke |
 | Reservierungskonflikte verhindern | Fertig | Zeitraumüberschneidungen werden im Store geprüft; mehrere nicht überlappende Zukunftsbuchungen werden chronologisch angezeigt und einzeln bearbeitet oder storniert | Keine bekannte MVP-Lücke |
 | Reservierungshistorie | Fertig | Beendete und abgelaufene Reservierungen bleiben gespeichert und werden pro Einrichtung in einer ausklappbaren Historie angezeigt | Optionale Filter und eine Aufbewahrungsfrist können später ergänzt werden |
 | Alte Reservierungen behandeln | Fertig | Abgelaufene Reservierungen werden nicht mehr als aktiv ausgeliefert, bleiben aber in der Historie erhalten | Keine bekannte MVP-Lücke |

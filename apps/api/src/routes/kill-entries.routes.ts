@@ -16,13 +16,17 @@ interface KillEntryRouteDependencies {
 
 export function registerKillEntryRoutes(app: Hono, dependencies: KillEntryRouteDependencies) {
    const { authStore, killEntryStore, getAuthenticatedPayload, requireAuth, canAccessHuntingDistrict, canAdministerHuntingDistrict } = dependencies;
+   const withCreatorName = <T extends { createdBy: string }>(entry: T) => ({
+      ...entry,
+      createdByName: authStore.findUserById(entry.createdBy)?.displayName ?? 'Unbekanntes Mitglied',
+   });
 
    app.get('/reviere/:revierId/streckeneintraege', requireAuth, async (context) => {
       const payload = await getAuthenticatedPayload(context);
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
       const revierId = context.req.param('revierId');
       if (!revierId || !user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
-      return context.json({ streckeneintraege: await killEntryStore.getByHuntingDistrictId(revierId) });
+      return context.json({ streckeneintraege: (await killEntryStore.getByHuntingDistrictId(revierId)).map(withCreatorName) });
    });
 
    app.post('/reviere/:revierId/streckeneintraege', requireAuth, zValidator('json', killEntrySchema, (result, context) => {
@@ -36,7 +40,7 @@ export function registerKillEntryRoutes(app: Hono, dependencies: KillEntryRouteD
       const revierId = context.req.param('revierId');
       if (!revierId || !user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
       const killEntry = await killEntryStore.create({ ...context.req.valid('json'), revierId, createdBy: user.id });
-      return context.json({ streckeneintrag: killEntry }, 201);
+      return context.json({ streckeneintrag: withCreatorName(killEntry) }, 201);
    });
 
    app.put('/reviere/:revierId/streckeneintraege/:id', requireAuth, zValidator('json', updateKillEntrySchema, (result, context) => {
@@ -54,7 +58,7 @@ export function registerKillEntryRoutes(app: Hono, dependencies: KillEntryRouteD
       if (!existing) return context.json({ message: 'Streckeneintrag nicht gefunden.' }, 404);
       if (existing.createdBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Dieser Streckeneintrag darf nicht bearbeitet werden.' }, 403);
       const updated = await killEntryStore.update(id, revierId, context.req.valid('json'));
-      return context.json({ streckeneintrag: updated });
+      return context.json({ streckeneintrag: updated ? withCreatorName(updated) : updated });
    });
 
    app.delete('/reviere/:revierId/streckeneintraege/:id', requireAuth, async (context) => {

@@ -32,6 +32,7 @@ export interface Streckeneintrag {
   geschaetztesAlter?: string
   notiz?: string
   createdBy: string
+  createdByName?: string
   createdAt: string
   updatedAt?: string
 }

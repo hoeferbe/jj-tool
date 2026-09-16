@@ -86,6 +86,7 @@ const positionWasSelected = ref(false)
 const selectedRevier = computed(() =>
   reviere.value.find((revier) => revier.id === selectedRevierId.value) ?? null,
 )
+const focusedFacilityId = computed(() => typeof route.query.facility === 'string' ? route.query.facility : null)
 const canCreateFacilities = computed(() => {
   if (currentUser.value?.accountType === 'systemAdmin') return true
   return currentUser.value?.memberships.some((membership) =>
@@ -172,6 +173,11 @@ function openEditFacility(facility: Jagdeinrichtung) {
   positionWasSelected.value = false
   editingFacility.value = facility
   showNewFacilityDialog.value = true
+}
+
+async function showFacilityOnMap(facility: Jagdeinrichtung) {
+  closeFacilityDialog()
+  await router.replace({ path: '/reviere/karte', query: { facility: facility.id } })
 }
 
 function startRepositioning(facility: Jagdeinrichtung) {
@@ -276,6 +282,7 @@ onMounted(async () => {
           :boundary="selectedRevier.boundary"
           :source-year="new Date(selectedRevier.createdAt).getFullYear()"
           :facilities="facilities"
+          :focus-facility-id="focusedFacilityId"
           :can-create-facilities="canCreateFacilities"
           :positioning-facility-id="positioningFacilityId"
           :facility-placement-mode="facilityPlacementMode"
@@ -300,11 +307,13 @@ onMounted(async () => {
         :center="selectedRevier.center"
         :position="newFacilityPosition ?? selectedRevier.center"
         :facility="editingFacility"
+        :can-reposition="true"
         :position-was-selected="positionWasSelected"
         @close="closeFacilityDialog"
         @created="handleCreatedFacility"
         @updated="handleUpdatedFacility"
         @deleted="handleDeletedFacility"
+        @show-on-map-requested="showFacilityOnMap"
         @usage-changed="selectRevier(selectedRevierId)"
         @reposition-requested="startRepositioning"
       />
