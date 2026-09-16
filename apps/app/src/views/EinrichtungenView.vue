@@ -75,7 +75,18 @@ function handleDeletedFacility(facilityId: string) {
 }
 
 async function handleUsageChanged() {
-  await loadRevierData()
+  if (!selectedRevierId.value) return
+  const token = localStorage.getItem('accessToken')
+  try {
+    const response = await fetch(`${apiUrl}/reviere/${selectedRevierId.value}/jagdeinrichtung-reservierungen`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    })
+    if (!response.ok) throw new Error('Reservierungen konnten nicht aktualisiert werden.')
+    reservations.value = ((await response.json()) as { reservierungen: Reservation[] }).reservierungen
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Reservierungen konnten nicht aktualisiert werden.'
+  }
 }
 
 async function loadRevierData() {

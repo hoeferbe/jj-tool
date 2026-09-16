@@ -39,7 +39,7 @@ interface FacilityMember { id: string; displayName: string }
 interface CurrentUser {
   id: string
   accountType: 'systemAdmin' | 'member'
-  memberships: Array<{ revierId: string; status: 'active' | 'pending'; isAdmin: boolean }>
+  memberships: Array<{ revierId: string; status: 'active' | 'pending'; memberType: 'paechter' | 'bgs' | 'guest'; isAdmin: boolean }>
 }
 
 const props = withDefaults(defineProps<{
@@ -96,13 +96,16 @@ const taskSaving = ref(false)
 const showTaskHistory = ref(false)
 const openTasks = () => tasks.value.filter((task) => task.status !== 'erledigt')
 const completedTasks = () => tasks.value.filter((task) => task.status === 'erledigt')
-const canDeleteFacility = computed(() => Boolean(props.facility) && (
-  currentUser.value?.accountType === 'systemAdmin'
-  || props.facility?.createdBy === currentUser.value?.id
-  || currentUser.value?.memberships.some((membership) =>
-    membership.revierId === props.revierId && membership.status === 'active' && membership.isAdmin,
-  ) === true
+const selectedMembership = computed(() => currentUser.value?.memberships.find((membership) =>
+  membership.revierId === props.revierId && membership.status === 'active',
 ))
+const canEditFacility = computed(() => {
+  if (!props.facility || currentUser.value?.accountType === 'systemAdmin') return true
+  const membership = selectedMembership.value
+  if (!membership || membership.memberType === 'guest') return false
+  return membership.isAdmin || props.facility.createdBy === currentUser.value?.id
+})
+const canDeleteFacility = computed(() => Boolean(props.facility) && canEditFacility.value)
 
 const reservable = () => props.facility && ['Kanzel', 'Bock', 'Leiter'].includes(props.facility.typ)
 const currentUserId = () => {
@@ -469,12 +472,12 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
       <section class="form-section">
         <label class="field-label">
           <span>Bezeichnung</span>
-          <input v-model="name" class="form-control" type="text" placeholder="z. B. Kanzel Nord">
+          <input v-model="name" class="form-control" type="text" placeholder="z. B. Kanzel Nord" :disabled="Boolean(props.facility) && !canEditFacility">
         </label>
         <div class="form-row">
           <label class="field-label">
             <span>Typ</span>
-            <select v-model="typ" class="form-control">
+            <select v-model="typ" class="form-control" :disabled="Boolean(props.facility) && !canEditFacility">
               <option value="Kanzel">Kanzel</option>
               <option value="Bock">Bock</option>
               <option value="Leiter">Leiter</option>
@@ -484,7 +487,7 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
           </label>
           <label class="field-label">
             <span>Status</span>
-            <select v-model="status" class="form-control status-control" :class="`status-${status.replace(' ', '-')}`">
+            <select v-model="status" class="form-control status-control" :class="`status-${status.replace(' ', '-')}`" :disabled="Boolean(props.facility) && !canEditFacility">
               <option value="aktiv">Aktiv</option>
               <option value="defekt">Defekt</option>
               <option value="ausser Betrieb">Außer Betrieb</option>
@@ -496,11 +499,11 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
         <h3>Zustand und Notiz</h3>
         <label class="field-label">
           <span>Aktueller Zustand / Mangel</span>
-          <textarea v-model="zustandsInfo" class="form-control textarea-control" rows="2" placeholder="Kurzbeschreibung, z. B. Tür klemmt oder Wespen vorhanden"></textarea>
+          <textarea v-model="zustandsInfo" class="form-control textarea-control" rows="2" placeholder="Kurzbeschreibung, z. B. Tür klemmt oder Wespen vorhanden" :disabled="Boolean(props.facility) && !canEditFacility"></textarea>
         </label>
         <label class="field-label">
           <span>Notiz</span>
-          <textarea v-model="notiz" class="form-control textarea-control" rows="2"></textarea>
+          <textarea v-model="notiz" class="form-control textarea-control" rows="2" :disabled="Boolean(props.facility) && !canEditFacility"></textarea>
         </label>
       </section>
       <section class="position-section">
@@ -508,7 +511,7 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
           <h3>Position</h3>
           <span class="coordinates">{{ position.lat.toFixed(6) }}, {{ position.lng.toFixed(6) }}</span>
         </div>
-        <IonButton v-if="props.facility" fill="outline" size="small" @click="emit('repositionRequested', props.facility)">Auf Karte wählen</IonButton>
+        <IonButton v-if="props.facility && canEditFacility" fill="outline" size="small" @click="emit('repositionRequested', props.facility)">Auf Karte wählen</IonButton>
       </section>
       <IonNote v-if="props.positionWasSelected" class="position-confirmation" color="success">Neue Position übernommen. Bitte mit „Speichern“ bestätigen.</IonNote>
       <p v-if="message" class="message">{{ message }}</p>
@@ -516,7 +519,7 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
         <IonButton v-if="canDeleteFacility" color="danger" fill="clear" :disabled="saving || deleting" @click="deleteFacility">{{ deleting ? 'Löschen...' : 'Löschen' }}</IonButton>
         <span class="dialog-action-spacer"></span>
         <IonButton fill="clear" :disabled="saving || deleting" @click="close">Abbrechen</IonButton>
-        <IonButton :disabled="saving || deleting || name.trim().length < 2" @click="saveFacility">{{ saving ? 'Speichern...' : 'Speichern' }}</IonButton>
+        <IonButton v-if="!props.facility || canEditFacility" :disabled="saving || deleting || name.trim().length < 2" @click="saveFacility">{{ saving ? 'Speichern...' : 'Speichern' }}</IonButton>
       </div>
       </div>
     </IonContent>

@@ -71,6 +71,7 @@ export function registerFacilityRoutes(app: Hono, dependencies: FacilityRouteDep
       if (!revierId || !id) return context.json({ message: 'Revier- oder Einrichtungs-ID fehlt.' }, 400);
       if (!(await huntingDistrictStore.getHuntingDistricts()).some((district) => district.id === revierId)) return context.json({ message: 'Revier nicht gefunden.' }, 404);
       if (!user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      if (!canCreateFacility(user, revierId)) return context.json({ message: 'Gäste dürfen Jagdeinrichtungen nicht bearbeiten.' }, 403);
       const existing = await facilityStore.getById(id);
       if (!existing || existing.revierId !== revierId) return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
       if (existing.createdBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Diese Jagdeinrichtung darf nicht bearbeitet werden.' }, 403);
@@ -87,6 +88,7 @@ export function registerFacilityRoutes(app: Hono, dependencies: FacilityRouteDep
       const id = context.req.param('id');
       if (!revierId || !id) return context.json({ message: 'Revier- oder Einrichtungs-ID fehlt.' }, 400);
       if (!user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      if (!canCreateFacility(user, revierId)) return context.json({ message: 'Gäste dürfen Jagdeinrichtungen nicht löschen.' }, 403);
       const existing = await facilityStore.getById(id);
       if (!existing || existing.revierId !== revierId) return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
       if (existing.createdBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Diese Jagdeinrichtung darf nicht gelöscht werden.' }, 403);

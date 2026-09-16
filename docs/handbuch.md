@@ -165,7 +165,7 @@ Die Ansicht **Reviermitglieder** zeigt die aktiven Mitglieder des ausgewählten 
 
 Mögliche Mitgliedstypen sind **Pächter**, **BGS**, **Mitglied** und **Gast**. Zusätzlich können Funktionen wie **Revierleiter**, **Kassenwart** oder **Schriftführer** hinterlegt sein.
 
-Gäste können Revierdaten ansehen, haben aber keine Berechtigung, neue Jagdeinrichtungen anzulegen.
+Gäste können Revierdaten und Jagdeinrichtungen ansehen, dürfen die Stammdaten, den Status, Notizen und die Position einer Einrichtung aber weder anlegen noch verändern oder löschen.
 Gäste können außerdem keine organisatorische Funktion und keine Revieradmin-Rechte erhalten.
 
 ## 9. Administration
