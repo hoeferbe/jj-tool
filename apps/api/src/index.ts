@@ -91,6 +91,8 @@ registerAuthRoutes(app, {
 registerFacilityRoutes(app, {
    authStore,
    facilityStore,
+   taskStore,
+   reservationStore,
    huntingDistrictStore,
    getAuthenticatedPayload,
    requireAuth,

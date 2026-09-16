@@ -36,6 +36,11 @@ interface FacilityTask {
   assignedTo?: string
 }
 interface FacilityMember { id: string; displayName: string }
+interface CurrentUser {
+  id: string
+  accountType: 'systemAdmin' | 'member'
+  memberships: Array<{ revierId: string; status: 'active' | 'pending'; isAdmin: boolean }>
+}
 
 const props = withDefaults(defineProps<{
   isOpen: boolean
@@ -50,6 +55,7 @@ const emit = defineEmits<{
   close: []
   created: [facility: Jagdeinrichtung]
   updated: [facility: Jagdeinrichtung]
+  deleted: [facilityId: string]
   repositionRequested: [facility: Jagdeinrichtung]
   usageChanged: []
 }>()
@@ -61,7 +67,9 @@ const zustandsInfo = ref('')
 const notiz = ref('')
 const position = ref<Point>({ ...(props.position ?? props.center) })
 const saving = ref(false)
+const deleting = ref(false)
 const message = ref('')
+const currentUser = ref<CurrentUser | null>(null)
 const usageMessage = ref('')
 const usageSaving = ref(false)
 const activeReservations = ref<FacilityReservation[]>(props.reservation ? [props.reservation] : [])
@@ -88,6 +96,13 @@ const taskSaving = ref(false)
 const showTaskHistory = ref(false)
 const openTasks = () => tasks.value.filter((task) => task.status !== 'erledigt')
 const completedTasks = () => tasks.value.filter((task) => task.status === 'erledigt')
+const canDeleteFacility = computed(() => Boolean(props.facility) && (
+  currentUser.value?.accountType === 'systemAdmin'
+  || props.facility?.createdBy === currentUser.value?.id
+  || currentUser.value?.memberships.some((membership) =>
+    membership.revierId === props.revierId && membership.status === 'active' && membership.isAdmin,
+  ) === true
+))
 
 const reservable = () => props.facility && ['Kanzel', 'Bock', 'Leiter'].includes(props.facility.typ)
 const currentUserId = () => {
@@ -202,6 +217,12 @@ async function loadTasks() {
     tasks.value = data.aufgaben.filter((task) => task.jagdeinrichtungId === props.facility?.id)
   }
   if (membersResponse.ok) members.value = (await membersResponse.json() as { members: FacilityMember[] }).members
+}
+
+async function loadCurrentUser() {
+  const token = localStorage.getItem('accessToken')
+  const response = await fetch(`${apiUrl}/auth/me`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+  if (response.ok) currentUser.value = ((await response.json()) as { user: CurrentUser }).user
 }
 
 function memberName(id?: string) {
@@ -331,11 +352,33 @@ async function saveFacility() {
   }
 }
 
+async function deleteFacility() {
+  if (!props.facility || !canDeleteFacility.value) return
+  const confirmed = window.confirm(`Soll „${props.facility.name}“ endgültig gelöscht werden? Alle zugehörigen Aufgaben und Reservierungen werden ebenfalls gelöscht.`)
+  if (!confirmed) return
+  deleting.value = true
+  message.value = ''
+  const token = localStorage.getItem('accessToken')
+  try {
+    const response = await fetch(`${apiUrl}/reviere/${props.revierId}/jagdeinrichtungen/${props.facility.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) throw new Error(((await response.json()) as { message?: string }).message ?? 'Jagdeinrichtung konnte nicht gelöscht werden.')
+    emit('deleted', props.facility.id)
+    close()
+  } catch (error) {
+    message.value = error instanceof Error ? error.message : 'Jagdeinrichtung konnte nicht gelöscht werden.'
+  } finally {
+    deleting.value = false
+  }
+}
+
 function close() {
   emit('close')
 }
 
-watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promise.all([loadUsage(), loadTasks()]) } })
+watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promise.all([loadUsage(), loadTasks(), loadCurrentUser()]) } })
 </script>
 
 <template>
@@ -470,8 +513,10 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
       <IonNote v-if="props.positionWasSelected" class="position-confirmation" color="success">Neue Position übernommen. Bitte mit „Speichern“ bestätigen.</IonNote>
       <p v-if="message" class="message">{{ message }}</p>
       <div class="dialog-actions">
-        <IonButton fill="clear" :disabled="saving" @click="close">Abbrechen</IonButton>
-        <IonButton :disabled="saving || name.trim().length < 2" @click="saveFacility">{{ saving ? 'Speichern...' : 'Speichern' }}</IonButton>
+        <IonButton v-if="canDeleteFacility" color="danger" fill="clear" :disabled="saving || deleting" @click="deleteFacility">{{ deleting ? 'Löschen...' : 'Löschen' }}</IonButton>
+        <span class="dialog-action-spacer"></span>
+        <IonButton fill="clear" :disabled="saving || deleting" @click="close">Abbrechen</IonButton>
+        <IonButton :disabled="saving || deleting || name.trim().length < 2" @click="saveFacility">{{ saving ? 'Speichern...' : 'Speichern' }}</IonButton>
       </div>
       </div>
     </IonContent>
@@ -510,6 +555,7 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
 .coordinates { color: var(--ion-color-medium-shade); font-variant-numeric: tabular-nums; }
 .position-confirmation { display: block; padding: 10px 12px; border-left: 3px solid var(--ion-color-success); background: rgba(63, 106, 66, 0.1); }
 .dialog-actions { justify-content: flex-end; padding-top: 4px; border-top: 1px solid var(--ion-color-light-shade); }
+.dialog-action-spacer { flex: 1; }
 .message { color: var(--ion-color-danger); }
 :global(.facility-modal) { --width: min(640px, calc(100vw - 24px)); --height: min(760px, 92vh); --max-height: 92vh; --border-radius: 10px; }
 :global(.facility-modal ion-content) { --background: var(--ion-background-color, #f8f8f2); }

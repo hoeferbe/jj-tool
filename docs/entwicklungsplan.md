@@ -100,6 +100,7 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 #### Jagdeinrichtungen, Aufgaben und Reservierungen
 
 - Jagdeinrichtungen mit Bezeichnung, Typ, Kartenposition, Status, Zustandsinfo und Notiz anlegen und bearbeiten.
+- Jagdeinrichtungen durch Ersteller oder zuständige Administratoren endgültig löschen; zugehörige Aufgaben und Reservierungen werden dabei ebenfalls entfernt.
 - Jagdeinrichtungen auf der Karte und in einer Listenansicht anzeigen.
 - Aufgaben an Einrichtungen anlegen, Mitgliedern zuweisen, übernehmen und als erledigt markieren.
 - Allgemeine Revieraufgaben mit Beschreibung, Fälligkeit, Priorität und optionaler Zuweisung anlegen, übernehmen, bearbeiten und erledigen.

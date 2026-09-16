@@ -70,7 +70,7 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 | Position innerhalb des Reviers | Fertig | Client- und serverseitige Grenzprüfung | Grenzfälle mit Polygonlöchern weiter testen |
 | Einrichtung bearbeiten und verschieben | Fertig | Dialog und Kartenpositionierung in `NewJagdeinrichtungDialog.vue` | Keine bekannte Lücke |
 | Rollenabhängige Bearbeitung | Fertig | Pächter, BGS und Admin dürfen anlegen; Gäste nicht; Bearbeitung durch Ersteller oder Admin | Automatisierte Routentests ergänzen |
-| Einrichtung löschen | Offen | Keine Löschroute und keine UI-Aktion | Löschregel sowie Behandlung von Aufgaben und Reservierungen definieren und umsetzen |
+| Einrichtung löschen | Fertig | Ersteller sowie zuständige Revier- oder Systemadmins können eine Einrichtung endgültig löschen; zugehörige Aufgaben und Reservierungen werden kaskadiert entfernt | Allgemeine Revieraufgaben und Daten anderer Einrichtungen bleiben erhalten |
 | Fotos und Filter | Offen | Nicht vorhanden | Bildspeicher, Komprimierung, Upload, Zugriffsschutz und Filter umsetzen |
 
 ## 6. Aufgaben und Reservierungen

@@ -1,7 +1,9 @@
 import { zValidator } from '@hono/zod-validator';
 import type { Hono, MiddlewareHandler } from 'hono';
 import { type AuthStore, type User } from '../auth-store.js';
+import { type FacilityReservationsStore } from '../facility-reservations-store.js';
 import { type FacilityStore } from '../facility-store.js';
+import { type FacilityTasksStore } from '../facility-tasks-store.js';
 import { type HuntingDistrict, type HuntingDistrictStore } from '../hunting-district-store.js';
 import type { AuthPayload } from '../middleware/auth.middleware.js';
 import { facilitySchema } from '../schemas/facility.schemas.js';
@@ -9,6 +11,8 @@ import { facilitySchema } from '../schemas/facility.schemas.js';
 interface FacilityRouteDependencies {
    authStore: AuthStore;
    facilityStore: FacilityStore;
+   taskStore: FacilityTasksStore;
+   reservationStore: FacilityReservationsStore;
    huntingDistrictStore: HuntingDistrictStore;
    getAuthenticatedPayload: (context: import('hono').Context) => Promise<AuthPayload | null>;
    requireAuth: MiddlewareHandler;
@@ -22,6 +26,8 @@ export function registerFacilityRoutes(app: Hono, dependencies: FacilityRouteDep
    const {
       authStore,
       facilityStore,
+      taskStore,
+      reservationStore,
       huntingDistrictStore,
       getAuthenticatedPayload,
       requireAuth,
@@ -72,5 +78,22 @@ export function registerFacilityRoutes(app: Hono, dependencies: FacilityRouteDep
       const district = (await huntingDistrictStore.getHuntingDistricts()).find((entry) => entry.id === revierId);
       if (!district || !isPointInsideHuntingDistrict(district, input.position)) return context.json({ message: 'Die Position muss innerhalb der Reviergrenze liegen.' }, 400);
       return context.json({ jagdeinrichtung: await facilityStore.update(id, { ...input, revierId, createdBy: existing.createdBy }) });
+   });
+
+   app.delete('/reviere/:revierId/jagdeinrichtungen/:id', requireAuth, async (context) => {
+      const payload = await getAuthenticatedPayload(context);
+      const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+      const revierId = context.req.param('revierId');
+      const id = context.req.param('id');
+      if (!revierId || !id) return context.json({ message: 'Revier- oder Einrichtungs-ID fehlt.' }, 400);
+      if (!user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+      const existing = await facilityStore.getById(id);
+      if (!existing || existing.revierId !== revierId) return context.json({ message: 'Jagdeinrichtung nicht gefunden.' }, 404);
+      if (existing.createdBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Diese Jagdeinrichtung darf nicht gelöscht werden.' }, 403);
+      await taskStore.deleteByFacilityId(id);
+      await reservationStore.deleteByFacilityId(id);
+      const deleted = await facilityStore.delete(id);
+      if (!deleted) return context.json({ message: 'Jagdeinrichtung konnte nicht gelöscht werden.' }, 500);
+      return context.json({ message: 'Jagdeinrichtung und zugehörige Aufgaben und Reservierungen gelöscht.' });
    });
 }

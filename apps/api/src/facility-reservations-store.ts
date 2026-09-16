@@ -164,6 +164,14 @@ export class FacilityReservationsStore {
       });
    }
 
+   async deleteByFacilityId(jagdeinrichtungId: string) {
+      return this.enqueue(async () => {
+         const initialLength = this.data.reservierungen.length;
+         this.data.reservierungen = this.data.reservierungen.filter((entry) => entry.jagdeinrichtungId !== jagdeinrichtungId);
+         return initialLength - this.data.reservierungen.length;
+      });
+   }
+
    private reservationStart(reservation: FacilityReservation) {
       return reservation.startAt ? new Date(reservation.startAt).getTime() : new Date(reservation.reservedAt).getTime();
    }

@@ -119,6 +119,11 @@ function handleUpdatedFacility(facility: Jagdeinrichtung) {
   editingFacility.value = null
 }
 
+function handleDeletedFacility(facilityId: string) {
+  facilities.value = facilities.value.filter((facility) => facility.id !== facilityId)
+  closeFacilityDialog()
+}
+
 function openNewFacilityAtPosition(position: { lat: number; lng: number }) {
   editingFacility.value = null
   positioningFacilityId.value = null
@@ -299,6 +304,7 @@ onMounted(async () => {
         @close="closeFacilityDialog"
         @created="handleCreatedFacility"
         @updated="handleUpdatedFacility"
+        @deleted="handleDeletedFacility"
         @usage-changed="selectRevier(selectedRevierId)"
         @reposition-requested="startRepositioning"
       />

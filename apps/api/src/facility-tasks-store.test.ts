@@ -33,6 +33,19 @@ describe('FacilityTasksStore', () => {
       assert.equal((await store.getByHuntingDistrictId('revier-2')).length, 1);
    });
 
+   it('deletes only tasks linked to one facility', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'jjtool-delete-facility-tasks-'));
+      tempDirs.push(directory);
+      const store = new FacilityTasksStore(directory);
+      await store.initialize();
+      await store.create({ revierId: 'revier-1', jagdeinrichtungId: 'facility-1', titel: 'Entfernen', prioritaet: 'normal', status: 'offen', assignedBy: 'user-1' });
+      await store.create({ revierId: 'revier-1', jagdeinrichtungId: 'facility-2', titel: 'Behalten', prioritaet: 'normal', status: 'offen', assignedBy: 'user-1' });
+      await store.create({ revierId: 'revier-1', titel: 'Allgemein behalten', prioritaet: 'normal', status: 'offen', assignedBy: 'user-1' });
+
+      assert.equal(await store.deleteByFacilityId('facility-1'), 1);
+      assert.deepEqual((await store.getByHuntingDistrictId('revier-1')).map((task) => task.titel), ['Behalten', 'Allgemein behalten']);
+   });
+
    it('stores general district tasks with due date and priority', async () => {
       const directory = await mkdtemp(join(tmpdir(), 'jjtool-revier-aufgaben-'));
       tempDirs.push(directory);

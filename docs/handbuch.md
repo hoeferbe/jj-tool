@@ -92,6 +92,10 @@ Für eine neue Position:
 
 Mit **Abbrechen** werden nicht gespeicherte Änderungen verworfen.
 
+### Jagdeinrichtung löschen
+
+Der Ersteller sowie zuständige Revier- oder Systemadministratoren können eine Einrichtung im Bearbeitungsdialog über **Löschen** endgültig entfernen. Nach der Bestätigung werden auch alle Aufgaben, aktiven und historischen Reservierungen dieser Einrichtung gelöscht. Allgemeine Revieraufgaben und andere Einrichtungen bleiben erhalten.
+
 ### Statusfarben
 
 Der Status einer Einrichtung wird farblich hervorgehoben:

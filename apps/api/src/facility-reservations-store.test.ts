@@ -115,4 +115,17 @@ describe('FacilityReservationsStore', () => {
       assert.deepEqual(await store.getActiveByHuntingDistrictId('revier-1'), []);
       assert.equal((await store.getActiveByHuntingDistrictId('revier-2')).length, 1);
    });
+
+   it('deletes only reservations linked to one facility', async () => {
+      const directory = await mkdtemp(join(tmpdir(), 'jjtool-delete-facility-reservations-'));
+      tempDirs.push(directory);
+      const store = new FacilityReservationsStore(directory);
+      await store.initialize();
+      await store.checkIn({ revierId: 'revier-1', jagdeinrichtungId: 'facility-1', checkedInBy: 'user-1' });
+      await store.checkIn({ revierId: 'revier-1', jagdeinrichtungId: 'facility-2', checkedInBy: 'user-1' });
+
+      assert.equal(await store.deleteByFacilityId('facility-1'), 1);
+      assert.equal(await store.getActiveByFacilityId('facility-1'), null);
+      assert.notEqual(await store.getActiveByFacilityId('facility-2'), null);
+   });
 });

@@ -67,6 +67,13 @@ function handleUpdatedFacility(facility: Facility) {
   closeFacilityDialog()
 }
 
+function handleDeletedFacility(facilityId: string) {
+  facilities.value = facilities.value.filter((facility) => facility.id !== facilityId)
+  tasks.value = tasks.value.filter((task) => task.jagdeinrichtungId !== facilityId)
+  reservations.value = reservations.value.filter((reservation) => reservation.jagdeinrichtungId !== facilityId)
+  closeFacilityDialog()
+}
+
 async function handleUsageChanged() {
   await loadRevierData()
 }
@@ -218,6 +225,7 @@ onMounted(loadReviere)
         :facility="selectedFacility"
         @close="closeFacilityDialog"
         @updated="handleUpdatedFacility"
+        @deleted="handleDeletedFacility"
         @usage-changed="handleUsageChanged"
       />
       </main>
