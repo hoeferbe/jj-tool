@@ -2,12 +2,14 @@ import { zValidator } from '@hono/zod-validator';
 import type { Hono, MiddlewareHandler } from 'hono';
 import { type AuthStore, type User } from '../auth-store.js';
 import { type KillEntryStore } from '../kill-entry-store.js';
+import { type ImageStore } from '../image-store.js';
 import type { AuthPayload } from '../middleware/auth.middleware.js';
 import { killEntrySchema, updateKillEntrySchema } from '../schemas/kill-entry.schemas.js';
 
 interface KillEntryRouteDependencies {
    authStore: AuthStore;
    killEntryStore: KillEntryStore;
+   imageStore: ImageStore;
    getAuthenticatedPayload: (context: import('hono').Context) => Promise<AuthPayload | null>;
    requireAuth: MiddlewareHandler;
    canAccessHuntingDistrict: (user: User, revierId: string) => boolean;
@@ -16,7 +18,7 @@ interface KillEntryRouteDependencies {
 
 /** Registers CRUD endpoints for Streckeneinträge (kill entries) within a hunting district. */
 export function registerKillEntryRoutes(app: Hono, dependencies: KillEntryRouteDependencies) {
-   const { authStore, killEntryStore, getAuthenticatedPayload, requireAuth, canAccessHuntingDistrict, canAdministerHuntingDistrict } = dependencies;
+   const { authStore, killEntryStore, imageStore, getAuthenticatedPayload, requireAuth, canAccessHuntingDistrict, canAdministerHuntingDistrict } = dependencies;
    const withCreatorName = <T extends { createdBy: string }>(entry: T) => ({
       ...entry,
       createdByName: authStore.findUserById(entry.createdBy)?.displayName ?? 'Unbekanntes Mitglied',
@@ -71,6 +73,7 @@ export function registerKillEntryRoutes(app: Hono, dependencies: KillEntryRouteD
       const existing = await killEntryStore.getById(id, revierId);
       if (!existing) return context.json({ message: 'Streckeneintrag nicht gefunden.' }, 404);
       if (existing.createdBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Dieser Streckeneintrag darf nicht gelöscht werden.' }, 403);
+      await imageStore.deleteByEntity('streckeneintrag', id);
       const deleted = await killEntryStore.delete(id, revierId);
       return context.json({ message: 'Streckeneintrag gelöscht.' });
    });

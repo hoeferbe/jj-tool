@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { IonButton, IonContent, IonModal, IonNote } from '@ionic/vue'
 import * as L from 'leaflet'
+import ImageGallery from './ImageGallery.vue'
 
 interface Point { lat: number; lng: number }
 
@@ -635,6 +636,13 @@ watch(() => props.isOpen, (isOpen) => {
             <textarea v-model="notiz" class="form-control textarea-control" rows="2" placeholder="Weitere Angaben zum Abschuss oder Fundort"></textarea>
           </label>
         </section>
+
+        <ImageGallery
+          v-if="props.entry"
+          :base-url="`${apiUrl}/reviere/${props.revierId}/streckeneintraege/${props.entry.id}/bilder`"
+          :can-manage="true"
+        />
+        <IonNote v-else>Bilder können nach dem Speichern hinzugefügt werden.</IonNote>
 
         <p v-if="message" class="message">{{ message }}</p>
 

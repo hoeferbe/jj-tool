@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { IonBadge, IonButton, IonContent, IonItem, IonLabel, IonList, IonModal, IonNote, IonSelect, IonSelectOption, IonTextarea } from '@ionic/vue'
+import ImageGallery from './ImageGallery.vue'
 
 interface Point { lat: number; lng: number }
 interface Jagdeinrichtung {
@@ -554,6 +555,11 @@ watch(() => props.isOpen, async (isOpen) => { if (isOpen) { reset(); await Promi
           <textarea v-model="notiz" class="form-control textarea-control" rows="2" :disabled="Boolean(props.facility) && !canEditFacility"></textarea>
         </label>
       </section>
+      <ImageGallery
+        v-if="props.facility"
+        :base-url="`${apiUrl}/reviere/${props.revierId}/jagdeinrichtungen/${props.facility.id}/bilder`"
+        :can-manage="canEditFacility"
+      />
       <section class="position-section">
         <div>
           <h3>Position</h3>

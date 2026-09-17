@@ -9,6 +9,7 @@ import { FacilityReservationsStore } from './facility-reservations-store.js';
 import { sendRegistrationNotification, sendHuntingDistrictInvitation } from './mailer.js';
 import { HuntingDistrictStore } from './hunting-district-store.js';
 import { KillEntryStore } from './kill-entry-store.js';
+import { ImageStore } from './image-store.js';
 import { createAuthMiddleware } from './middleware/auth.middleware.js';
 import { createAuthHelpers } from './helpers/auth.helpers.js';
 import { createHuntingDistrictHelpers } from './helpers/hunting-district.helpers.js';
@@ -21,6 +22,7 @@ import { registerKillEntryRoutes } from './routes/kill-entries.routes.js';
 import { registerAdminRoutes } from './routes/admin.routes.js';
 import { registerHuntingDistrictRoutes } from './routes/hunting-districts.routes.js';
 import { registerNewsRoutes } from './routes/news.routes.js';
+import { registerImageRoutes } from './routes/images.routes.js';
 import { bootstrapApi } from './bootstrap.js';
 
 // Load .env from the api package root.
@@ -35,6 +37,7 @@ const facilityStore = new FacilityStore(dataDirectory);
 const taskStore = new FacilityTasksStore(dataDirectory);
 const reservationStore = new FacilityReservationsStore(dataDirectory);
 const killEntryStore = new KillEntryStore(dataDirectory);
+const imageStore = new ImageStore(dataDirectory);
 // Encode the secret once so every JWT sign/verify reuses the same Uint8Array.
 const authSecret = new TextEncoder().encode(
    process.env.AUTH_SECRET ?? 'development-only-secret-change-me',
@@ -94,6 +97,7 @@ registerFacilityRoutes(app, {
    facilityStore,
    taskStore,
    reservationStore,
+   imageStore,
    huntingDistrictStore,
    getAuthenticatedPayload,
    requireAuth,
@@ -124,6 +128,7 @@ registerReservationRoutes(app, {
 registerKillEntryRoutes(app, {
    authStore,
    killEntryStore,
+   imageStore,
    getAuthenticatedPayload,
    requireAuth,
    canAccessHuntingDistrict,
@@ -162,6 +167,16 @@ registerNewsRoutes(app, {
    getAuthenticatedPayload,
    requireAuth,
 });
+registerImageRoutes(app, {
+   authStore,
+   imageStore,
+   facilityStore,
+   killEntryStore,
+   getAuthenticatedPayload,
+   requireAuth,
+   canAccessHuntingDistrict,
+   canAdministerHuntingDistrict,
+});
 
 const port = Number(process.env.PORT ?? 8787);
 await bootstrapApi({
@@ -173,5 +188,6 @@ await bootstrapApi({
    taskStore,
    reservationStore,
    killEntryStore,
+   imageStore,
    createPasswordLink,
 });

@@ -6,6 +6,7 @@ import { type FacilityReservationsStore } from './facility-reservations-store.js
 import { type FacilityStore } from './facility-store.js';
 import { type HuntingDistrictStore } from './hunting-district-store.js';
 import { type KillEntryStore } from './kill-entry-store.js';
+import { type ImageStore } from './image-store.js';
 import { type User } from './auth-store.js';
 
 interface BootstrapDependencies {
@@ -17,6 +18,7 @@ interface BootstrapDependencies {
    taskStore: FacilityTasksStore;
    reservationStore: FacilityReservationsStore;
    killEntryStore: KillEntryStore;
+   imageStore: ImageStore;
    createPasswordLink: (user: User) => Promise<void>;
 }
 
@@ -52,6 +54,7 @@ export async function bootstrapApi(dependencies: BootstrapDependencies) {
       taskStore,
       reservationStore,
       killEntryStore,
+      imageStore,
       createPasswordLink,
    } = dependencies;
 
@@ -61,6 +64,7 @@ export async function bootstrapApi(dependencies: BootstrapDependencies) {
    await taskStore.initialize();
    await reservationStore.initialize();
    await killEntryStore.initialize();
+   await imageStore.initialize();
    for (const district of await huntingDistrictStore.getHuntingDistricts()) {
       await authStore.ensureHuntingDistrictOwner(district.createdBy, district.id);
    }

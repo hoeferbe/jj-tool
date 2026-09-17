@@ -4,6 +4,7 @@ import { type AuthStore, type User } from '../auth-store.js';
 import { type FacilityReservationsStore } from '../facility-reservations-store.js';
 import { type FacilityStore } from '../facility-store.js';
 import { type FacilityTasksStore } from '../facility-tasks-store.js';
+import { type ImageStore } from '../image-store.js';
 import { type HuntingDistrict, type HuntingDistrictStore } from '../hunting-district-store.js';
 import type { AuthPayload } from '../middleware/auth.middleware.js';
 import { facilitySchema } from '../schemas/facility.schemas.js';
@@ -13,6 +14,7 @@ interface FacilityRouteDependencies {
    facilityStore: FacilityStore;
    taskStore: FacilityTasksStore;
    reservationStore: FacilityReservationsStore;
+   imageStore: ImageStore;
    huntingDistrictStore: HuntingDistrictStore;
    getAuthenticatedPayload: (context: import('hono').Context) => Promise<AuthPayload | null>;
    requireAuth: MiddlewareHandler;
@@ -29,6 +31,7 @@ export function registerFacilityRoutes(app: Hono, dependencies: FacilityRouteDep
       facilityStore,
       taskStore,
       reservationStore,
+      imageStore,
       huntingDistrictStore,
       getAuthenticatedPayload,
       requireAuth,
@@ -95,6 +98,7 @@ export function registerFacilityRoutes(app: Hono, dependencies: FacilityRouteDep
       if (existing.createdBy !== user.id && !canAdministerHuntingDistrict(user, revierId)) return context.json({ message: 'Diese Jagdeinrichtung darf nicht gelöscht werden.' }, 403);
       await taskStore.deleteByFacilityId(id);
       await reservationStore.deleteByFacilityId(id);
+      await imageStore.deleteByEntity('jagdeinrichtung', id);
       const deleted = await facilityStore.delete(id);
       if (!deleted) return context.json({ message: 'Jagdeinrichtung konnte nicht gelöscht werden.' }, 500);
       return context.json({ message: 'Jagdeinrichtung und zugehörige Aufgaben und Reservierungen gelöscht.' });

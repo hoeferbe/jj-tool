@@ -71,7 +71,7 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 | Einrichtung bearbeiten und verschieben | Fertig | Dialog und Kartenpositionierung in `NewJagdeinrichtungDialog.vue` | Keine bekannte Lücke |
 | Rollenabhängige Bearbeitung | Fertig | Pächter, BGS und Admin dürfen anlegen; Gäste nicht; Bearbeitung durch Ersteller oder Admin | Automatisierte Routentests ergänzen |
 | Einrichtung löschen | Fertig | Ersteller sowie zuständige Revier- oder Systemadmins können eine Einrichtung endgültig löschen; zugehörige Aufgaben und Reservierungen werden kaskadiert entfernt | Allgemeine Revieraufgaben und Daten anderer Einrichtungen bleiben erhalten |
-| Fotos und Filter | Offen | Nicht vorhanden | Bildspeicher, Komprimierung, Upload, Zugriffsschutz und Filter umsetzen |
+| Fotos und Filter | Teilweise | Bis zu 3 Bilder je Einrichtung, clientseitig auf max. 1024px komprimiert, Upload/Anzeige/Löschen über `image-store.ts`, `images.routes.ts` und `ImageGallery.vue`; Auslieferung nur nach Auth-Prüfung | Filter nach Bildern sind noch offen |
 
 ## 6. Aufgaben und Reservierungen
 
@@ -98,7 +98,7 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 | Liste, Detail, Sortierung und Löschen | Fertig | `StreckeneintraegeView.vue`, Detaildialog und API-CRUD | Keine wesentliche UI-Lücke |
 | Bearbeitungsrechte laut Produktregel | Fertig | Nur Ersteller sowie zuständige Revier- oder Systemadmins können Einträge ändern oder löschen; die UI zeigt Aktionen entsprechend an | Automatisierte Routentests weiter ausbauen |
 | Verwertung | Offen | Nicht im Datenmodell enthalten | Verwertungsweg fachlich festlegen und in Schema, Store und UI ergänzen |
-| Fotos | Offen | Nicht vorhanden | Mehrfachbilder, Komprimierung, Upload und nachträgliches Ergänzen umsetzen |
+| Fotos | Fertig | Bis zu 3 Bilder je Streckeneintrag, clientseitig komprimiert vor dem Upload, nachträgliches Ergänzen nach dem Speichern möglich (`ImageGallery.vue`) | Keine bekannte MVP-Lücke |
 | Auswertungen und Export | Offen | Nicht vorhanden | Zeitraum-, Wildart- und Verwertungsfilter sowie Exportformat festlegen |
 | Offline-Erfassung und Synchronisation | Offen | Keine IndexedDB-Queue vorhanden | Lokale Queue, Wiederholung, Konflikte und Duplikatschutz umsetzen |
 
