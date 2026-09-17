@@ -17,6 +17,12 @@ Diese Datei gilt für den gesamten Monorepo (`apps/api`, `apps/app`) und fasst R
 - Kein Linter im Repo eingerichtet – Typecheck ist die verbindliche Prüfung vor Abschluss einer Aufgabe.
 - Entwicklungsserver (API/App) nur vorübergehend zum eigenen Testen starten und danach wieder beenden; der Nutzer startet beide Server selbst dauerhaft.
 
+## Git-Workflow
+
+- Keine automatischen Commits, außer der Nutzer fordert das Committen explizit an.
+- Nach Abschluss eines Auftrags stattdessen eine passende Commit-Message vorschlagen, damit der Nutzer selbst committen kann.
+- Bei mehreren Aufträgen in einer Session die vorgeschlagene Commit-Message jeweils an den aktuellen Stand anpassen (nicht die alte Message unverändert wiederholen).
+
 ## Code-Konventionen
 
 - **JSDoc ist Pflicht** für exportierte Funktionen, Klassen und öffentliche Methoden in `apps/api/src` und `apps/app/src` (Stores, Helper, Routen-Factories, Composables, nicht-triviale Funktionen in `.vue`-Dateien). Kurze, prägnante Beschreibung, `@param`/`@returns` nur wenn sie über den Namen hinaus Mehrwert bieten. Vorbild: `apps/api/src/auth-store.ts` (`findUserById`, `recordLogin`).
