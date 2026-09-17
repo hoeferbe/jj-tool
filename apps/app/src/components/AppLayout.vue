@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { IonBadge, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonModal, IonNote, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
 import { addCircleOutline, chevronDownOutline, clipboardOutline, constructOutline, logOutOutline, mapOutline, notificationsOutline, peopleOutline, personCircleOutline, settingsOutline, trailSignOutline } from 'ionicons/icons'
+import { useNews } from '../composables/useNews'
 
 const router = useRouter()
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
@@ -12,9 +13,7 @@ const profile = ref({ username: '', displayName: '', email: '' })
 const profileSaving = ref(false)
 const profileError = ref('')
 
-interface NewsItem { id: string; type: string; revierId: string; revierName: string; text: string; createdAt: string }
-const newsItems = ref<NewsItem[]>([])
-const newsCount = ref(0)
+const { newsItems, newsCount, loadNews, markAllNewsSeen, sectionHasNews } = useNews()
 
 const uuid =
   globalThis.crypto?.randomUUID?.() ??
@@ -45,33 +44,6 @@ const isAdmin = computed(() => tokenInfo.value
 
 function refreshTokenInfo() {
   tokenInfo.value = decodeTokenInfo()
-}
-
-/** Fetches the news-since-last-visit feed and updates the badge count (does not mark it as seen). */
-async function loadNews() {
-  const token = localStorage.getItem('accessToken')
-  if (!token) return
-  try {
-    const response = await fetch(`${apiUrl}/neuigkeiten`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
-    if (!response.ok) return
-    const data = await response.json() as { items: NewsItem[]; count: number }
-    newsItems.value = data.items
-    newsCount.value = data.count
-  } catch {
-    // best effort – badge just keeps its previous value on network failure
-  }
-}
-
-/** Marks all news as seen on the server and clears the local badge immediately. */
-async function markNewsSeen() {
-  if (!newsItems.value.length && !newsCount.value) return
-  newsCount.value = 0
-  const token = localStorage.getItem('accessToken')
-  try {
-    await fetch(`${apiUrl}/neuigkeiten/gesehen`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-  } catch {
-    // best effort – badge stays cleared locally even if the request fails
-  }
 }
 
 /** Formats a news item's timestamp as a short localized date/time string. */
@@ -164,7 +136,7 @@ async function logout() {
           </IonButton>
         </IonButtons>
       </IonToolbar>
-      <IonPopover :trigger="newsMenuTriggerId" trigger-action="click" @did-present="markNewsSeen">
+      <IonPopover :trigger="newsMenuTriggerId" trigger-action="click" @did-present="markAllNewsSeen">
         <IonList lines="full" class="news-list">
           <IonNote v-if="!newsItems.length" class="news-empty">Keine neuen Ereignisse seit deinem letzten Besuch.</IonNote>
           <IonItem v-for="item in newsItems" :key="item.id">
@@ -180,14 +152,17 @@ async function logout() {
           <IonItem button @click="navigate('/reviere/karte')">
             <IonIcon slot="start" :icon="mapOutline" />
             Revierkarte
+            <IonBadge v-if="sectionHasNews('karte')" color="danger" class="menu-item-badge">•</IonBadge>
           </IonItem>
           <IonItem button @click="navigate('/reviere/mitglieder')">
             <IonIcon slot="start" :icon="peopleOutline" />
             Reviermitglieder
+            <IonBadge v-if="sectionHasNews('mitglieder')" color="danger" class="menu-item-badge">•</IonBadge>
           </IonItem>
           <IonItem button @click="navigate('/reviere/einrichtungen')">
             <IonIcon slot="start" :icon="constructOutline" />
             Reviereinrichtungen
+            <IonBadge v-if="sectionHasNews('einrichtungen')" color="danger" class="menu-item-badge">•</IonBadge>
           </IonItem>
           <IonItem button @click="navigate('/reviere/strecke')">
             <IonIcon slot="start" :icon="trailSignOutline" />
@@ -196,6 +171,7 @@ async function logout() {
           <IonItem button @click="navigate('/reviere/aufgaben')">
             <IonIcon slot="start" :icon="clipboardOutline" />
             Revieraufgaben
+            <IonBadge v-if="sectionHasNews('aufgaben')" color="danger" class="menu-item-badge">•</IonBadge>
           </IonItem>
           <div class="user-menu-divider" role="separator"></div>
           <IonItem button @click="navigate('/reviere/karte?action=new-revier')">
@@ -252,6 +228,7 @@ async function logout() {
 .news-badge { position: absolute; top: 2px; right: 2px; font-size: 0.6rem; padding: 2px 5px; }
 .news-empty { display: block; padding: 12px 16px; }
 .news-meta { color: var(--ion-color-medium-shade); font-size: 0.8rem; }
+.menu-item-badge { margin-left: 6px; padding: 3px 6px; font-size: 0.65rem; }
 :global(.news-list) { min-width: 280px; max-width: min(360px, 90vw); }
 :global(.user-menu-divider) { height: 1px; margin: 0; background: var(--ion-color-light-shade, #d7d8da); }
 </style>

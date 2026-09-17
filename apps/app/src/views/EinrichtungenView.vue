@@ -5,13 +5,14 @@ import { IonBadge, IonButton, IonItem, IonLabel, IonList, IonNote, IonSelect, Io
 import AppLayout from '../components/AppLayout.vue'
 import NewJagdeinrichtungDialog from '../components/NewJagdeinrichtungDialog.vue'
 import SatelliteThumbnail from '../components/SatelliteThumbnail.vue'
+import { useNews } from '../composables/useNews'
 
 interface Revier { id: string; name: string; municipalityName: string; center: { lat: number; lng: number } }
 interface Member { id: string; displayName: string }
 type FacilityType = 'Kanzel' | 'Bock' | 'Leiter' | 'Roehrenfalle' | 'Kirrung'
 type FacilityStatus = 'aktiv' | 'defekt' | 'ausser Betrieb'
 interface Facility { id: string; revierId: string; name: string; typ: FacilityType; status: FacilityStatus; position: { lat: number; lng: number }; zustandsInfo?: string; notiz?: string; createdBy: string; createdAt: string; updatedAt: string }
-interface Task { id: string; jagdeinrichtungId: string; titel: string; beschreibung?: string; status: 'offen' | 'in Bearbeitung' | 'erledigt'; assignedTo?: string; assignedBy: string }
+interface Task { id: string; jagdeinrichtungId: string; titel: string; beschreibung?: string; status: 'offen' | 'in Bearbeitung' | 'erledigt'; assignedTo?: string; assignedBy: string; createdAt: string }
 interface Reservation { id: string; jagdeinrichtungId: string; reservedBy: string; reservedByName?: string; reservedAt: string; startAt?: string; endAt?: string; checkedInBy?: string; checkedInByName?: string; checkedInAt?: string; checkedOutAt?: string }
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
@@ -31,6 +32,12 @@ const taskAssignee = ref('')
 const taskSaving = ref(false)
 const facilityDialogOpen = ref(false)
 const selectedFacility = ref<Facility | null>(null)
+
+const { getSectionSeenAt, markSectionSeen } = useNews()
+// Captured once on load so "neu" badges stay stable during this visit even after markSectionSeen() runs.
+const newSince = getSectionSeenAt('einrichtungen')
+const isNewFacility = (facility: Facility) => facility.createdAt > newSince
+const isNewTask = (task: Task) => task.createdAt > newSince
 
 type FacilitySortOption = 'name' | 'createdAt' | 'updatedAt'
 const facilitySortStorageKey = 'jj-einrichtungen-sort'
@@ -246,7 +253,10 @@ async function updateTask(task: Task, data: { status?: Task['status']; assignedT
 async function claimTask(task: Task) { await updateTask(task, { assignedTo: currentUserId.value, status: 'in Bearbeitung' }) }
 async function completeTask(task: Task) { await updateTask(task, { status: 'erledigt' }) }
 
-onMounted(loadReviere)
+onMounted(() => {
+  loadReviere()
+  markSectionSeen('einrichtungen')
+})
 </script>
 
 <template>
@@ -271,14 +281,14 @@ onMounted(loadReviere)
       <IonNote v-else-if="!facilities.length">Noch keine Jagdeinrichtungen angelegt.</IonNote>
       <div v-else class="facility-list">
         <article v-for="facility in sortedFacilities" :key="facility.id" class="facility-entry">
-          <div class="facility-header"><div class="facility-title"><h2>{{ facility.name }}</h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'defekt' : 'medium'">{{ facility.status }}</IonBadge><SatelliteThumbnail class="facility-thumbnail" :position="facility.position" :label="`Satellitenbild der Einrichtung ${facility.name}`" /><IonButton size="small" fill="clear" @click="openFacility(facility)">Öffnen</IonButton></div>
+          <div class="facility-header"><div class="facility-title"><h2>{{ facility.name }}<IonBadge v-if="isNewFacility(facility)" color="tertiary" class="new-badge">Neu</IonBadge></h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'defekt' : 'medium'">{{ facility.status }}</IonBadge><SatelliteThumbnail class="facility-thumbnail" :position="facility.position" :label="`Satellitenbild der Einrichtung ${facility.name}`" /><IonButton size="small" fill="clear" @click="openFacility(facility)">Öffnen</IonButton></div>
           <p v-if="facility.zustandsInfo" class="condition"><strong>Zustand:</strong> {{ facility.zustandsInfo }}</p>
           <p v-if="facility.notiz" class="note">{{ facility.notiz }}</p>
           <div v-if="reservable(facility)" class="reservation"><strong>Nutzung</strong><div class="reservation-summary"><IonBadge :color="reservationBadge(facility).color">{{ reservationBadge(facility).label }}</IonBadge><span>{{ reservationDetails(facility) }}</span></div></div>
           <div class="task-heading"><strong>Aufgaben</strong></div>
           <IonList v-if="facilityTasks(facility.id).length" lines="full">
             <IonItem v-for="task in facilityTasks(facility.id)" :key="task.id">
-              <IonLabel><h3>{{ task.titel }}</h3><p>{{ task.beschreibung || 'Keine weitere Beschreibung' }}</p><p>{{ task.assignedTo ? `Zuständig: ${memberName(task.assignedTo)}` : 'Für alle Mitglieder' }} · {{ task.status }}</p></IonLabel>
+              <IonLabel><h3>{{ task.titel }}<IonBadge v-if="isNewTask(task)" color="tertiary" class="new-badge">Neu</IonBadge></h3><p>{{ task.beschreibung || 'Keine weitere Beschreibung' }}</p><p>{{ task.assignedTo ? `Zuständig: ${memberName(task.assignedTo)}` : 'Für alle Mitglieder' }} · {{ task.status }}</p></IonLabel>
             </IonItem>
           </IonList>
           <IonNote v-else>Keine Aufgaben</IonNote>
@@ -317,6 +327,7 @@ onMounted(loadReviere)
 .facility-list { display: grid; gap: 16px; }
 .facility-entry { border: 1px solid var(--ion-color-light-shade); border-radius: 8px; padding: 16px; }
 .condition { margin: 12px 0 4px; }
+.new-badge { margin-left: 8px; vertical-align: middle; font-size: 0.65rem; }
 .note, .reservation, .task-heading { margin-top: 12px; }
 .reservation { border-top: 1px solid var(--ion-color-light-shade); padding-top: 10px; }
 .reservation-summary { display: flex; align-items: center; justify-content: flex-end; gap: 8px; text-align: right; }

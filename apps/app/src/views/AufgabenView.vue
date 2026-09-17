@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { IonBadge, IonButton, IonItem, IonList, IonNote, IonSelect, IonSelectOption, IonTextarea } from '@ionic/vue'
 import AppLayout from '../components/AppLayout.vue'
+import { useNews } from '../composables/useNews'
 
 interface Revier { id: string; name: string; municipalityName: string }
 interface Member { id: string; displayName: string }
@@ -18,6 +19,7 @@ interface Task {
   assignedTo?: string
   assignedBy: string
   jagdeinrichtungId?: string
+  createdAt: string
 }
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
@@ -32,7 +34,13 @@ const saving = ref(false)
 const errorMessage = ref('')
 const showCompleted = ref(false)
 const editingTask = ref<Task | null>(null)
+const showTaskForm = ref(false)
 const draft = ref({ titel: '', beschreibung: '', faelligAm: '', prioritaet: 'normal' as NonNullable<Task['prioritaet']>, assignedTo: '' })
+
+const { getSectionSeenAt, markSectionSeen } = useNews()
+// Captured once on load so "neu" badges stay stable during this visit even after markSectionSeen() runs.
+const newSince = getSectionSeenAt('aufgaben')
+const isNewTask = (task: Task) => task.createdAt > newSince
 
 const selectedRevier = computed(() => reviere.value.find((revier) => revier.id === selectedRevierId.value) ?? null)
 const currentUserId = computed(() => currentUser.value?.id ?? '')
@@ -78,11 +86,13 @@ function formatDueDate(value?: string) {
 
 function resetDraft() {
   editingTask.value = null
+  showTaskForm.value = false
   draft.value = { titel: '', beschreibung: '', faelligAm: '', prioritaet: 'normal', assignedTo: '' }
 }
 
 function editTask(task: Task) {
   editingTask.value = task
+  showTaskForm.value = true
   draft.value = {
     titel: task.titel,
     beschreibung: task.beschreibung ?? '',
@@ -193,7 +203,10 @@ async function updateTask(task: Task, path: string, method: 'PATCH' | 'POST', bo
   await loadTaskData()
 }
 
-onMounted(loadReviere)
+onMounted(() => {
+  loadReviere()
+  markSectionSeen('aufgaben')
+})
 </script>
 
 <template>
@@ -207,7 +220,8 @@ onMounted(loadReviere)
       </header>
 
       <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
-      <section class="task-editor">
+      <IonButton v-if="!showTaskForm && !editingTask" @click="showTaskForm = true">+ Neue Aufgabe</IonButton>
+      <section v-if="showTaskForm || editingTask" class="task-editor">
         <h2>{{ editingTask ? 'Aufgabe bearbeiten' : 'Neue allgemeine Aufgabe' }}</h2>
         <label class="field"><span>Titel</span><input v-model="draft.titel" type="text" maxlength="160"></label>
         <IonTextarea v-model="draft.beschreibung" label="Beschreibung" label-placement="stacked" :auto-grow="true" />
@@ -220,7 +234,7 @@ onMounted(loadReviere)
           </IonSelect>
         </div>
         <div class="editor-actions">
-          <IonButton v-if="editingTask" fill="clear" @click="resetDraft">Abbrechen</IonButton>
+          <IonButton fill="clear" @click="resetDraft">Abbrechen</IonButton>
           <IonButton :disabled="saving || draft.titel.trim().length < 2" @click="saveTask">{{ saving ? 'Speichern...' : 'Speichern' }}</IonButton>
         </div>
       </section>
@@ -232,7 +246,7 @@ onMounted(loadReviere)
         <IonList v-else lines="none" class="task-list">
           <IonItem v-for="task in openTasks" :key="task.id" class="task-item">
             <div class="task-content">
-              <div class="task-title"><h3>{{ task.titel }}</h3><IonBadge :color="priorityColor(task.prioritaet)">{{ priorityLabel(task.prioritaet) }}</IonBadge></div>
+              <div class="task-title"><h3>{{ task.titel }}<IonBadge v-if="isNewTask(task)" color="tertiary" class="new-badge">Neu</IonBadge></h3><IonBadge :color="priorityColor(task.prioritaet)">{{ priorityLabel(task.prioritaet) }}</IonBadge></div>
               <p v-if="task.beschreibung">{{ task.beschreibung }}</p>
               <div class="task-meta"><span>{{ facilityName(task.jagdeinrichtungId) }}</span><span>{{ formatDueDate(task.faelligAm) }}</span><span>{{ task.assignedTo ? `Zuständig: ${memberName(task.assignedTo)}` : 'Für alle Mitglieder' }}</span><span>{{ task.status }}</span></div>
               <div class="task-actions">
@@ -272,6 +286,7 @@ onMounted(loadReviere)
 .task-item { --background: #fff; --padding-start: 14px; --inner-padding-end: 14px; border: 1px solid var(--ion-color-light-shade); border-radius: 8px; }
 .task-content { width: 100%; padding: 12px 0; }
 .task-title { justify-content: flex-start; }
+.new-badge { margin-left: 8px; vertical-align: middle; font-size: 0.65rem; }
 .task-content p { margin: 8px 0; }
 .task-meta, .task-actions { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
 .task-meta { color: var(--ion-color-medium-shade); font-size: 0.88rem; }
