@@ -54,6 +54,7 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 - Eine gruppenweite Informations- und Aufgabenliste mit Eintraegen, Faelligkeit und Erledigt-Status.
 - Mehrere Bilder je Abschuss, nachtraegliches Ergaenzen und eine komprimierte Bilduebertragung.
 - Auswertungen der Strecke nach Zeitraum, Wildart und Verwertungsweg.
+- Anzeige der aktuellen Jagdzeiten je Wildart, wahlweise je Bundesland oder bundeseinheitlich (Fallback-Verordnung); ob je Bundesland oder bundeseinheitlich gepflegt wird, klaeren wir zum Zeitpunkt der Umsetzung. Es ist keine bekannte offene API dafuer verfuegbar, die Daten muessten manuell als eigene Tabelle im Projekt gepflegt werden.
 
 ## Aktueller Umsetzungsstand
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { IonBadge, IonButton, IonItem, IonList, IonNote, IonSelect, IonSelectOption, IonTextarea } from '@ionic/vue'
+import { IonBadge, IonButton, IonIcon, IonItem, IonLabel, IonList, IonNote, IonSelect, IonSelectOption, IonTextarea } from '@ionic/vue'
+import { clipboardOutline, constructOutline } from 'ionicons/icons'
 import AppLayout from '../components/AppLayout.vue'
 import { useNews } from '../composables/useNews'
 
@@ -72,6 +73,16 @@ function memberName(id?: string) {
 /** Facility name for a task, or the generic label for revier-wide tasks without a facility. */
 function facilityName(id?: string) {
   return id ? facilities.value.find((facility) => facility.id === id)?.name ?? 'Unbekannte Einrichtung' : 'Allgemeine Revieraufgabe'
+}
+
+/** Icon distinguishing facility-linked tasks from general Revieraufgaben. */
+function taskIcon(task: Task) {
+  return task.jagdeinrichtungId ? constructOutline : clipboardOutline
+}
+
+/** Formats a task's creation timestamp for display. */
+function formatCreatedAt(value: string) {
+  return new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
 /** Whether the current user may edit/complete a task: assignee, creator, or Revier-/Systemadmin. */
@@ -246,9 +257,9 @@ onMounted(() => {
         <IonList v-else lines="none" class="task-list">
           <IonItem v-for="task in openTasks" :key="task.id" class="task-item">
             <div class="task-content">
-              <div class="task-title"><h3>{{ task.titel }}<IonBadge v-if="isNewTask(task)" color="tertiary" class="new-badge">Neu</IonBadge></h3><IonBadge :color="priorityColor(task.prioritaet)">{{ priorityLabel(task.prioritaet) }}</IonBadge></div>
+              <div class="task-title"><h3><IonIcon :icon="taskIcon(task)" class="task-type-icon" :title="task.jagdeinrichtungId ? 'Einrichtungsaufgabe' : 'Allgemeine Revieraufgabe'" />{{ task.titel }}<IonBadge v-if="isNewTask(task)" color="tertiary" class="new-badge">Neu</IonBadge></h3><IonBadge :color="priorityColor(task.prioritaet)">{{ priorityLabel(task.prioritaet) }}</IonBadge></div>
               <p v-if="task.beschreibung">{{ task.beschreibung }}</p>
-              <div class="task-meta"><span>{{ facilityName(task.jagdeinrichtungId) }}</span><span>{{ formatDueDate(task.faelligAm) }}</span><span>{{ task.assignedTo ? `Zuständig: ${memberName(task.assignedTo)}` : 'Für alle Mitglieder' }}</span><span>{{ task.status }}</span></div>
+              <div class="task-meta"><span>{{ facilityName(task.jagdeinrichtungId) }}</span><span>{{ formatDueDate(task.faelligAm) }}</span><span>{{ task.assignedTo ? `Zuständig: ${memberName(task.assignedTo)}` : 'Für alle Mitglieder' }}</span><span>{{ task.status }}</span><span>Erstellt {{ formatCreatedAt(task.createdAt) }}</span></div>
               <div class="task-actions">
                 <IonButton v-if="!task.assignedTo" size="small" fill="outline" @click="updateTask(task, '/uebernehmen', 'POST')">Übernehmen</IonButton>
                 <IonButton v-if="canManageTask(task)" size="small" @click="updateTask(task, '', 'PATCH', { status: 'erledigt' })">Erledigt</IonButton>
@@ -262,7 +273,7 @@ onMounted(() => {
       <section v-if="completedTasks.length" class="task-section">
         <IonButton fill="clear" @click="showCompleted = !showCompleted">{{ showCompleted ? 'Erledigte ausblenden' : `Erledigte anzeigen (${completedTasks.length})` }}</IonButton>
         <IonList v-if="showCompleted" lines="none" class="task-list completed-list">
-          <IonItem v-for="task in completedTasks" :key="task.id"><IonLabel><h3>{{ task.titel }}</h3><p>{{ facilityName(task.jagdeinrichtungId) }} · {{ priorityLabel(task.prioritaet) }} · {{ memberName(task.assignedTo) }}</p></IonLabel></IonItem>
+          <IonItem v-for="task in completedTasks" :key="task.id"><IonLabel><h3><IonIcon :icon="taskIcon(task)" class="task-type-icon" :title="task.jagdeinrichtungId ? 'Einrichtungsaufgabe' : 'Allgemeine Revieraufgabe'" />{{ task.titel }}</h3><p>{{ facilityName(task.jagdeinrichtungId) }} · {{ priorityLabel(task.prioritaet) }} · {{ memberName(task.assignedTo) }} · Erstellt {{ formatCreatedAt(task.createdAt) }}</p></IonLabel></IonItem>
         </IonList>
       </section>
     </div>
@@ -287,6 +298,7 @@ onMounted(() => {
 .task-content { width: 100%; padding: 12px 0; }
 .task-title { justify-content: flex-start; }
 .new-badge { margin-left: 8px; vertical-align: middle; font-size: 0.65rem; }
+.task-type-icon { margin-right: 6px; vertical-align: middle; color: var(--ion-color-medium-shade); }
 .task-content p { margin: 8px 0; }
 .task-meta, .task-actions { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
 .task-meta { color: var(--ion-color-medium-shade); font-size: 0.88rem; }
