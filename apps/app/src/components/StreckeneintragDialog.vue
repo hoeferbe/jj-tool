@@ -113,6 +113,7 @@ const isFuchs = computed(() => {
   return w.includes('fuchs')
 })
 
+/** Builds the red drop-pin marker icon used for the kill entry position. */
 function createKillMarker(latLng: L.LatLngExpression) {
   const icon = L.divIcon({
     className: 'kill-marker-icon-container',
@@ -140,6 +141,7 @@ function selectWildart(w: string) {
   wildart.value = w
 }
 
+/** Ray-casting point-in-polygon test for a single ring of coordinates. */
 function pointInRing(lat: number, lng: number, ring: number[][]) {
   let inside = false
   for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
@@ -153,6 +155,7 @@ function pointInRing(lat: number, lng: number, ring: number[][]) {
   return inside
 }
 
+/** Whether a point lies inside the Revier boundary (Polygon/MultiPolygon); `true` if no boundary is given. */
 function pointInBoundary(boundary: GeoJsonFeatureCollection, lat: number, lng: number) {
   if (!boundary || !boundary.features || !boundary.features.length) return true
   return boundary.features.some((feature) => {
@@ -169,6 +172,7 @@ function pointInBoundary(boundary: GeoJsonFeatureCollection, lat: number, lng: n
   })
 }
 
+/** Fills the form from `props.entry` when editing, or clears it (and tries GPS) for a new entry. */
 function reset() {
   if (props.entry) {
     datum.value = props.entry.datum
@@ -203,6 +207,7 @@ function reset() {
   showMapPicker.value = false
 }
 
+/** Silently pre-fills the position from GPS for a new entry (no error message on failure). */
 function tryAutoGps() {
   if (!navigator.geolocation) return
   gpsLoading.value = true
@@ -218,6 +223,7 @@ function tryAutoGps() {
   )
 }
 
+/** Explicitly requests the device's GPS position and updates the form/map marker, showing errors. */
 function requestGpsLocation() {
   if (!navigator.geolocation) {
     message.value = 'GPS wird von diesem Gerät/Browser nicht unterstützt.'
@@ -242,6 +248,7 @@ function requestGpsLocation() {
   )
 }
 
+/** Shows or hides the map position picker, initializing/tearing down the Leaflet map as needed. */
 function toggleMapPicker() {
   showMapPicker.value = !showMapPicker.value
   if (showMapPicker.value) {
@@ -251,6 +258,7 @@ function toggleMapPicker() {
   }
 }
 
+/** Creates the Leaflet map picker: base layers, Revier boundary, and a draggable/clickable position marker. */
 function initMapPicker() {
   if (!mapContainer.value) return
   if (mapInstance) destroyMapPicker()
@@ -300,6 +308,7 @@ function initMapPicker() {
   })
 }
 
+/** Updates the selected position from a map click/drag, warning if it falls outside the Revier boundary. */
 function updatePositionFromMapClick(latLng: L.LatLng) {
   if (props.revierBoundary && !pointInBoundary(props.revierBoundary, latLng.lat, latLng.lng)) {
     message.value = 'Hinweis: Der gewählte Ort liegt außerhalb der Grenze des Reviers.'
@@ -319,6 +328,7 @@ function updatePositionFromMapClick(latLng: L.LatLng) {
   }
 }
 
+/** Tears down the map picker so re-opening it starts from a clean state. */
 function destroyMapPicker() {
   if (mapInstance) {
     mapInstance.remove()
@@ -341,6 +351,7 @@ function close() {
   emit('close')
 }
 
+/** Creates a new kill entry or saves changes to the one being edited. */
 async function saveEntry() {
   if (datum.value.length !== 10 || wildart.value.trim().length < 2) return
   saving.value = true

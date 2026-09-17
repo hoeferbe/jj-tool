@@ -167,10 +167,12 @@ function hasFullAccess(user: User) {
   return user.accountType === 'systemAdmin'
 }
 
+/** Revier name for a membership, or a placeholder if the Revier is unknown/deleted. */
 function membershipRevierName(membership: RevierMembership) {
   return reviere.value.find((revier) => revier.id === membership.revierId)?.name ?? 'Unbekanntes Revier'
 }
 
+/** Whether the current admin may edit this membership: system admin or an active admin of that Revier. */
 function canManageMembership(membership: RevierMembership) {
   return isCurrentSystemAdmin.value || currentUser.value?.memberships.some(
     (entry) =>
@@ -180,6 +182,7 @@ function canManageMembership(membership: RevierMembership) {
   ) === true
 }
 
+/** Builds an inverted mask polygon (world rectangle with the Revier as a hole) to dim the area outside it. */
 function buildDimmedMask(boundary: GeoJsonFeatureCollection) {
   const holeRings: number[][][] = []
 
@@ -228,6 +231,7 @@ function buildDimmedMask(boundary: GeoJsonFeatureCollection) {
   }
 }
 
+/** Draws a Revier's boundary (and optionally the dimmed outside mask) on a map, fitting the view to it. */
 function addBoundaryToMap(map: L.Map, boundary: GeoJsonFeatureCollection, dimOutside = true) {
   const dimmedMask = dimOutside ? buildDimmedMask(boundary) : null
   const dimmer = dimmedMask
@@ -256,6 +260,7 @@ function addBoundaryToMap(map: L.Map, boundary: GeoJsonFeatureCollection, dimOut
   return { outline, dimmer }
 }
 
+/** Creates a Leaflet map with street/satellite layers; `interactive = false` renders a static preview. */
 function createMap(container: HTMLElement, onTileError: () => void, interactive = true) {
   const map = L.map(container, {
     zoomControl: interactive,
@@ -283,10 +288,12 @@ function createMap(container: HTMLElement, onTileError: () => void, interactive 
   return map
 }
 
+/** Persists which dashboard accordion sections are open across page reloads. */
 function persistAccordionState() {
   localStorage.setItem(dashboardAccordionStorageKey, JSON.stringify(revierAccordionOpen.value))
 }
 
+/** Restores which dashboard accordion sections were open from localStorage. */
 function restoreAccordionState() {
   try {
     const stored = localStorage.getItem(dashboardAccordionStorageKey)
@@ -303,6 +310,7 @@ function onDashboardAccordionChange(event: CustomEvent<{ value: string[] }>) {
   persistAccordionState()
 }
 
+/** Tears down the read-only Revier detail preview map. */
 function destroyDetailMap() {
   mapInstance?.remove()
   mapInstance = null
@@ -310,6 +318,7 @@ function destroyDetailMap() {
   maskLayer = null
 }
 
+/** Tears down the interactive boundary-editing map inside the edit modal. */
 function destroyModalMap() {
   modalMapInstance?.remove()
   modalMapInstance = null
@@ -317,6 +326,7 @@ function destroyModalMap() {
   modalMaskLayer = null
 }
 
+/** Renders the static preview map for the currently selected Revier. */
 async function renderSelectedRevierMap() {
   destroyDetailMap()
   detailMapError.value = ''
@@ -337,6 +347,7 @@ async function renderSelectedRevierMap() {
 
 watch(selectedRevier, renderSelectedRevierMap)
 
+/** Loads all Reviere and restores the previously selected one from localStorage, if still valid. */
 async function loadReviere() {
   reviereLoading.value = true
   const token = localStorage.getItem('accessToken')
@@ -375,6 +386,7 @@ function cancelEditingRevier() {
   revierDraftName.value = ''
 }
 
+/** Saves the renamed Revier and updates the local list on success. */
 async function saveCurrentRevier() {
   const current = selectedRevier.value
   if (!current || revierDraftName.value.trim().length < 2) return
@@ -415,6 +427,7 @@ async function saveCurrentRevier() {
   }
 }
 
+/** Resets and opens the "new Revier" modal. */
 function openNewRevierDialog() {
   newRevierName.value = ''
   municipalityQuery.value = ''
@@ -438,6 +451,7 @@ function handleCreatedRevier(revier: Revier) {
   loadCurrentUser()
 }
 
+/** Looks up a municipality boundary via the backend BKG proxy and renders it on the new-Revier modal map. */
 async function searchMunicipality() {
   if (!municipalityQuery.value.trim()) return
   municipalitySearching.value = true
@@ -483,6 +497,7 @@ async function searchMunicipality() {
   }
 }
 
+/** Creates the new Revier from the modal's chosen name/boundary and selects it. */
 async function createRevier() {
   if (newRevierName.value.trim().length < 2 || !newBoundary.value || !newCenter.value) return
   revierSaving.value = true
@@ -515,6 +530,7 @@ async function createRevier() {
   }
 }
 
+/** Deletes the selected Revier after confirmation (cascades all of its data on the server). */
 async function deleteSelectedRevier() {
   const id = selectedRevierId.value
   if (!id) return
@@ -647,6 +663,7 @@ function openInvitationDialog() {
   showInvitationModal.value = true
 }
 
+/** Sends a hunting district invitation e-mail for the selected Revier. */
 async function sendInvitation() {
   if (!selectedRevier.value || !invitationEmail.value.trim()) return
   invitationSending.value = true
@@ -742,12 +759,14 @@ function cancelUserRevierEdit() {
   userRevierDraft.value = []
 }
 
+/** Applies the queued Revier-selection changes to a still-pending user's approval draft. */
 function savePendingUserReviere(userId: string) {
   const data = approvalData.value[userId]
   if (data) data.revierIds = [...userRevierDraft.value]
   cancelUserRevierEdit()
 }
 
+/** Applies the queued Revier-selection changes to an already-active member: removes/adds memberships as needed. */
 async function saveMemberReviere(user: User) {
   memberActionId.value = user.id
   const currentIds = new Set(user.memberships.map((membership) => membership.revierId))
@@ -767,6 +786,7 @@ async function saveMemberReviere(user: User) {
   cancelUserRevierEdit()
 }
 
+/** Creates, updates, or removes (via `null`) a user's membership in one Revier. */
 async function updateMembership(
   userId: string,
   revierId: string,
@@ -784,6 +804,7 @@ async function updateMembership(
   }
 }
 
+/** Applies partial changes to an existing active membership and reloads the user list. */
 async function changeMembership(user: User, membership: RevierMembership, changes: Partial<RevierMembership>) {
   memberActionId.value = user.id
   try {
@@ -797,6 +818,7 @@ async function changeMembership(user: User, membership: RevierMembership, change
   }
 }
 
+/** Handles the member-type `<select>` change, stripping position/admin rights when switching to guest. */
 function changeMembershipType(user: User, membership: RevierMembership, event: Event) {
   const memberType = (event.target as HTMLSelectElement).value as RevierMembership['memberType']
   changeMembership(user, membership, memberType === 'guest'
@@ -804,6 +826,7 @@ function changeMembershipType(user: User, membership: RevierMembership, event: E
     : { memberType })
 }
 
+/** Clears position/admin rights on a pending approval's draft when the role is switched to guest. */
 function changePendingRole(userId: string) {
   const approval = approvalData.value[userId]
   if (approval?.role !== 'guest') return
@@ -811,6 +834,7 @@ function changePendingRole(userId: string) {
   approval.isAdmin = false
 }
 
+/** Blocks or unblocks a member's account after confirmation. */
 async function setMemberBlocked(user: User, blocked: boolean) {
   const confirmed = window.confirm(
     blocked
@@ -830,6 +854,7 @@ async function setMemberBlocked(user: User, blocked: boolean) {
   else errorMessage.value = ((await response.json()) as { message?: string }).message ?? 'Status konnte nicht geändert werden.'
 }
 
+/** Permanently deletes a member account after confirmation. */
 async function deleteMember(user: User) {
   if (!window.confirm(`Soll ${user.displayName} dauerhaft gelöscht werden?`)) return
   memberActionId.value = user.id
