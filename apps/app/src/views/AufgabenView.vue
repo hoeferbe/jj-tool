@@ -44,6 +44,7 @@ const openTasks = computed(() => tasks.value
     || (left.faelligAm ?? '9999-12-31').localeCompare(right.faelligAm ?? '9999-12-31')))
 const completedTasks = computed(() => tasks.value.filter((task) => task.status === 'erledigt'))
 
+/** Sort weight for priority ordering (higher = shown first among open tasks). */
 function priorityRank(priority?: Task['prioritaet']) {
   return priority === 'hoch' ? 3 : priority === 'niedrig' ? 1 : 2
 }
@@ -60,10 +61,12 @@ function memberName(id?: string) {
   return members.value.find((member) => member.id === id)?.displayName ?? 'Alle Mitglieder'
 }
 
+/** Facility name for a task, or the generic label for revier-wide tasks without a facility. */
 function facilityName(id?: string) {
   return id ? facilities.value.find((facility) => facility.id === id)?.name ?? 'Unbekannte Einrichtung' : 'Allgemeine Revieraufgabe'
 }
 
+/** Whether the current user may edit/complete a task: assignee, creator, or Revier-/Systemadmin. */
 function canManageTask(task: Task) {
   return task.assignedTo === currentUserId.value || task.assignedBy === currentUserId.value || canAdministerSelectedRevier.value
 }
@@ -89,6 +92,7 @@ function editTask(task: Task) {
   }
 }
 
+/** Loads tasks, members and facilities for the selected Revier. */
 async function loadTaskData() {
   if (!selectedRevierId.value) return
   loading.value = true
@@ -112,6 +116,7 @@ async function loadTaskData() {
   }
 }
 
+/** Loads the user's Reviere and profile, then falls back to the first Revier if none is selected yet. */
 async function loadReviere() {
   const token = localStorage.getItem('accessToken')
   const headers = { Authorization: `Bearer ${token}` }
@@ -134,6 +139,7 @@ async function loadReviere() {
   }
 }
 
+/** Switches the active Revier, persists the choice, and reloads its task data. */
 async function selectRevier(revierId: string) {
   selectedRevierId.value = revierId
   localStorage.setItem('jj-member-selected-revier', revierId)
@@ -141,6 +147,7 @@ async function selectRevier(revierId: string) {
   await loadTaskData()
 }
 
+/** Creates a new task or saves changes to the task being edited. */
 async function saveTask() {
   if (!selectedRevierId.value || draft.value.titel.trim().length < 2) return
   saving.value = true
@@ -171,6 +178,7 @@ async function saveTask() {
   }
 }
 
+/** Sends a task status/claim change (e.g. 'erledigt' or '/uebernehmen') and refreshes the list. */
 async function updateTask(task: Task, path: string, method: 'PATCH' | 'POST', body?: Record<string, string>) {
   const token = localStorage.getItem('accessToken')
   const response = await fetch(`${apiUrl}/reviere/${selectedRevierId.value}/jagdeinrichtungs-aufgaben/${task.id}${path}`, {

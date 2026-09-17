@@ -47,6 +47,7 @@ function refreshTokenInfo() {
   tokenInfo.value = decodeTokenInfo()
 }
 
+/** Fetches the news-since-last-visit feed and updates the badge count (does not mark it as seen). */
 async function loadNews() {
   const token = localStorage.getItem('accessToken')
   if (!token) return
@@ -61,6 +62,7 @@ async function loadNews() {
   }
 }
 
+/** Marks all news as seen on the server and clears the local badge immediately. */
 async function markNewsSeen() {
   if (!newsItems.value.length && !newsCount.value) return
   newsCount.value = 0
@@ -72,6 +74,7 @@ async function markNewsSeen() {
   }
 }
 
+/** Formats a news item's timestamp as a short localized date/time string. */
 function formatNewsTime(value: string) {
   return new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
 }
@@ -79,12 +82,14 @@ function formatNewsTime(value: string) {
 onMounted(() => window.addEventListener('auth-changed', refreshTokenInfo))
 onMounted(loadNews)
 onBeforeUnmount(() => window.removeEventListener('auth-changed', refreshTokenInfo))
+/** Navigates to a menu target and, if it has a `#hash`, smooth-scrolls to that element afterwards. */
 async function navigate(path: string) {
   await router.push(path)
   const hash = path.split('#')[1]
   if (hash) requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' }))
 }
 
+/** Loads the current user's profile fields into the edit modal. */
 async function openProfile() {
   profileError.value = ''
   const token = localStorage.getItem('accessToken')
@@ -99,6 +104,7 @@ async function openProfile() {
   showProfile.value = true
 }
 
+/** Saves the edited display name/e-mail and updates the cached display name shown in the toolbar. */
 async function saveProfile() {
   profileSaving.value = true
   profileError.value = ''

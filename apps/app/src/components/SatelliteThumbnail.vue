@@ -9,6 +9,7 @@ const props = defineProps<{
 }>()
 
 const imageFailed = ref(false)
+/** Builds an Esri World Imagery export URL for a small bounding box centered on the facility position. */
 const imageUrl = computed(() => {
   const latitudeRadians = props.position.lat * Math.PI / 180
   const metersPerPixel = 156543.03392 * Math.cos(latitudeRadians) / Math.pow(2, 16)

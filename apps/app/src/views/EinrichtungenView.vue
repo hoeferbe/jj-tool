@@ -46,12 +46,14 @@ const reservable = (facility: Facility) => ['Kanzel', 'Bock', 'Leiter'].includes
 const formatReservationStart = (value?: string) => value
   ? new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
   : 'sofort'
+/** Badge label/color for a facility's current usage: checked-in, reserved, or free. */
 const reservationBadge = (facility: Facility) => {
   const reservation = reservationFor(facility.id)
   if (reservation?.checkedInBy) return { label: 'Eingecheckt', color: 'success' }
   if (reservation) return { label: 'Reserviert', color: 'warning' }
   return { label: 'Frei', color: 'medium' }
 }
+/** Short summary line for a facility's next/current booking, including a count if there are more. */
 const reservationDetails = (facility: Facility) => {
   const facilityReservations = reservationsFor(facility.id)
   const reservation = facilityReservations[0]
@@ -71,12 +73,14 @@ function closeFacilityDialog() {
   selectedFacility.value = null
 }
 
+/** Navigates to the Revierkarte, focused on this facility, so "Auf Karte anzeigen" works from the list too. */
 async function showFacilityOnMap(facility: Facility) {
   localStorage.setItem('jj-member-selected-revier', facility.revierId)
   closeFacilityDialog()
   await router.push({ path: '/reviere/karte', query: { facility: facility.id } })
 }
 
+/** Navigates to the Revierkarte and immediately enters repositioning mode for this facility. */
 async function requestFacilityReposition(facility: Facility) {
   localStorage.setItem('jj-member-selected-revier', facility.revierId)
   closeFacilityDialog()
@@ -89,12 +93,14 @@ function handleUpdatedFacility(facility: Facility) {
 }
 
 function handleDeletedFacility(facilityId: string) {
+  // Cascades locally like the API does: remove the facility's own tasks and reservations too.
   facilities.value = facilities.value.filter((facility) => facility.id !== facilityId)
   tasks.value = tasks.value.filter((task) => task.jagdeinrichtungId !== facilityId)
   reservations.value = reservations.value.filter((reservation) => reservation.jagdeinrichtungId !== facilityId)
   closeFacilityDialog()
 }
 
+/** Refreshes only the reservations after a usage change inside the facility dialog. */
 async function handleUsageChanged() {
   if (!selectedRevierId.value) return
   const token = localStorage.getItem('accessToken')
@@ -110,6 +116,7 @@ async function handleUsageChanged() {
   }
 }
 
+/** Loads facilities, tasks, reservations and members for the selected Revier. */
 async function loadRevierData() {
   if (!selectedRevierId.value) return
   loading.value = true
@@ -133,12 +140,14 @@ async function loadRevierData() {
   } finally { loading.value = false }
 }
 
+/** Switches the active Revier, persists the choice, and reloads its data. */
 async function selectRevier(revierId: string) {
   selectedRevierId.value = revierId
   localStorage.setItem('jj-member-selected-revier', revierId)
   await loadRevierData()
 }
 
+/** Loads the user's Reviere, then falls back to the first one if none is selected yet. */
 async function loadReviere() {
   const token = localStorage.getItem('accessToken')
   try {
@@ -176,6 +185,7 @@ async function checkOut(facility: Facility) {
   await loadRevierData()
 }
 
+/** Reserves or releases a facility for the current user. */
 async function facilityAction(facility: Facility, method: 'POST' | 'DELETE') {
   const token = localStorage.getItem('accessToken')
   const response = await fetch(`${apiUrl}/reviere/${facility.revierId}/jagdeinrichtungen/${facility.id}/reservieren`, { method, headers: { Authorization: `Bearer ${token}` } })
@@ -190,6 +200,7 @@ function openTask(facility: Facility) {
   taskAssignee.value = ''
 }
 
+/** Creates a new task attached to `taskFacility`. */
 async function createTask() {
   if (!taskFacility.value || taskTitle.value.trim().length < 2) return
   taskSaving.value = true
@@ -206,6 +217,7 @@ async function createTask() {
   finally { taskSaving.value = false }
 }
 
+/** Applies a partial task update (status/assignee) and refreshes the Revier data. */
 async function updateTask(task: Task, data: { status?: Task['status']; assignedTo?: string }) {
   const token = localStorage.getItem('accessToken')
   const response = await fetch(`${apiUrl}/reviere/${selectedRevierId.value}/jagdeinrichtungs-aufgaben/${task.id}`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
