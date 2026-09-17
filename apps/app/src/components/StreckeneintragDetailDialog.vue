@@ -13,6 +13,9 @@ import {
 } from 'ionicons/icons'
 import * as L from 'leaflet'
 import { type Streckeneintrag } from './StreckeneintragDialog.vue'
+import ImageGallery from './ImageGallery.vue'
+
+const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 
 interface GeoJsonFeatureCollection {
   type: 'FeatureCollection'
@@ -243,6 +246,11 @@ watch(() => props.isOpen, (isOpen) => {
           <h3><IonIcon :icon="documentTextOutline" /> Notizen & Anmerkungen</h3>
           <p class="notes-body">{{ props.entry.notiz }}</p>
         </div>
+
+        <ImageGallery
+          :base-url="`${apiUrl}/reviere/${props.entry.revierId}/streckeneintraege/${props.entry.id}/bilder`"
+          :can-manage="props.canModify"
+        />
 
         <!-- Actions -->
         <div class="dialog-actions">

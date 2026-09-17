@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
-import { IonButton, IonNote, IonSpinner } from '@ionic/vue'
+import { IonButton, IonContent, IonIcon, IonModal, IonNote, IonSpinner } from '@ionic/vue'
+import { closeOutline } from 'ionicons/icons'
 import { compressImage, fetchImageObjectUrl } from '../composables/useImageUpload'
 
 interface ImageMeta { id: string; mimeType: string; size: number; createdBy: string; createdByName?: string; createdAt: string }
@@ -18,6 +19,7 @@ const loading = ref(false)
 const uploading = ref(false)
 const message = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
+const previewImage = ref<ImageMeta | null>(null)
 
 function token() {
   return localStorage.getItem('accessToken') ?? ''
@@ -93,7 +95,7 @@ onBeforeUnmount(revokeAllObjectUrls)
     <IonNote v-if="loading">Bilder werden geladen...</IonNote>
     <div v-else-if="images.length" class="gallery-grid">
       <figure v-for="image in images" :key="image.id" class="gallery-item">
-        <img :src="objectUrls[image.id]" :alt="`Bild von ${image.createdByName ?? 'Unbekanntes Mitglied'}`">
+        <img :src="objectUrls[image.id]" :alt="`Bild von ${image.createdByName ?? 'Unbekanntes Mitglied'}`" @click="previewImage = image">
         <button v-if="canManage" type="button" class="gallery-delete" title="Bild löschen" @click="deleteImage(image)">✕</button>
       </figure>
     </div>
@@ -107,6 +109,12 @@ onBeforeUnmount(revokeAllObjectUrls)
     </div>
     <p v-if="message" class="gallery-message">{{ message }}</p>
   </section>
+  <IonModal class="image-preview-modal" :is-open="Boolean(previewImage)" @did-dismiss="previewImage = null">
+    <IonContent class="image-preview-content" @click="previewImage = null">
+      <button type="button" class="preview-close" title="Schließen" @click="previewImage = null"><IonIcon :icon="closeOutline" /></button>
+      <img v-if="previewImage" :src="objectUrls[previewImage.id]" :alt="`Bild von ${previewImage.createdByName ?? 'Unbekanntes Mitglied'}`" class="preview-image">
+    </IonContent>
+  </IonModal>
 </template>
 
 <style scoped>
@@ -116,7 +124,12 @@ onBeforeUnmount(revokeAllObjectUrls)
 .gallery-count { color: var(--ion-color-medium-shade); font-size: 0.85rem; }
 .gallery-grid { display: flex; flex-wrap: wrap; gap: 10px; }
 .gallery-item { position: relative; margin: 0; width: 96px; height: 96px; overflow: hidden; border-radius: 6px; }
-.gallery-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.gallery-item img { display: block; width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
 .gallery-delete { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border: none; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff; font-size: 12px; line-height: 1; cursor: pointer; }
 .gallery-message { color: var(--ion-color-danger); }
+:global(.image-preview-modal) { --width: 100vw; --height: 100vh; --background: rgba(0, 0, 0, 0.9); }
+.image-preview-content { --background: transparent; }
+.image-preview-content::part(scroll) { display: flex; align-items: center; justify-content: center; }
+.preview-image { max-width: 100vw; max-height: 100vh; object-fit: contain; }
+.preview-close { position: fixed; top: 12px; right: 12px; z-index: 1; width: 40px; height: 40px; border: none; border-radius: 50%; background: rgba(255, 255, 255, 0.15); color: #fff; font-size: 22px; cursor: pointer; }
 </style>

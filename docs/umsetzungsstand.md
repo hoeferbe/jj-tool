@@ -134,10 +134,11 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 
 ## Empfohlene nächste Reihenfolge
 
-1. Offline-Queue zunächst für Streckeneinträge entwickeln.
-2. PWA-Manifest, Service Worker und Capacitor-Grundlage einrichten.
-3. Danach Bilder, Auswertungen, Telegram, Push und Fährtenaufzeichnung angehen.
+1. ~~Offline-Queue zunächst für Streckeneinträge entwickeln.~~ Fertig (MVP: `useOfflineQueue.ts`, Streckeneinträge und Jagdeinrichtungen).
+2. ~~PWA-Manifest, Service Worker und Capacitor-Grundlage einrichten.~~ Fertig (Manifest, minimaler Service Worker, Capacitor-Android-Grundgerüst).
+3. ~~Bilder~~ Fertig (bis zu 3 Bilder je Einrichtung/Streckeneintrag, Vergrößerung per Klick).
+4. Als Nächstes offen: Auswertungen (Zeitraum/Wildart/Verwertung), Telegram-Benachrichtigungen, Push (Firebase) und Nachsuche/Fährtenaufzeichnung.
 
 ## Kurzfazit
 
-Der browserbasierte MVP für Reviere, Konten, Mitgliedschaften, Einrichtungen, Aufgaben, Reservierungen und Streckeneinträge ist weit fortgeschritten. Rechte an Streckeneinträgen, abgelaufene Reservierungen und Löschabhängigkeiten sind abgesichert. Die größten noch nicht begonnenen Produktbereiche sind Offlinebetrieb, mobile Auslieferung, Bilder, Kommunikation sowie Nachsuche und Fährtenaufzeichnung.
+Der browserbasierte MVP für Reviere, Konten, Mitgliedschaften, Einrichtungen, Aufgaben, Reservierungen und Streckeneinträge ist weit fortgeschritten. Rechte an Streckeneinträgen, abgelaufene Reservierungen und Löschabhängigkeiten sind abgesichert. Bilder, eine einfache Offline-Warteschlange sowie PWA-/Capacitor-Grundlagen sind ebenfalls umgesetzt. Die größten noch nicht begonnenen Produktbereiche sind Auswertungen/Export, Kommunikation (Telegram, Push) sowie Nachsuche und Fährtenaufzeichnung.
