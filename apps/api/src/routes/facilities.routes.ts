@@ -22,6 +22,7 @@ interface FacilityRouteDependencies {
    isPointInsideHuntingDistrict: (revier: HuntingDistrict, position: { lat: number; lng: number }) => boolean;
 }
 
+/** Registers CRUD endpoints for Jagdeinrichtungen (hunting facilities) within a hunting district. */
 export function registerFacilityRoutes(app: Hono, dependencies: FacilityRouteDependencies) {
    const {
       authStore,

@@ -14,6 +14,7 @@ interface AuthMiddlewareDependencies {
 }
 
 export function createAuthMiddleware({ authStore, authSecret }: AuthMiddlewareDependencies) {
+   /** Verifies the request's Bearer JWT and returns its payload, or `null` if missing/invalid. */
    async function getAuthenticatedPayload(context: Context) {
       const authorization = context.req.header('Authorization');
       if (!authorization?.startsWith('Bearer ')) return null;
@@ -25,6 +26,7 @@ export function createAuthMiddleware({ authStore, authSecret }: AuthMiddlewareDe
       }
    }
 
+   /** Rejects the request with 401 unless it carries a valid token for an active user. */
    const requireAuth = async (context: Context, next: Next) => {
       const payload = await getAuthenticatedPayload(context);
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
@@ -34,6 +36,7 @@ export function createAuthMiddleware({ authStore, authSecret }: AuthMiddlewareDe
       await next();
    };
 
+   /** Rejects the request with 401/403 unless the user is a system admin or administers at least one hunting district. */
    const requireAdmin = async (context: Context, next: Next) => {
       const payload = await getAuthenticatedPayload(context);
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
@@ -46,6 +49,7 @@ export function createAuthMiddleware({ authStore, authSecret }: AuthMiddlewareDe
       await next();
    };
 
+   /** Rejects the request with 403 unless the user is a system administrator. */
    const requireSystemAdmin = async (context: Context, next: Next) => {
       const payload = await getAuthenticatedPayload(context);
       const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;

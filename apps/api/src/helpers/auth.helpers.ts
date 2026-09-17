@@ -9,12 +9,14 @@ interface AuthHelperDependencies {
 }
 
 export function createAuthHelpers({ authStore, huntingDistrictStore, appOrigin }: AuthHelperDependencies) {
+   /** Checks that every given hunting district id still exists (e.g. before assigning a membership to it). */
    async function hasOnlyExistingHuntingDistricts(revierIds: string[] | undefined) {
       if (!revierIds) return true;
       const existingIds = new Set((await huntingDistrictStore.getHuntingDistricts()).map((district) => district.id));
       return revierIds.every((id) => existingIds.has(id));
    }
 
+   /** Generates a password-setup token for the user and e-mails them the one-time link. */
    async function createPasswordLink(user: User) {
       const token = await authStore.createPasswordToken(user.id);
       await sendPasswordLink({

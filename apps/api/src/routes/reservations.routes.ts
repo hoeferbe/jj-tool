@@ -14,6 +14,7 @@ interface ReservationRouteDependencies {
    canAdministerHuntingDistrict: (user: User, revierId: string) => boolean;
 }
 
+/** Registers endpoints for reserving, changing, cancelling, and checking in/out of Jagdeinrichtungen. */
 export function registerReservationRoutes(app: Hono, dependencies: ReservationRouteDependencies) {
    const { authStore, reservationStore, facilityStore, getAuthenticatedPayload, requireAuth, canAccessHuntingDistrict, canAdministerHuntingDistrict } = dependencies;
 

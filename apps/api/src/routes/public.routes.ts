@@ -2,6 +2,7 @@ import type { Hono } from 'hono';
 import { type AuthStore } from '../auth-store.js';
 import { type HuntingDistrictStore } from '../hunting-district-store.js';
 
+/** Registers unauthenticated endpoints: health check, public hunting district listing, and invitation lookup. */
 export function registerPublicRoutes(app: Hono, dependencies: { authStore: AuthStore; huntingDistrictStore: HuntingDistrictStore }) {
    app.get('/health', (context) => context.json({ status: 'ok' }));
 

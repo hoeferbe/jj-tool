@@ -17,6 +17,7 @@ interface TaskRouteDependencies {
    isActiveHuntingDistrictMember: (userId: string, revierId: string) => boolean;
 }
 
+/** Registers endpoints for facility and general district tasks: listing, creating, updating, and claiming. */
 export function registerTaskRoutes(app: Hono, dependencies: TaskRouteDependencies) {
    const { authStore, taskStore, facilityStore, getAuthenticatedPayload, requireAuth, canAccessHuntingDistrict, canAdministerHuntingDistrict, isActiveHuntingDistrictMember } = dependencies;
 

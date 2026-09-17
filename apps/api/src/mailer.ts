@@ -21,6 +21,10 @@ interface RegistrationNotification {
   revierName?: string
 }
 
+/**
+ * Builds an SMTP transporter from environment variables, or `null` in development when unconfigured.
+ * Throws if SMTP is not configured while `NODE_ENV=production`.
+ */
 function createMailer() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, SMTP_FROM, SMTP_FROM_NAME, NODE_ENV } = process.env
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASSWORD || !SMTP_FROM) {
@@ -57,6 +61,10 @@ export async function sendPasswordLink(message: PasswordLinkMessage) {
   })
 }
 
+/**
+ * Sends a hunting district invitation link via SMTP.
+ * In development (no SMTP env vars set) the link is printed to stdout instead.
+ */
 export async function sendHuntingDistrictInvitation(message: HuntingDistrictInvitationMessage) {
   const mailer = createMailer()
   if (!mailer) {
@@ -71,6 +79,10 @@ export async function sendHuntingDistrictInvitation(message: HuntingDistrictInvi
   })
 }
 
+/**
+ * Notifies system admins by e-mail about a new pending registration.
+ * No-op if there are no recipients; logs to stdout instead of sending in development.
+ */
 export async function sendRegistrationNotification(message: RegistrationNotification) {
   if (!message.recipients.length) return
   const mailer = createMailer()

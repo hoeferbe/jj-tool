@@ -17,6 +17,7 @@ interface NewsRouteDependencies {
    requireAuth: MiddlewareHandler;
 }
 
+/** Registers endpoints for fetching the "news since last visit" feed and marking it as seen. */
 export function registerNewsRoutes(app: Hono, dependencies: NewsRouteDependencies) {
    const { authStore, facilityStore, taskStore, reservationStore, huntingDistrictStore, getAuthenticatedPayload, requireAuth } = dependencies;
 

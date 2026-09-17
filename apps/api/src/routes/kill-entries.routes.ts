@@ -14,6 +14,7 @@ interface KillEntryRouteDependencies {
    canAdministerHuntingDistrict: (user: User, revierId: string) => boolean;
 }
 
+/** Registers CRUD endpoints for Streckeneinträge (kill entries) within a hunting district. */
 export function registerKillEntryRoutes(app: Hono, dependencies: KillEntryRouteDependencies) {
    const { authStore, killEntryStore, getAuthenticatedPayload, requireAuth, canAccessHuntingDistrict, canAdministerHuntingDistrict } = dependencies;
    const withCreatorName = <T extends { createdBy: string }>(entry: T) => ({

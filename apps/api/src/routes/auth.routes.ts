@@ -28,6 +28,10 @@ interface AuthRouteDependencies {
    }) => Promise<void>;
 }
 
+/**
+ * Registers authentication endpoints: registration, login, logout, token refresh,
+ * password reset, and reading/updating the current user's own profile.
+ */
 export function registerAuthRoutes(app: Hono, dependencies: AuthRouteDependencies) {
    const {
       authStore,

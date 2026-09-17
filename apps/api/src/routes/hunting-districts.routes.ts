@@ -32,6 +32,10 @@ interface HuntingDistrictRouteDependencies {
    canAdministerHuntingDistrict: (user: User, revierId: string) => boolean;
 }
 
+/**
+ * Registers hunting district endpoints: listing/creating/updating/deleting a Revier, listing its
+ * members, and searching German municipalities (via the BKG WFS proxy) to seed a new district's boundary.
+ */
 export function registerHuntingDistrictRoutes(app: Hono, dependencies: HuntingDistrictRouteDependencies) {
    const { authStore, huntingDistrictStore, facilityStore, taskStore, reservationStore, killEntryStore, getAuthenticatedPayload, requireAuth, requireAdmin, canAdministerHuntingDistrict } = dependencies;
 

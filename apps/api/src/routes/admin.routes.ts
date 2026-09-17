@@ -19,6 +19,11 @@ interface AdminRouteDependencies {
    sendHuntingDistrictInvitation: (input: { email: string; revierName: string; inviterName: string; invitationLink: string }) => Promise<void>;
 }
 
+/**
+ * Registers system-/Revieradmin-only endpoints: listing users, inviting members to a district,
+ * approving or rejecting registrations, blocking/unblocking accounts, changing roles, and
+ * managing hunting district memberships.
+ */
 export function registerAdminRoutes(app: Hono, dependencies: AdminRouteDependencies) {
    const { authStore, huntingDistrictStore, appOrigin, getAuthenticatedPayload, requireAdmin, requireSystemAdmin, canAdministerHuntingDistrict, hasOnlyExistingHuntingDistricts, createPasswordLink, sendHuntingDistrictInvitation } = dependencies;
 

@@ -20,6 +20,10 @@ interface BootstrapDependencies {
    createPasswordLink: (user: User) => Promise<void>;
 }
 
+/**
+ * Creates the initial system administrator from `INITIAL_ADMIN_*` environment variables on first run.
+ * No-op if the variables are missing or the account already exists.
+ */
 async function initializeInitialAdmin(authStore: AuthStore, createPasswordLink: (user: User) => Promise<void>) {
    const { INITIAL_ADMIN_USERNAME, INITIAL_ADMIN_EMAIL, INITIAL_ADMIN_NAME } = process.env;
    if (!INITIAL_ADMIN_USERNAME || !INITIAL_ADMIN_EMAIL || !INITIAL_ADMIN_NAME) return;
@@ -34,6 +38,10 @@ async function initializeInitialAdmin(authStore: AuthStore, createPasswordLink: 
    await createPasswordLink(admin);
 }
 
+/**
+ * Initializes all stores, ensures every hunting district's creator is its owner/admin,
+ * bootstraps the initial system admin if configured, and starts the HTTP server.
+ */
 export async function bootstrapApi(dependencies: BootstrapDependencies) {
    const {
       app,

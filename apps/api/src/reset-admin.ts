@@ -1,3 +1,4 @@
+// CLI script (npm run reset-admin) to create or promote a system administrator and e-mail a password-setup link.
 import { config } from 'dotenv'
 import { fileURLToPath } from 'node:url'
 import { AuthStore } from './auth-store.js'
