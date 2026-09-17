@@ -43,12 +43,13 @@ const emit = defineEmits<{
 }>()
 const container = ref<HTMLElement | null>(null)
 const tileError = ref(false)
-const locationError = ref('')
+const distancePlacementMode = ref(false)
 let map: L.Map | null = null
 let placementButton: HTMLButtonElement | null = null
 let distanceButton: HTMLButtonElement | null = null
 let facilityLayer: L.LayerGroup | null = null
 let distanceLayer: L.LayerGroup | null = null
+let distanceCenter: L.LatLng | null = null
 let savedView: { center: L.LatLng; zoom: number } | null = null
 let renderedBoundary: GeoJsonFeatureCollection | null = null
 const mapLayerStorageKey = 'jj-revier-map-layer'
@@ -87,6 +88,7 @@ function pointInBoundary(lat: number, lng: number) {
 
 function handleEscape(event: KeyboardEvent) {
   if (event.key === 'Escape' && props.facilityPlacementMode) emit('facilityPlacementCancelled')
+  if (event.key === 'Escape' && distancePlacementMode.value) cancelDistancePlacement()
 }
 
 function addFacilityPlacementControl() {
@@ -115,43 +117,69 @@ function focusFacility(facilityId?: string | null) {
 function toggleDistanceRings() {
   if (!map) return
   if (distanceLayer) {
+    map.off('zoomend', renderDistanceRings)
     distanceLayer.remove()
     distanceLayer = null
+    distanceCenter = null
     distanceButton?.classList.remove('active')
     return
   }
-  if (!navigator.geolocation) {
-    locationError.value = 'Der aktuelle Standort ist auf diesem Gerät nicht verfügbar.'
+  if (distancePlacementMode.value) {
+    cancelDistancePlacement()
     return
   }
-  locationError.value = ''
-  navigator.geolocation.getCurrentPosition((position) => {
-    if (!map) return
-    const center = L.latLng(position.coords.latitude, position.coords.longitude)
-    const layer = L.layerGroup()
-    L.circleMarker(center, { radius: 6, color: '#ffffff', weight: 2, fillColor: '#1976d2', fillOpacity: 1 })
-      .bindTooltip('Aktueller Standort')
+  distancePlacementMode.value = true
+  distanceButton?.classList.add('placing')
+  map.getContainer().style.cursor = 'crosshair'
+}
+
+function cancelDistancePlacement() {
+  distancePlacementMode.value = false
+  distanceButton?.classList.remove('placing')
+  if (map) map.getContainer().style.cursor = ''
+}
+
+function placeDistanceRings(latlng: L.LatLng) {
+  if (!map) return
+  distanceCenter = latlng
+  cancelDistancePlacement()
+  distanceButton?.classList.add('active')
+  renderDistanceRings()
+  map.on('zoomend', renderDistanceRings)
+}
+
+const DISTANCE_RING_STEPS = [50, 100, 150, 200, 300, 400]
+
+function ringDistancesForZoom(zoom: number) {
+  if (zoom >= 18) return DISTANCE_RING_STEPS.slice(0, 2)
+  if (zoom >= 17) return DISTANCE_RING_STEPS.slice(0, 3)
+  if (zoom >= 16) return DISTANCE_RING_STEPS.slice(0, 4)
+  if (zoom >= 15) return DISTANCE_RING_STEPS.slice(0, 5)
+  return DISTANCE_RING_STEPS
+}
+
+function renderDistanceRings() {
+  if (!map || !distanceCenter) return
+  distanceLayer?.remove()
+  const layer = L.layerGroup()
+  L.circleMarker(distanceCenter, { radius: 6, color: '#ffffff', weight: 2, fillColor: '#1976d2', fillOpacity: 1 })
+    .bindTooltip('Aktueller Standort')
+    .addTo(layer)
+  for (const radius of ringDistancesForZoom(map.getZoom())) {
+    L.circle(distanceCenter, { radius, color: '#ffffff', weight: 2, opacity: 0.9, fillColor: '#1976d2', fillOpacity: 0.04 })
       .addTo(layer)
-    for (const radius of [100, 250, 500]) {
-      L.circle(center, { radius, color: '#ffffff', weight: 2, opacity: 0.9, fillColor: '#1976d2', fillOpacity: 0.04 })
-        .addTo(layer)
-      L.marker([center.lat + radius / 111320, center.lng], {
-        interactive: false,
-        icon: L.divIcon({
-          className: 'distance-ring-label',
-          html: `<span>${radius} m</span>`,
-          iconSize: [48, 18],
-          iconAnchor: [24, 9],
-        }),
-      }).addTo(layer)
-    }
-    layer.addTo(map)
-    distanceLayer = layer
-    distanceButton?.classList.add('active')
-    map.setView(center, 16, { animate: true })
-  }, () => {
-    locationError.value = 'Der aktuelle Standort konnte nicht ermittelt werden.'
-  }, { enableHighAccuracy: true, timeout: 10000 })
+    L.marker([distanceCenter.lat + radius / 111320, distanceCenter.lng], {
+      interactive: false,
+      icon: L.divIcon({
+        className: 'distance-ring-label',
+        html: `<span>${radius} m</span>`,
+        iconSize: [48, 18],
+        iconAnchor: [24, 9],
+      }),
+    }).addTo(layer)
+  }
+  layer.addTo(map)
+  distanceLayer = layer
 }
 
 function addDistanceControl() {
@@ -160,8 +188,8 @@ function addDistanceControl() {
   control.onAdd = () => {
     distanceButton = L.DomUtil.create('button', 'distance-ring-control') as HTMLButtonElement
     distanceButton.type = 'button'
-    distanceButton.title = 'Distanzringe um aktuellen Standort'
-    distanceButton.setAttribute('aria-label', 'Distanzringe um aktuellen Standort')
+    distanceButton.title = 'Distanzringe auf Karte platzieren'
+    distanceButton.setAttribute('aria-label', 'Distanzringe auf Karte platzieren')
     distanceButton.textContent = '◎'
     L.DomEvent.disableClickPropagation(distanceButton)
     L.DomEvent.on(distanceButton, 'click', toggleDistanceRings)
@@ -188,8 +216,8 @@ function addFacilitiesToMap() {
     const isPositioning = props.positioningFacilityId === facility.id
     const marker = L.marker([facility.position.lat, facility.position.lng], {
       icon: L.divIcon({
-        className: 'facility-marker',
-        html: `<span style="display:flex;width:24px;height:24px;align-items:center;justify-content:center;border:2px solid ${isPositioning ? '#d32f2f' : markerStyle.border};border-radius:4px;background:${markerStyle.background};color:${markerStyle.color};font:700 12px/1 sans-serif;opacity:${isPositioning ? '0.6' : '1'};box-shadow:0 2px 5px rgba(0,0,0,.28)">${facilityLabels[facility.typ]}</span>`,
+        className: `facility-marker${isPositioning ? ' facility-marker-positioning' : ''}`,
+        html: `<span style="display:flex;width:24px;height:24px;align-items:center;justify-content:center;border:2px solid ${isPositioning ? '#d32f2f' : markerStyle.border};border-radius:4px;background:${isPositioning ? '#ffee58' : markerStyle.background};color:${isPositioning ? '#3a1414' : markerStyle.color};font:700 12px/1 sans-serif;box-shadow:0 2px 5px rgba(0,0,0,.28)">${facilityLabels[facility.typ]}</span>`,
         iconSize: [24, 24],
         iconAnchor: [12, 12],
       }),
@@ -282,6 +310,10 @@ async function renderMap() {
   if (props.canCreateFacilities) addFacilityPlacementControl()
   addDistanceControl()
   map.on('click', (event: L.LeafletMouseEvent) => {
+    if (distancePlacementMode.value) {
+      placeDistanceRings(event.latlng)
+      return
+    }
     if (props.facilityPlacementMode || event.originalEvent.metaKey || event.originalEvent.ctrlKey) {
       if (!pointInBoundary(event.latlng.lat, event.latlng.lng)) {
         emit('facilityPositionRejected')
@@ -319,6 +351,10 @@ watch(() => props.facilities, () => {
   clearFacilityMarkers()
   addFacilitiesToMap()
 }, { deep: true })
+watch(() => props.positioningFacilityId, () => {
+  if (!map) return
+  addFacilitiesToMap()
+})
 watch(() => props.boundary, renderMap, { deep: true })
 watch(() => props.facilityPlacementMode, updatePlacementButton)
 watch(() => props.focusFacilityId, focusFacility)
@@ -331,16 +367,19 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="map-stage" :class="{ 'placement-active': props.facilityPlacementMode }">
+  <div class="map-stage" :class="{ 'placement-active': props.facilityPlacementMode, 'distance-placement-active': distancePlacementMode }">
     <div v-if="props.facilityPlacementMode" class="placement-banner" role="status">
       Einrichtung: Position wählen
       <span>Tippe innerhalb der Reviergrenze</span>
+    </div>
+    <div v-if="distancePlacementMode" class="placement-banner distance-banner" role="status">
+      Distanzringe: Position wählen
+      <span>Klicke auf die Karte · Esc zum Abbrechen</span>
     </div>
     <div ref="container" class="revier-map"></div>
   </div>
   <BkgAttribution :year="sourceYear" />
   <p v-if="tileError" class="map-error">Die Kartenkacheln konnten nicht geladen werden.</p>
-  <p v-if="locationError" class="map-error">{{ locationError }}</p>
 </template>
 
 <style scoped>
@@ -359,6 +398,12 @@ onBeforeUnmount(() => {
 
 .map-stage.placement-active {
   border: 4px solid #f2c94c;
+  border-radius: 10px;
+  box-shadow: 0 0 0 2px rgba(32, 39, 27, 0.35);
+}
+
+.map-stage.distance-placement-active {
+  border: 4px solid #1976d2;
   border-radius: 10px;
   box-shadow: 0 0 0 2px rgba(32, 39, 27, 0.35);
 }
@@ -386,6 +431,12 @@ onBeforeUnmount(() => {
 .placement-banner span {
   font-size: 0.85rem;
   font-weight: 400;
+}
+
+.distance-banner {
+  border-color: #184f82;
+  background: #1976d2;
+  color: #ffffff;
 }
 
 .map-error {
@@ -427,6 +478,14 @@ onBeforeUnmount(() => {
 }
 
 :global(.distance-ring-control.active) { background: #1976d2; color: #ffffff; }
+:global(.distance-ring-control.placing) { background: #1976d2; color: #ffffff; animation: facility-marker-glow 1.1s ease-in-out infinite; }
 :global(.distance-ring-label span) { display: block; width: max-content; padding: 1px 4px; border-radius: 3px; background: rgba(255, 255, 255, 0.88); color: #184f82; font: 700 10px/1.4 sans-serif; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+
+:global(.facility-marker-positioning span) { animation: facility-marker-glow 1.1s ease-in-out infinite; }
+@keyframes facility-marker-glow {
+  0% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.65); }
+  70% { box-shadow: 0 0 0 14px rgba(211, 47, 47, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0); }
+}
 
 </style>
