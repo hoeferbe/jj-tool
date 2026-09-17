@@ -125,6 +125,7 @@ function handleDeletedFacility(facilityId: string) {
   closeFacilityDialog()
 }
 
+/** Opens the create-facility dialog pre-filled with a map position picked outside placement mode (e.g. Ctrl/Cmd-click). */
 function openNewFacilityAtPosition(position: { lat: number; lng: number }) {
   editingFacility.value = null
   positioningFacilityId.value = null
@@ -137,6 +138,7 @@ function openNewFacilityAtPosition(position: { lat: number; lng: number }) {
 
 const facilityPlacementMode = ref(false)
 
+/** Enters map placement mode so the next map click creates a new facility there. */
 function startNewFacilityPlacement() {
   editingFacility.value = null
   positioningFacilityId.value = null
@@ -144,16 +146,22 @@ function startNewFacilityPlacement() {
   placementMessage.value = ''
 }
 
+/** Leaves placement/repositioning mode without creating or moving a facility. */
 function cancelFacilityPlacement() {
   positioningFacilityId.value = null
   facilityPlacementMode.value = false
   placementMessage.value = ''
 }
 
+/** Shown when a placement/reposition click lands outside the Revier boundary. */
 function rejectFacilityPosition() {
   placementMessage.value = 'Einrichtungen können nur innerhalb der Reviergrenze angelegt oder verschoben werden.'
 }
 
+/**
+ * Handles a map click while positioning: opens the create dialog for a brand-new facility,
+ * or stages the new position on an existing one for confirmation via "Speichern".
+ */
 async function repositionFacility(selection: { position: { lat: number; lng: number }; facilityId?: string }) {
   if (!selection.facilityId) return openNewFacilityAtPosition(selection.position)
   const facility = facilities.value.find((entry) => entry.id === selection.facilityId)
@@ -175,11 +183,13 @@ function openEditFacility(facility: Jagdeinrichtung) {
   showNewFacilityDialog.value = true
 }
 
+/** Navigates to the Revierkarte, focused on this facility (used when opening the dialog from elsewhere). */
 async function showFacilityOnMap(facility: Jagdeinrichtung) {
   closeFacilityDialog()
   await router.replace({ path: '/reviere/karte', query: { facility: facility.id } })
 }
 
+/** Starts repositioning an existing facility: closes its dialog and waits for the next map click. */
 function startRepositioning(facility: Jagdeinrichtung) {
   preservePositioningMode.value = true
   positioningFacilityId.value = facility.id
@@ -187,6 +197,10 @@ function startRepositioning(facility: Jagdeinrichtung) {
   showNewFacilityDialog.value = false
 }
 
+/**
+ * Closes the facility dialog. Keeps positioning mode active for one more map click when the dialog
+ * was closed to let the user immediately reposition (`preservePositioningMode`).
+ */
 function closeFacilityDialog() {
   showNewFacilityDialog.value = false
   editingFacility.value = null
@@ -199,6 +213,7 @@ function closeFacilityDialog() {
   }
 }
 
+/** Switches the active Revier, persists the choice, and reloads its members/facilities. */
 async function selectRevier(revierId: string) {
   selectedRevierId.value = revierId
   localStorage.setItem('jj-member-selected-revier', revierId)
@@ -226,6 +241,7 @@ async function selectRevier(revierId: string) {
   }
 }
 
+// Loads the user's Reviere/profile, then honors a `?reposition=<facilityId>` deep link from EinrichtungenView.
 onMounted(async () => {
   const token = localStorage.getItem('accessToken')
   try {

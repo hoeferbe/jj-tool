@@ -43,6 +43,7 @@ let markerInstance: L.Marker | null = null
 let boundaryLayerInstance: L.GeoJSON | null = null
 const mapLayerStorageKey = 'jj-revier-map-layer'
 
+/** Builds the red drop-pin marker icon used for the kill entry position. */
 function createKillMarker(latLng: L.LatLngExpression) {
   const icon = L.divIcon({
     className: 'kill-marker-icon-container',
@@ -75,6 +76,7 @@ function formatGewicht(gewicht?: number) {
   return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(gewicht) + ' kg'
 }
 
+/** Renders the small Leaflet preview map centered on the entry's position, with the Revier boundary and a marker. */
 function initDetailMap() {
   if (!mapContainer.value || !props.entry?.position) return
   destroyDetailMap()
@@ -111,6 +113,7 @@ function initDetailMap() {
   markerInstance.bindPopup(`<b>${props.entry.wildart}</b>${props.entry.unterart ? ` (${props.entry.unterart})` : ''}<br>${props.entry.ortName ?? ''}`).openPopup()
 }
 
+/** Tears down the preview map so re-opening the dialog starts from a clean state. */
 function destroyDetailMap() {
   if (mapInstance) {
     mapInstance.remove()
@@ -125,6 +128,7 @@ function close() {
   emit('close')
 }
 
+/** Closes this dialog, then opens the edit dialog for the same entry. */
 function handleEdit() {
   if (props.entry) {
     const entryToEdit = props.entry
