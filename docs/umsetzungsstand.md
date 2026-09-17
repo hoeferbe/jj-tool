@@ -21,7 +21,7 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 | Zuverlässige lokale Persistenz | Fertig | JSON-Stores mit Schreibwarteschlange und atomischem Umbenennen, unter anderem `auth-store.ts`, `hunting-district-store.ts` und `kill-entry-store.ts` | Mittelfristig Migration zu SQLite bewerten |
 | Betrieb auf Raspberry Pi | Teilweise | Dockerfiles, `docker-compose.yml` und `deploy.sh` vorhanden | Wiederherstellung, automatisierte Backups, Monitoring und Update-Prozess testen und dokumentieren |
 | Externer sicherer Zugang | Offen | Im Zielbild als Cloudflare Tunnel vorgesehen | Tunnel, Domain, TLS und Betriebszugang einrichten und testen |
-| Android-App und iPhone-PWA | Offen | Ionic-Web-App ist vorhanden | Capacitor, Android-Projekt, signierte APK, PWA-Manifest, Service Worker und Gerätetests fehlen |
+| Android-App und iPhone-PWA | Teilweise | `manifest.webmanifest`, Icons (inkl. maskable) und minimaler Service Worker (`apps/app/public/sw.js`) für Installierbarkeit vorhanden; Capacitor-Android-Grundgerüst (`capacitor.config.ts`, `android/`-Projekt) eingerichtet | Signierte APK, Offline-Asset-Caching im Service Worker und Gerätetests fehlen |
 | Tailwind als CSS-Ergänzung | Offen | Nicht installiert | Nur integrieren, wenn für kommende Oberflächen tatsächlich benötigt |
 
 ## 2. Anmeldung und Benutzerkonten
@@ -117,10 +117,10 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 
 | Gewünschte Funktion | Status | Vorhanden und Fundstelle | Noch zu erledigen |
 | --- | --- | --- | --- |
-| Daten ohne Verbindung erfassen | Offen | Formulare senden direkt an die API | IndexedDB-Datenspeicher und lokale Änderungsqueue |
-| Spätere Synchronisation | Offen | Keine Synchronisationslogik | Wiederholungen, Idempotenz, Konfliktlösung und Statusanzeige |
+| Daten ohne Verbindung erfassen | Teilweise | Speichern von Streckeneinträgen und Jagdeinrichtungen wird bei fehlgeschlagener Verbindung in eine `localStorage`-Warteschlange gelegt (`useOfflineQueue.ts`) statt verworfen; andere Formulare (Aufgaben, Reservierungen, Mitglieder) senden weiterhin direkt | Weitere Formulare anbinden, echter IndexedDB-Speicher für größere Datenmengen |
+| Spätere Synchronisation | Teilweise | Automatischer Retry beim `online`-Event und App-Start, manueller „Jetzt erneut versuchen“-Button und Banner mit Anzahl ausstehender Änderungen in `AppLayout.vue` | Keine Konfliktlösung; neu angelegte Einträge erscheinen erst nach erfolgreichem Senden in der Liste, nicht sofort optimistisch |
 | Offline-Kartenbereich | Offen | Karten verwenden externe Online-Kacheln | Lizenzkonformes Kartenpaket und Speicherverwaltung |
-| Wiederanlauf nach App-Abbruch | Offen | Nicht gezielt implementiert oder getestet | Persistente Queue und Feldtests |
+| Wiederanlauf nach App-Abbruch | Teilweise | Warteschlange liegt in `localStorage` und überlebt damit Reloads/Neustarts | Feldtests auf echten Geräten stehen aus |
 
 ## 10. Qualität und Dokumentation
 

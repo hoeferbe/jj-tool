@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { IonBadge, IonButton, IonContent, IonItem, IonLabel, IonList, IonModal, IonNote, IonSelect, IonSelectOption, IonTextarea } from '@ionic/vue'
 import ImageGallery from './ImageGallery.vue'
+import { submitOrQueue } from '../composables/useOfflineQueue'
 
 interface Point { lat: number; lng: number }
 interface Jagdeinrichtung {
@@ -373,24 +374,29 @@ async function changeReservation(method: 'POST' | 'PATCH' | 'DELETE', body?: { s
   } finally { usageSaving.value = false }
 }
 
-/** Creates a new facility (POST) or saves changes to the one being edited (PUT). */
+/** Creates a new facility (POST) or saves changes to the one being edited (PUT). Queues the request if there's no connectivity. */
 async function saveFacility() {
   if (name.value.trim().length < 2) return
   saving.value = true
   message.value = ''
-  const token = localStorage.getItem('accessToken')
   try {
     const isEditing = Boolean(props.facility)
     const endpoint = isEditing
       ? `${apiUrl}/reviere/${props.revierId}/jagdeinrichtungen/${props.facility!.id}`
       : `${apiUrl}/reviere/${props.revierId}/jagdeinrichtungen`
-    const response = await fetch(endpoint, {
+    const result = await submitOrQueue({
+      url: endpoint,
       method: isEditing ? 'PUT' : 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name.value.trim(), typ: typ.value, status: status.value, zustandsInfo: zustandsInfo.value.trim() || undefined, notiz: notiz.value.trim() || undefined, position: position.value }),
+      description: `Jagdeinrichtung ${name.value.trim()}`,
     })
-    const data = await response.json() as { jagdeinrichtung?: Jagdeinrichtung; message?: string }
-    if (!response.ok || !data.jagdeinrichtung) throw new Error(data.message ?? 'Jagdeinrichtung konnte nicht angelegt werden.')
+    if (result.queued) {
+      message.value = 'Keine Verbindung: Die Einrichtung wird automatisch gespeichert, sobald wieder online.'
+      close()
+      return
+    }
+    const data = await result.response.json() as { jagdeinrichtung?: Jagdeinrichtung; message?: string }
+    if (!result.response.ok || !data.jagdeinrichtung) throw new Error(data.message ?? 'Jagdeinrichtung konnte nicht angelegt werden.')
     if (isEditing) emit('updated', data.jagdeinrichtung)
     else emit('created', data.jagdeinrichtung)
     close()

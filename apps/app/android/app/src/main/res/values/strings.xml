@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mein Jagdrevier</string>
+    <string name="title_activity_main">Mein Jagdrevier</string>
+    <string name="package_name">de.jjtool.jagdrevier</string>
+    <string name="custom_url_scheme">de.jjtool.jagdrevier</string>
+</resources>

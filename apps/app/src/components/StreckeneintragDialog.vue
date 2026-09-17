@@ -3,6 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { IonButton, IonContent, IonModal, IonNote } from '@ionic/vue'
 import * as L from 'leaflet'
 import ImageGallery from './ImageGallery.vue'
+import { submitOrQueue } from '../composables/useOfflineQueue'
 
 interface Point { lat: number; lng: number }
 
@@ -352,12 +353,11 @@ function close() {
   emit('close')
 }
 
-/** Creates a new kill entry or saves changes to the one being edited. */
+/** Creates a new kill entry or saves changes to the one being edited. Queues the request if there's no connectivity. */
 async function saveEntry() {
   if (datum.value.length !== 10 || wildart.value.trim().length < 2) return
   saving.value = true
   message.value = ''
-  const token = localStorage.getItem('accessToken')
   try {
     const isEditing = Boolean(props.entry)
     const endpoint = isEditing
@@ -387,20 +387,26 @@ async function saveEntry() {
       notiz: notiz.value.trim() || undefined,
     }
 
-    const response = await fetch(endpoint, {
+    const result = await submitOrQueue({
+      url: endpoint,
       method: isEditing ? 'PUT' : 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      description: `Streckeneintrag ${payload.wildart} vom ${payload.datum}`,
     })
+    if (result.queued) {
+      message.value = 'Keine Verbindung: Der Eintrag wird automatisch gespeichert, sobald wieder online.'
+      close()
+      return
+    }
 
     let data: { streckeneintrag?: Streckeneintrag; message?: string } = {}
     try {
-      data = (await response.json()) as { streckeneintrag?: Streckeneintrag; message?: string }
+      data = (await result.response.json()) as { streckeneintrag?: Streckeneintrag; message?: string }
     } catch {
-      throw new Error(`Server-Fehler (${response.status} ${response.statusText}). Bitte prüfen, ob die API neu gestartet/kompiliert wurde.`)
+      throw new Error(`Server-Fehler (${result.response.status} ${result.response.statusText}). Bitte prüfen, ob die API neu gestartet/kompiliert wurde.`)
     }
 
-    if (!response.ok || !data.streckeneintrag) throw new Error(data.message ?? `Streckeneintrag konnte nicht gespeichert werden (Status ${response.status}).`)
+    if (!result.response.ok || !data.streckeneintrag) throw new Error(data.message ?? `Streckeneintrag konnte nicht gespeichert werden (Status ${result.response.status}).`)
 
     emit('saved', data.streckeneintrag)
     close()

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { IonBadge, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonModal, IonNote, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
 import { addCircleOutline, chevronDownOutline, clipboardOutline, constructOutline, logOutOutline, mapOutline, notificationsOutline, peopleOutline, personCircleOutline, settingsOutline, trailSignOutline } from 'ionicons/icons'
 import { useNews } from '../composables/useNews'
+import { useOfflineQueue } from '../composables/useOfflineQueue'
 
 const router = useRouter()
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
@@ -14,6 +15,7 @@ const profileSaving = ref(false)
 const profileError = ref('')
 
 const { newsItems, newsCount, loadNews, markAllNewsSeen, sectionHasNews } = useNews()
+const { pendingCount, flushOfflineQueue } = useOfflineQueue()
 
 const uuid =
   globalThis.crypto?.randomUUID?.() ??
@@ -197,6 +199,10 @@ async function logout() {
     </IonHeader>
     <IonContent>
       <div class="motd" role="status">Diese App befindet sich noch in der Entwicklung.</div>
+      <div v-if="pendingCount" class="offline-banner" role="status">
+        <span>{{ pendingCount }} {{ pendingCount === 1 ? 'Änderung wartet' : 'Änderungen warten' }} auf eine Verbindung und werden automatisch gesendet.</span>
+        <IonButton size="small" fill="clear" @click="flushOfflineQueue">Jetzt erneut versuchen</IonButton>
+      </div>
       <slot />
     </IonContent>
     <IonModal :is-open="showProfile" @did-dismiss="showProfile = false">
@@ -223,6 +229,7 @@ async function logout() {
 
 <style scoped>
 .motd { padding: 7px 16px; border-bottom: 1px solid #d3d8c7; background: #eef1e7; color: #536142; font-size: 0.85rem; text-align: center; }
+.offline-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 7px 16px; border-bottom: 1px solid #f2c94c; background: #fdf3d6; color: #6b5300; font-size: 0.85rem; text-align: center; }
 .profile-form { display: grid; gap: 16px; max-width: 560px; margin: 0 auto; }
 .news-button { position: relative; }
 .news-badge { position: absolute; top: 2px; right: 2px; font-size: 0.6rem; padding: 2px 5px; }

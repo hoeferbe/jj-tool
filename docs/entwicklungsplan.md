@@ -107,6 +107,7 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 - Allgemeine Revieraufgaben mit Beschreibung, Fälligkeit, Priorität und optionaler Zuweisung anlegen, übernehmen, bearbeiten und erledigen.
 - Kanzeln, Böcke und Leitern mit Startzeit und Dauer in einem 30-Minuten-Raster reservieren, ändern, stornieren sowie ein- und auschecken. Mehrere nicht überlappende Zukunftsbuchungen und eine ausklappbare Historie werden pro Einrichtung angezeigt.
 - Die Listenansicht zeigt zusätzlich den Reservierungsstatus und den Zuständigkeitsstatus der Aufgaben an.
+- Bis zu drei Bilder je Jagdeinrichtung hochladen, anzeigen und löschen; Bilder werden clientseitig auf max. 1024px lange Seite komprimiert und nur nach Anmeldung ausgeliefert.
 
 #### Streckeneinträge
 
@@ -116,6 +117,13 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 - Geschützte API-Routen (GET, POST, PUT, DELETE) und persistente Speicherung für Streckeneinträge umgesetzt.
 - Bearbeiten und Löschen sind auf den Ersteller sowie zuständige Revier- oder Systemadmins beschränkt.
 - Die Detailansicht einer Strecke zeigt zusätzlich Badges, Mini-Karten-Vorschau, Datum, Ort und Notiz.
+- Bis zu drei Bilder je Streckeneintrag hochladen, anzeigen und löschen (auch nachträglich nach dem Speichern), clientseitig komprimiert vor dem Upload.
+- Einfache Offline-Warteschlange: Speichern eines Streckeneintrags oder einer Jagdeinrichtung wird bei fehlender Verbindung lokal zwischengespeichert und automatisch erneut gesendet, sobald die Verbindung zurück ist; ohne Konfliktlösung und ohne sofortige Anzeige in der Liste bis zum erfolgreichen Senden.
+
+#### PWA und Capacitor
+
+- Web-App-Manifest, Icons (inkl. maskable-Variante) und ein minimaler Service Worker für die Installierbarkeit auf iPhone (PWA) und Android eingerichtet; noch ohne Offline-Asset-Caching.
+- Capacitor-Grundgerüst für Android (`capacitor.config.ts`, generiertes `android/`-Projekt) eingerichtet; Signierung, Store-freier Vertrieb und Gerätetests stehen noch aus.
 
 #### Qualitätssicherung
 
@@ -124,18 +132,18 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 
 ### Als Nächstes umzusetzen
 
-- Lokale Speicherung ausstehender Streckeneinträge bei fehlender Verbindung und spätere Synchronisation umsetzen.
+- Lokale Speicherung ausstehender Streckeneinträge bei fehlender Verbindung und spätere Synchronisation umsetzen (einfache Retry-Warteschlange ohne Konfliktlösung ist für Streckeneinträge und Jagdeinrichtungen bereits umgesetzt; weitere Formulare, Konfliktlösung und sofortige lokale Anzeige folgen später).
 - Streckeneinträge um eine Auswahl der vier bis fünf wichtigsten Wildarten per Radiobuttons erweitern, möglichst mit verständlichen Grafik-Icons.
 - Wildarten intern in Unterarten gliedern, zum Beispiel Reh in Rehbock, Ricke, Schmalreh, Bockkitz und Kitz.
-- Capacitor für Android konfigurieren; PWA-Manifest und Service-Worker für iOS prüfen.
 - Tailwind CSS als Ergänzung zu Ionic integrieren (für eigene Layouts außerhalb der Ionic-Komponenten).
 - Optionales Offline-Kartenmanagement und Cache-Konzept für den Gemeindebereich vorbereiten.
+- Service Worker um echtes Offline-Asset-Caching erweitern; Capacitor-Android-Build signieren und auf einem echten Gerät testen.
 
 ### Noch nicht umgesetzt
 
 - Refresh-Tokens als `HttpOnly`-Cookies und Token-Widerruf (aktuell: JWT in localStorage mit 7-Tage-Sliding-Window).
-- Offline-Karten, Bilder und Synchronisation.
-- Capacitor-Android-Integration, PWA-Service-Worker, Cloudflare Tunnel und Raspberry-Pi-Betrieb.
+- Offline-Karten und eine vollständige, konfliktfreie Synchronisation mit sofortiger lokaler Anzeige ausstehender Änderungen (die einfache Retry-Warteschlange für Streckeneinträge/Jagdeinrichtungen ist bereits umgesetzt).
+- Signierte Capacitor-APK, Cloudflare Tunnel und Raspberry-Pi-Betrieb.
 - Telegram, Firebase Cloud Messaging, Nachsuche und Fährtenaufzeichnung.
 - Produktionsreife lokale Datensynchronisierung mit Konfliktlösung und Queue-Handling bei Verbindungsausfall.
 

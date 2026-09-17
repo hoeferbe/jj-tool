@@ -9,6 +9,7 @@ import EinrichtungenView from './views/EinrichtungenView.vue';
 import StreckeneintraegeView from './views/StreckeneintraegeView.vue';
 import AufgabenView from './views/AufgabenView.vue';
 import { loadNews } from './composables/useNews';
+import { flushOfflineQueue } from './composables/useOfflineQueue';
 
 import 'leaflet/dist/leaflet.css';
 import '@ionic/vue/css/core.css';
@@ -161,6 +162,19 @@ document.addEventListener('visibilitychange', () => {
 });
 
 if (document.visibilityState === 'visible') startNewsPolling();
+
+// Retry any offline-queued form submissions as soon as connectivity comes back.
+window.addEventListener('online', () => { flushOfflineQueue(); });
+flushOfflineQueue();
+
+// Registers the minimal service worker for PWA installability (no offline asset caching yet).
+if ('serviceWorker' in navigator) {
+   window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+         // best effort – installability degrades gracefully without a service worker
+      });
+   });
+}
 
 // Refresh the token before mounting so the first render has a valid JWT.
 refreshTokenOnStartup().then(() => {
