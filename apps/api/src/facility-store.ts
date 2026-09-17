@@ -50,8 +50,13 @@ interface FacilityData {
 
 const emptyData = (): FacilityData => ({ jagdeinrichtungen: [] });
 
+/**
+ * In-memory store for all Jagdeinrichtungen (hunting facilities) backed by a single JSON file.
+ * All writes go through a serial queue so concurrent requests never corrupt the file.
+ */
 export class FacilityStore {
    private data: FacilityData = emptyData();
+   /** Serialises all write operations to prevent race conditions. */
    private writeQueue = Promise.resolve();
    private readonly filePath: string;
 
@@ -59,6 +64,10 @@ export class FacilityStore {
       this.filePath = join(dataDirectory, 'jagdeinrichtungen.json');
    }
 
+   /**
+    * Loads jagdeinrichtungen.json from disk into memory.
+    * Creates the file if it does not exist yet.
+    */
    async initialize() {
       await mkdir(dirname(this.filePath), { recursive: true });
       try {
@@ -74,14 +83,17 @@ export class FacilityStore {
       }
    }
 
+   /** Returns all facilities belonging to one hunting district. */
    async getByHuntingDistrictId(revierId: string) {
       return this.data.jagdeinrichtungen.filter((entry) => entry.revierId === revierId);
    }
 
+   /** Finds a facility by its UUID, or `null` if it does not exist. */
    async getById(id: string) {
       return this.data.jagdeinrichtungen.find((entry) => entry.id === id) ?? null;
    }
 
+   /** Creates a new facility with a fresh UUID and timestamps. */
    async create(input: UpsertFacilityInput) {
       return this.enqueue(async () => {
          const now = new Date().toISOString();
@@ -96,6 +108,7 @@ export class FacilityStore {
       });
    }
 
+   /** Replaces an existing facility's editable fields, keeping its id and createdAt. Returns `null` if not found. */
    async update(id: string, input: UpsertFacilityInput) {
       return this.enqueue(async () => {
          const index = this.data.jagdeinrichtungen.findIndex((entry) => entry.id === id);
@@ -113,6 +126,7 @@ export class FacilityStore {
       });
    }
 
+   /** Deletes one facility by id. Returns whether a matching entry was found. */
    async delete(id: string) {
       return this.enqueue(async () => {
          const index = this.data.jagdeinrichtungen.findIndex((entry) => entry.id === id);
@@ -122,6 +136,7 @@ export class FacilityStore {
       });
    }
 
+   /** Deletes all facilities of one hunting district (e.g. when the district itself is deleted). Returns the number removed. */
    async deleteByHuntingDistrictId(revierId: string) {
       return this.enqueue(async () => {
          const initialLength = this.data.jagdeinrichtungen.length;
@@ -130,6 +145,10 @@ export class FacilityStore {
       });
    }
 
+   /**
+    * Serialises all write operations so they execute one at a time.
+    * Each operation modifies in-memory state and then flushes it to disk.
+    */
    private async enqueue<T>(operation: () => Promise<T>) {
       let result: T;
       const operationPromise = this.writeQueue.then(async () => {
@@ -141,6 +160,10 @@ export class FacilityStore {
       return result!;
    }
 
+   /**
+    * Atomically writes jagdeinrichtungen.json by first writing to a temp file then renaming it.
+    * This prevents corrupt files if the process is killed mid-write.
+    */
    private async persist() {
       const temporaryPath = `${this.filePath}.${randomUUID()}.tmp`;
       await writeFile(temporaryPath, `${JSON.stringify(this.data, null, 2)}\n`, 'utf8');

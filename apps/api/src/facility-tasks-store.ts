@@ -38,8 +38,13 @@ export interface CreateTaskInput {
 interface TaskData { aufgaben: FacilityTask[] }
 const emptyData = (): TaskData => ({ aufgaben: [] });
 
+/**
+ * In-memory store for facility tasks and general district tasks (facility tasks omit `jagdeinrichtungId`)
+ * backed by a single JSON file. All writes go through a serial queue so concurrent requests never corrupt the file.
+ */
 export class FacilityTasksStore {
    private data: TaskData = emptyData();
+   /** Serialises all write operations to prevent race conditions. */
    private writeQueue = Promise.resolve();
    private readonly filePath: string;
 
@@ -47,6 +52,10 @@ export class FacilityTasksStore {
       this.filePath = join(dataDirectory, 'jagdeinrichtung-aufgaben.json');
    }
 
+   /**
+    * Loads jagdeinrichtung-aufgaben.json from disk into memory.
+    * Creates the file if it does not exist yet and backfills a default priority on older tasks.
+    */
    async initialize() {
       await mkdir(dirname(this.filePath), { recursive: true });
       try {
@@ -61,14 +70,17 @@ export class FacilityTasksStore {
       }
    }
 
+   /** Returns all tasks (facility-specific and general) belonging to one hunting district. */
    async getByHuntingDistrictId(revierId: string) {
       return this.data.aufgaben.filter((aufgabe) => aufgabe.revierId === revierId);
    }
 
+   /** Finds a task by its UUID, or `null` if it does not exist. */
    async getById(id: string) {
       return this.data.aufgaben.find((aufgabe) => aufgabe.id === id) ?? null;
    }
 
+   /** Creates a new task with a fresh UUID and timestamps. */
    async create(input: CreateTaskInput) {
       return this.enqueue(async () => {
          const now = new Date().toISOString();
@@ -78,6 +90,10 @@ export class FacilityTasksStore {
       });
    }
 
+   /**
+    * Applies a partial update to a task. `null` values for `beschreibung`/`assignedTo`/`faelligAm` clear the field.
+    * Sets or clears `completedAt` when the status changes to/from `erledigt`. Returns `null` if not found.
+    */
    async update(id: string, input: Partial<Pick<FacilityTask, 'titel' | 'prioritaet' | 'status'>> & { beschreibung?: string | null; assignedTo?: string | null; faelligAm?: string | null }) {
       return this.enqueue(async () => {
          const aufgabe = this.data.aufgaben.find((entry) => entry.id === id);
@@ -97,6 +113,7 @@ export class FacilityTasksStore {
       });
    }
 
+   /** Deletes one task by id. Returns whether a matching entry was found. */
    async delete(id: string) {
       return this.enqueue(async () => {
          const index = this.data.aufgaben.findIndex((entry) => entry.id === id);
@@ -106,6 +123,7 @@ export class FacilityTasksStore {
       });
    }
 
+   /** Deletes all tasks of one hunting district (e.g. when the district itself is deleted). Returns the number removed. */
    async deleteByHuntingDistrictId(revierId: string) {
       return this.enqueue(async () => {
          const initialLength = this.data.aufgaben.length;
@@ -114,6 +132,7 @@ export class FacilityTasksStore {
       });
    }
 
+   /** Deletes all tasks linked to one facility (e.g. when the facility itself is deleted). Returns the number removed. */
    async deleteByFacilityId(jagdeinrichtungId: string) {
       return this.enqueue(async () => {
          const initialLength = this.data.aufgaben.length;
@@ -122,6 +141,10 @@ export class FacilityTasksStore {
       });
    }
 
+   /**
+    * Serialises all write operations so they execute one at a time.
+    * Each operation modifies in-memory state and then flushes it to disk.
+    */
    private async enqueue<T>(operation: () => Promise<T>) {
       let result: T;
       const operationPromise = this.writeQueue.then(async () => {
@@ -133,6 +156,10 @@ export class FacilityTasksStore {
       return result!;
    }
 
+   /**
+    * Atomically writes jagdeinrichtung-aufgaben.json by first writing to a temp file then renaming it.
+    * This prevents corrupt files if the process is killed mid-write.
+    */
    private async persist() {
       const temporaryPath = `${this.filePath}.${randomUUID()}.tmp`;
       await writeFile(temporaryPath, `${JSON.stringify(this.data, null, 2)}\n`, 'utf8');

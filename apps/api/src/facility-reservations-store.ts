@@ -19,8 +19,13 @@ export interface FacilityReservation {
 interface ReservationsData { reservierungen: FacilityReservation[] }
 const emptyData = (): ReservationsData => ({ reservierungen: [] });
 
+/**
+ * In-memory store for facility reservations and check-ins, backed by a single JSON file.
+ * All writes go through a serial queue so concurrent requests never corrupt the file.
+ */
 export class FacilityReservationsStore {
    private data: ReservationsData = emptyData();
+   /** Serialises all write operations to prevent race conditions. */
    private writeQueue = Promise.resolve();
    private readonly filePath: string;
 
@@ -28,6 +33,10 @@ export class FacilityReservationsStore {
       this.filePath = join(dataDirectory, 'jagdeinrichtung-reservierungen.json');
    }
 
+   /**
+    * Loads jagdeinrichtung-reservierungen.json from disk into memory.
+    * Creates the file if it does not exist yet.
+    */
    async initialize() {
       await mkdir(dirname(this.filePath), { recursive: true });
       try {
@@ -39,18 +48,21 @@ export class FacilityReservationsStore {
       }
    }
 
+   /** Returns all active (not released/expired) reservations of one hunting district, soonest first. */
    async getActiveByHuntingDistrictId(revierId: string) {
       return this.data.reservierungen
          .filter((entry) => entry.revierId === revierId && this.isActive(entry))
          .sort((first, second) => this.reservationStart(first) - this.reservationStart(second));
    }
 
+   /** Returns all past (released/expired) reservations of one hunting district, most recent first. */
    async getHistoryByHuntingDistrictId(revierId: string) {
       return this.data.reservierungen
          .filter((entry) => entry.revierId === revierId && !this.isActive(entry))
          .sort((first, second) => this.reservationStart(second) - this.reservationStart(first));
    }
 
+   /** Returns the next active reservation of one facility, or `null` if there is none. */
    async getActiveByFacilityId(jagdeinrichtungId: string) {
       return this.data.reservierungen
          .filter((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && this.isActive(entry))
@@ -58,10 +70,15 @@ export class FacilityReservationsStore {
          .at(0) ?? null;
    }
 
+   /** Finds an active reservation by its id, or `null` if it does not exist or is no longer active. */
    async getActiveById(id: string) {
       return this.data.reservierungen.find((entry) => entry.id === id && this.isActive(entry)) ?? null;
    }
 
+   /**
+    * Checks a member into a facility, reusing an existing active reservation if present.
+    * Throws `ALREADY_IN_USE` if the facility is already reserved or checked in by someone else.
+    */
    async checkIn(input: { revierId: string; jagdeinrichtungId: string; reservedBy?: string; checkedInBy: string }) {
       return this.enqueue(async () => {
          const active = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === input.jagdeinrichtungId && this.isActive(entry));
@@ -92,6 +109,7 @@ export class FacilityReservationsStore {
       });
    }
 
+   /** Checks out of the active reservation of one facility. Returns `null` if there is no active reservation. */
    async checkOut(jagdeinrichtungId: string) {
       return this.enqueue(async () => {
          const reservation = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && this.isActive(entry));
@@ -104,6 +122,10 @@ export class FacilityReservationsStore {
       });
    }
 
+   /**
+    * Creates a new time-boxed reservation for a facility.
+    * Throws `ALREADY_RESERVED` if the period overlaps an existing active reservation, or `INVALID_PERIOD` for an invalid time range.
+    */
    async reserve(input: Omit<FacilityReservation, 'id' | 'reservedAt'>) {
       return this.enqueue(async () => {
          const { startAt, endAt } = this.createReservationPeriod(input.startAt, input.endAt);
@@ -121,6 +143,10 @@ export class FacilityReservationsStore {
       });
    }
 
+   /**
+    * Changes the time period of an existing reservation.
+    * Throws `ALREADY_RESERVED` if the new period overlaps another active reservation, or `INVALID_PERIOD` for an invalid time range.
+    */
    async updateReservation(id: string, input: { startAt: string; endAt?: string }) {
       return this.enqueue(async () => {
          const reservation = this.data.reservierungen.find((entry) => entry.id === id && !entry.releasedAt);
@@ -138,6 +164,7 @@ export class FacilityReservationsStore {
       });
    }
 
+   /** Releases the active reservation of one facility (e.g. cancellation). Returns `null` if there is none. */
    async release(jagdeinrichtungId: string) {
       return this.enqueue(async () => {
          const reservation = this.data.reservierungen.find((entry) => entry.jagdeinrichtungId === jagdeinrichtungId && this.isActive(entry));
@@ -147,6 +174,7 @@ export class FacilityReservationsStore {
       });
    }
 
+   /** Releases a reservation by its own id. Returns `null` if it does not exist or is already released. */
    async releaseById(id: string) {
       return this.enqueue(async () => {
          const reservation = this.data.reservierungen.find((entry) => entry.id === id && !entry.releasedAt);
@@ -156,6 +184,7 @@ export class FacilityReservationsStore {
       });
    }
 
+   /** Deletes all reservations of one hunting district (e.g. when the district itself is deleted). Returns the number removed. */
    async deleteByHuntingDistrictId(revierId: string) {
       return this.enqueue(async () => {
          const initialLength = this.data.reservierungen.length;
@@ -164,6 +193,7 @@ export class FacilityReservationsStore {
       });
    }
 
+   /** Deletes all reservations linked to one facility (e.g. when the facility itself is deleted). Returns the number removed. */
    async deleteByFacilityId(jagdeinrichtungId: string) {
       return this.enqueue(async () => {
          const initialLength = this.data.reservierungen.length;
@@ -172,14 +202,17 @@ export class FacilityReservationsStore {
       });
    }
 
+   /** Sort key: the reservation's start time, or its creation time for immediate/check-in-only reservations. */
    private reservationStart(reservation: FacilityReservation) {
       return reservation.startAt ? new Date(reservation.startAt).getTime() : new Date(reservation.reservedAt).getTime();
    }
 
+   /** A reservation is active while it hasn't been released and its end time (if any) hasn't passed. */
    private isActive(reservation: FacilityReservation) {
       return !reservation.releasedAt && (!reservation.endAt || new Date(reservation.endAt).getTime() >= Date.now());
    }
 
+   /** Whether two optional time ranges overlap (open-ended bounds treated as -/+ infinity). */
    private periodsOverlap(firstStart?: string, firstEnd?: string, secondStart?: string, secondEnd?: string) {
       const firstFrom = firstStart ? new Date(firstStart).getTime() : 0;
       const firstTo = firstEnd ? new Date(firstEnd).getTime() : Number.POSITIVE_INFINITY;
@@ -188,6 +221,11 @@ export class FacilityReservationsStore {
       return firstFrom < secondTo && secondFrom < firstTo;
    }
 
+   /**
+    * Normalises and validates a reservation's start/end time: start defaults to now (rounded up to the
+    * next 30-minute slot), end defaults to a 3-hour duration. Both bounds must align to 30-minute slots
+    * and the duration must be between 30 minutes and 12 hours. Throws `INVALID_PERIOD` otherwise.
+    */
    private createReservationPeriod(requestedStart?: string, requestedEnd?: string) {
       const start = requestedStart ? new Date(requestedStart) : new Date();
       if (Number.isNaN(start.getTime())) throw new Error('INVALID_PERIOD');
@@ -213,6 +251,10 @@ export class FacilityReservationsStore {
       return { startAt: start.toISOString(), endAt: end.toISOString() };
    }
 
+   /**
+    * Serialises all write operations so they execute one at a time.
+    * Each operation modifies in-memory state and then flushes it to disk.
+    */
    private async enqueue<T>(operation: () => Promise<T>) {
       let result: T;
       const operationPromise = this.writeQueue.then(async () => {
@@ -224,6 +266,10 @@ export class FacilityReservationsStore {
       return result!;
    }
 
+   /**
+    * Atomically writes jagdeinrichtung-reservierungen.json by first writing to a temp file then renaming it.
+    * This prevents corrupt files if the process is killed mid-write.
+    */
    private async persist() {
       const temporaryPath = `${this.filePath}.${randomUUID()}.tmp`;
       await writeFile(temporaryPath, `${JSON.stringify(this.data, null, 2)}\n`, 'utf8');

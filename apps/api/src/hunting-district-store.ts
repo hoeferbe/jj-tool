@@ -65,8 +65,13 @@ const emptyData = (): HuntingDistrictData => ({
    reviere: [],
 });
 
+/**
+ * In-memory store for all Reviere (hunting districts) backed by a single JSON file.
+ * All writes go through a serial queue so concurrent requests never corrupt the file.
+ */
 export class HuntingDistrictStore {
    private data: HuntingDistrictData = emptyData();
+   /** Serialises all write operations to prevent race conditions. */
    private writeQueue = Promise.resolve();
    private readonly filePath: string;
 
@@ -74,6 +79,10 @@ export class HuntingDistrictStore {
       this.filePath = join(dataDirectory, 'revier.json');
    }
 
+   /**
+    * Loads revier.json from disk into memory.
+    * Creates the file if it does not exist yet and migrates the legacy single-revier format.
+    */
    async initialize() {
       await mkdir(dirname(this.filePath), { recursive: true });
       try {
@@ -96,10 +105,12 @@ export class HuntingDistrictStore {
       }
    }
 
+   /** Returns a copy of all hunting districts. */
    async getHuntingDistricts() {
       return [...this.data.reviere];
    }
 
+   /** Creates a new hunting district with a fresh UUID and timestamps. */
    async createHuntingDistrict(input: UpsertHuntingDistrictInput) {
       return this.enqueue(async () => {
          const now = new Date().toISOString();
@@ -114,6 +125,7 @@ export class HuntingDistrictStore {
       });
    }
 
+   /** Replaces an existing hunting district's editable fields, keeping its id and createdAt. Returns `null` if not found. */
    async updateHuntingDistrict(id: string, input: UpsertHuntingDistrictInput) {
       return this.enqueue(async () => {
          const index = this.data.reviere.findIndex((revier) => revier.id === id);
@@ -132,6 +144,7 @@ export class HuntingDistrictStore {
       });
    }
 
+   /** Deletes one hunting district by id. Returns whether a matching entry was found. */
    async deleteHuntingDistrict(id: string) {
       return this.enqueue(async () => {
          const index = this.data.reviere.findIndex((revier) => revier.id === id);
@@ -141,6 +154,10 @@ export class HuntingDistrictStore {
       });
    }
 
+   /**
+    * Serialises all write operations so they execute one at a time.
+    * Each operation modifies in-memory state and then flushes it to disk.
+    */
    private async enqueue<T>(operation: () => Promise<T>) {
       let result: T;
       const operationPromise = this.writeQueue.then(async () => {
@@ -152,6 +169,10 @@ export class HuntingDistrictStore {
       return result!;
    }
 
+   /**
+    * Atomically writes revier.json by first writing to a temp file then renaming it.
+    * This prevents corrupt files if the process is killed mid-write.
+    */
    private async persist() {
       const temporaryPath = `${this.filePath}.${randomUUID()}.tmp`;
       await writeFile(

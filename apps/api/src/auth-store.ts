@@ -248,6 +248,10 @@ export class AuthStore {
       });
    }
 
+   /**
+    * Creates a hashed, one-time invitation link token for joining a hunting district (valid 7 days).
+    * Removes any expired invitations for the same e-mail/district before creating a new one.
+    */
    async createHuntingDistrictInvitation(revierId: string, email: string, invitedBy: string) {
       return this.enqueue(async () => {
          const token = randomBytes(32).toString('base64url');
@@ -269,6 +273,7 @@ export class AuthStore {
       });
    }
 
+   /** Finds a valid (unused, unexpired) hunting district invitation by its token. */
    getHuntingDistrictInvitation(token: string) {
       const tokenHash = hashToken(token);
       return this.data.invitations.find(
@@ -279,6 +284,10 @@ export class AuthStore {
       );
    }
 
+   /**
+    * Marks a hunting district invitation as used and removes it.
+    * Throws `INVITATION_INVALID` if the token is unknown, used, or expired.
+    */
    async consumeHuntingDistrictInvitation(token: string) {
       return this.enqueue(async () => {
          const invitation = this.getHuntingDistrictInvitation(token);
@@ -364,6 +373,10 @@ export class AuthStore {
       });
    }
 
+   /**
+    * Updates the display name and e-mail a user can change themselves (login name stays fixed).
+    * Throws `USER_NOT_FOUND` or `USER_EXISTS` on conflict, and invalidates outstanding password tokens.
+    */
    async updateOwnProfile(
       userId: string,
       input: Pick<User, 'email' | 'displayName'>,
@@ -515,6 +528,10 @@ export class AuthStore {
       });
    }
 
+   /**
+    * Blocks or unblocks a user account. Blocking revokes all active sessions.
+    * Throws `USER_NOT_FOUND` or `USER_NOT_ACTIVE` (pending accounts cannot be blocked).
+    */
    async setUserBlocked(userId: string, blocked: boolean) {
       return this.enqueue(async () => {
          const user = this.data.users.find((entry) => entry.id === userId);
@@ -574,6 +591,7 @@ export class AuthStore {
       });
    }
 
+   /** Removes every user's membership in one hunting district (used when the district itself is deleted). */
    async removeHuntingDistrictAssignments(revierId: string) {
       return this.enqueue(async () => {
          for (const user of this.data.users) {
@@ -584,12 +602,14 @@ export class AuthStore {
       });
    }
 
+   /** Returns the ids of all hunting districts where the user has an active admin membership. */
    getAdminHuntingDistrictIds(userId: string) {
       return this.findUserById(userId)?.memberships
          .filter((membership) => membership.status === 'active' && membership.isAdmin)
          .map((membership) => membership.revierId) ?? [];
    }
 
+   /** Counts active users with an active admin membership in one hunting district. */
    countActiveHuntingDistrictAdmins(revierId: string) {
       return this.data.users.filter(
          (user) =>
@@ -603,6 +623,7 @@ export class AuthStore {
       ).length;
    }
 
+   /** Returns the ids of hunting districts where the user is the last remaining admin (used to block self-removal). */
    getSoleAdminHuntingDistrictIds(userId: string) {
       const user = this.findUserById(userId);
       if (!user) return [];
@@ -616,12 +637,18 @@ export class AuthStore {
          .map((membership) => membership.revierId);
    }
 
+   /** Counts active system administrator accounts (used to prevent removing the last one). */
    countActiveSystemAdmins() {
       return this.data.users.filter(
          (user) => user.accountType === 'systemAdmin' && user.status === 'active',
       ).length;
    }
 
+   /**
+    * Creates or replaces a user's membership in one hunting district.
+    * Throws `USER_NOT_FOUND`, `SYSTEM_ADMIN_MEMBERSHIP` (system admins can't hold memberships),
+    * `GUEST_PRIVILEGES` (guests can't get a position/admin flag), or `LAST_REVIER_ADMIN`.
+    */
    async upsertMembership(
       userId: string,
       input: Omit<HuntingDistrictMembership, 'createdAt' | 'updatedAt' | 'source' | 'position'> & {
@@ -661,6 +688,7 @@ export class AuthStore {
       });
    }
 
+   /** Ensures the given user holds an active, admin Pächter membership in the hunting district they created. */
    async ensureHuntingDistrictOwner(userId: string, revierId: string) {
       const user = this.findUserById(userId);
       if (!user || user.accountType === 'systemAdmin') return;
@@ -675,6 +703,10 @@ export class AuthStore {
       });
    }
 
+   /**
+    * Removes a user's membership in one hunting district.
+    * Throws `USER_NOT_FOUND`, `LAST_REVIER_ADMIN`, or `MEMBERSHIP_NOT_FOUND`.
+    */
    async removeMembership(userId: string, revierId: string) {
       return this.enqueue(async () => {
          const user = this.findUserById(userId);
@@ -694,6 +726,7 @@ export class AuthStore {
       });
    }
 
+   /** Returns all users a Revieradmin (or system admin) is allowed to manage: themselves plus members of their administered districts. */
    getUsersForAdmin(userId: string) {
       const administrator = this.findUserById(userId);
       if (!administrator) return [];
@@ -705,6 +738,7 @@ export class AuthStore {
       );
    }
 
+   /** Returns a data-minimal member list (name, type, position) for one hunting district's active members. */
    getMemberDirectory(revierId: string) {
       return this.data.users.flatMap((user) => {
          if (user.status !== 'active') return [];
@@ -721,6 +755,7 @@ export class AuthStore {
       });
    }
 
+   /** Picks a display name for the public district contact: the creator if still an active admin, otherwise the first active admin alphabetically, otherwise the (still active) creator. */
    getHuntingDistrictContactName(revierId: string, creatorId: string) {
       const activeAdministrators = this.data.users
          .filter(
