@@ -118,6 +118,7 @@ function toggleDistanceRings() {
   if (!map) return
   if (distanceLayer) {
     map.off('zoomend', renderDistanceRings)
+    map.off('resize', renderDistanceRings)
     distanceLayer.remove()
     distanceLayer = null
     distanceCenter = null
@@ -128,6 +129,22 @@ function toggleDistanceRings() {
     cancelDistancePlacement()
     return
   }
+  if (!navigator.geolocation) {
+    startDistancePlacementMode()
+    return
+  }
+  distanceButton?.classList.add('locating')
+  navigator.geolocation.getCurrentPosition((position) => {
+    distanceButton?.classList.remove('locating')
+    placeDistanceRings(L.latLng(position.coords.latitude, position.coords.longitude), true)
+  }, () => {
+    distanceButton?.classList.remove('locating')
+    startDistancePlacementMode()
+  }, { enableHighAccuracy: true, timeout: 8000 })
+}
+
+function startDistancePlacementMode() {
+  if (!map) return
   distancePlacementMode.value = true
   distanceButton?.classList.add('placing')
   map.getContainer().style.cursor = 'crosshair'
@@ -139,23 +156,33 @@ function cancelDistancePlacement() {
   if (map) map.getContainer().style.cursor = ''
 }
 
-function placeDistanceRings(latlng: L.LatLng) {
+function placeDistanceRings(latlng: L.LatLng, recenter = false) {
   if (!map) return
   distanceCenter = latlng
   cancelDistancePlacement()
   distanceButton?.classList.add('active')
+  if (recenter) map.setView(latlng, Math.max(map.getZoom(), 16), { animate: true })
   renderDistanceRings()
   map.on('zoomend', renderDistanceRings)
+  map.on('resize', renderDistanceRings)
 }
 
 const DISTANCE_RING_STEPS = [50, 100, 150, 200, 300, 400]
 
-function ringDistancesForZoom(zoom: number) {
-  if (zoom >= 18) return DISTANCE_RING_STEPS.slice(0, 2)
-  if (zoom >= 17) return DISTANCE_RING_STEPS.slice(0, 3)
-  if (zoom >= 16) return DISTANCE_RING_STEPS.slice(0, 4)
-  if (zoom >= 15) return DISTANCE_RING_STEPS.slice(0, 5)
-  return DISTANCE_RING_STEPS
+function metersPerPixel() {
+  if (!map) return 0
+  const center = map.getCenter()
+  return (156543.03392 * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, map.getZoom())
+}
+
+function ringDistancesForView() {
+  if (!map) return DISTANCE_RING_STEPS.slice(0, 2)
+  const size = map.getSize()
+  // a ring only needs to fit fully along one dimension; the other side may clip it
+  const maxRadiusPx = Math.max(size.x, size.y) / 2 - 40
+  const maxRadiusMeters = maxRadiusPx * metersPerPixel()
+  const steps = DISTANCE_RING_STEPS.filter((radius) => radius <= maxRadiusMeters)
+  return steps.length >= 2 ? steps : DISTANCE_RING_STEPS.slice(0, 2)
 }
 
 function renderDistanceRings() {
@@ -165,7 +192,7 @@ function renderDistanceRings() {
   L.circleMarker(distanceCenter, { radius: 6, color: '#ffffff', weight: 2, fillColor: '#1976d2', fillOpacity: 1 })
     .bindTooltip('Aktueller Standort')
     .addTo(layer)
-  for (const radius of ringDistancesForZoom(map.getZoom())) {
+  for (const radius of ringDistancesForView()) {
     L.circle(distanceCenter, { radius, color: '#ffffff', weight: 2, opacity: 0.9, fillColor: '#1976d2', fillOpacity: 0.04 })
       .addTo(layer)
     L.marker([distanceCenter.lat + radius / 111320, distanceCenter.lng], {
@@ -479,6 +506,7 @@ onBeforeUnmount(() => {
 
 :global(.distance-ring-control.active) { background: #1976d2; color: #ffffff; }
 :global(.distance-ring-control.placing) { background: #1976d2; color: #ffffff; animation: facility-marker-glow 1.1s ease-in-out infinite; }
+:global(.distance-ring-control.locating) { background: #1976d2; color: #ffffff; opacity: 0.7; }
 :global(.distance-ring-label span) { display: block; width: max-content; padding: 1px 4px; border-radius: 3px; background: rgba(255, 255, 255, 0.88); color: #184f82; font: 700 10px/1.4 sans-serif; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
 
 :global(.facility-marker-positioning span) { animation: facility-marker-glow 1.1s ease-in-out infinite; }
