@@ -59,6 +59,7 @@ const states = [
 
 const canCreate = computed(() => name.value.trim().length >= 2 && boundary.value && center.value)
 
+/** Clears all form state and map layers back to a fresh "new Revier" state. */
 function reset() {
   name.value = ''
   query.value = ''
@@ -77,6 +78,7 @@ function reset() {
   userChangedMapView = false
 }
 
+/** Sets up the Leaflet map on dialog open: base layers, click-to-select handling, and initial geolocation. */
 async function initializeMap() {
   reset()
   await nextTick()
@@ -111,6 +113,7 @@ function setSelectionMode(active: boolean) {
   mapContainer.value?.classList.toggle('selection-mode', active)
 }
 
+/** Centers the map on the user's location, unless they already moved/zoomed the map themselves. */
 function locateUser() {
   if (!navigator.geolocation || !map) return
   locating.value = true
@@ -126,6 +129,7 @@ function locateUser() {
   )
 }
 
+/** Jumps the map to a federal state's predefined center/zoom, or back to the Germany overview. */
 function selectState(value: string) {
   userChangedMapView = true
   state.value = value
@@ -137,6 +141,7 @@ function selectState(value: string) {
   if (selected) map?.setView([selected[1], selected[2]], selected[3])
 }
 
+/** Looks up a municipality boundary via the backend BKG proxy and renders it on the map. */
 async function searchMunicipality(params: URLSearchParams) {
   searching.value = true
   message.value = ''
@@ -183,6 +188,7 @@ function searchByName() {
   searchMunicipality(params)
 }
 
+/** Fetches municipality name autocomplete suggestions for the current search text, debounced by the caller. */
 async function loadSuggestions(searchTerm: string) {
   suggestionsLoading.value = true
   const token = localStorage.getItem('accessToken')
@@ -204,6 +210,7 @@ function selectSuggestion(suggestion: { name: string }) {
   searchByName()
 }
 
+// Debounce suggestion lookups while the user is still typing.
 watch([query, state], ([value]) => {
   if (suggestionTimer) clearTimeout(suggestionTimer)
   const searchTerm = value.trim()
@@ -220,6 +227,7 @@ function searchByPoint(lat: number, lng: number) {
   searchMunicipality(new URLSearchParams({ lat: String(lat), lng: String(lng) }))
 }
 
+/** Creates the Revier, then refreshes the access token so its new membership/admin claim takes effect immediately. */
 async function createRevier() {
   if (!canCreate.value || !boundary.value || !center.value) return
   saving.value = true

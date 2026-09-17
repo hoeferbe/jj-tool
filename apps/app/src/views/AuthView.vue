@@ -124,6 +124,7 @@ async function submit(action: () => Promise<string>) {
   }
 }
 
+/** Logs in, stores the session/token locally, and routes to the dashboard or Revierkarte based on admin access. */
 function submitLogin() {
   return submit(async () => {
     const result = await request('/auth/login', login.value)
@@ -144,6 +145,7 @@ function submitLogin() {
   })
 }
 
+/** Submits a registration request (optionally tied to a Revier or invitation token). */
 function submitRegistration() {
   return submit(async () => {
     const payload: Record<string, string> = {
@@ -159,10 +161,12 @@ function submitRegistration() {
   })
 }
 
+/** Requests a password-reset e-mail for the given address. */
 function submitForgotPassword() {
   return submit(async () => (await request('/auth/password/forgot', { email: forgotEmail.value })).message ?? '')
 }
 
+/** Validates and submits the new password for the one-time reset token from the URL. */
 function submitResetPassword() {
   return submit(async () => {
     if (!initialToken) {

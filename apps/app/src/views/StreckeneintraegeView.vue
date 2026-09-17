@@ -50,6 +50,7 @@ const canAdministerSelectedRevier = computed(() => currentUser.value?.accountTyp
     membership.revierId === selectedRevierId.value && membership.status === 'active' && membership.isAdmin,
   ) === true)
 
+/** Whether the current user may edit/delete a kill entry: creator or Revier-/Systemadmin. */
 function canModifyEntry(entry: Streckeneintrag) {
   return entry.createdBy === currentUser.value?.id || canAdministerSelectedRevier.value
 }
@@ -68,6 +69,7 @@ function formatGewicht(gewicht?: number) {
   return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(gewicht) + ' kg'
 }
 
+/** Sorts kill entries by date, time, then creation time, newest first. */
 function sortEntries(list: Streckeneintrag[]) {
   return [...list].sort((first, second) =>
     second.datum.localeCompare(first.datum)
@@ -76,6 +78,7 @@ function sortEntries(list: Streckeneintrag[]) {
   )
 }
 
+/** Loads and sorts the kill entries of the selected Revier. */
 async function loadEntries() {
   if (!selectedRevierId.value) return
   loading.value = true
@@ -96,6 +99,7 @@ async function loadEntries() {
   }
 }
 
+/** Loads the user's Reviere and profile, then falls back to the first Revier if none is selected yet. */
 async function loadReviere() {
   const token = localStorage.getItem('accessToken')
   try {
@@ -120,6 +124,7 @@ async function loadReviere() {
   }
 }
 
+/** Switches the active Revier, persists the choice, and reloads its entries. */
 async function selectRevier(revierId: string) {
   selectedRevierId.value = revierId
   localStorage.setItem('jj-member-selected-revier', revierId)
@@ -151,6 +156,7 @@ function handleDeleteFromDetail(entry: Streckeneintrag) {
   deleteEntry(entry)
 }
 
+/** Merges a created/updated entry into the list (replacing it if it already exists) and re-sorts. */
 function handleDialogSaved(savedEntry: Streckeneintrag) {
   const index = entries.value.findIndex((e) => e.id === savedEntry.id)
   if (index !== -1) {
@@ -166,6 +172,7 @@ function handleDialogSaved(savedEntry: Streckeneintrag) {
   setTimeout(() => { successMessage.value = '' }, 4000)
 }
 
+/** Deletes a kill entry after confirmation and closes its detail view if open. */
 async function deleteEntry(entry: Streckeneintrag) {
   if (!confirm(`Streckeneintrag (${entry.wildart}, ${entry.datum}) wirklich löschen?`)) return
   deletingId.value = entry.id
