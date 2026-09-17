@@ -70,6 +70,15 @@ Der Quellenvermerk wird in der App bei jeder Grenzdarstellung sichtbar ausgegebe
 
 Werden BKG-Grenzen später manuell verändert, muss der Quellenvermerk zusätzlich den Hinweis „Daten verändert“ enthalten.
 
+## Container und Deployment (Raspberry Pi)
+
+Für den Produktivbetrieb gibt es pro App ein Dockerfile sowie ein `docker-compose.yml` im Repo-Root. Diese Dateien sind nicht für die lokale Entwicklung gedacht (siehe „Entwicklung starten“ oben), sondern für den Raspberry Pi.
+
+- `apps/api/Dockerfile`: Mehrstufiger Build, kompiliert die API mit `tsc` und läuft im Runtime-Image als `node dist/index.js` auf Port 8787.
+- `apps/app/Dockerfile`: Mehrstufiger Build, baut die App mit Vite und liefert die statischen Dateien über `nginx:alpine` aus (`apps/app/nginx.spa.conf`). `VITE_API_URL` wird beim Build fest auf `/api` gesetzt, da der Client die API nicht über `localhost` erreichen kann; ein externer Reverse Proxy muss `/api/` auf den API-Container weiterleiten.
+- `docker-compose.yml`: Startet `jj-tool-api` und `jj-tool-app`. Der Build-Kontext ist fest auf `/home/pi/GIT/jj-tool` gesetzt und funktioniert daher nur auf dem Raspberry Pi mit diesem Pfad. Beide Container hängen im externen Docker-Netzwerk `proxy`, das von einem separaten, nicht in diesem Repo enthaltenen nginx-Reverse-Proxy-Container bereitgestellt wird. Die API liest ihre Umgebungsvariablen aus einer `.env`-Datei neben der kopierten `docker-compose.yml` (nicht aus `apps/api/.env`) und speichert Daten im Volume `/media/docker/jj-tool/data`.
+- `deploy.sh`: Wird auf dem Raspberry Pi ausgeführt, kopiert die Repo-`docker-compose.yml` nach `/media/docker/jj-tool/docker-compose.yml`, baut beide Images neu, startet die Container neu und lädt anschließend die Konfiguration des externen nginx-Reverse-Proxy-Containers neu (DNS-Cache-Invalidierung). Voraussetzung ist eine bereits vorhandene, nicht eingecheckte `.env` in `/media/docker/jj-tool`.
+
 ## Struktur
 
 - `apps/app`: Ionic-Vue-PWA und Capacitor-Client.

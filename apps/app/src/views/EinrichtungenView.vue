@@ -32,6 +32,24 @@ const taskSaving = ref(false)
 const facilityDialogOpen = ref(false)
 const selectedFacility = ref<Facility | null>(null)
 
+type FacilitySortOption = 'name' | 'createdAt' | 'updatedAt'
+const facilitySortStorageKey = 'jj-einrichtungen-sort'
+const sortOption = ref<FacilitySortOption>((localStorage.getItem(facilitySortStorageKey) as FacilitySortOption | null) ?? 'name')
+
+/** Persists the chosen sort order for the facility list across visits. */
+function changeSortOption(option: FacilitySortOption) {
+  sortOption.value = option
+  localStorage.setItem(facilitySortStorageKey, option)
+}
+
+/** Sorts facilities by name (A-Z), newest created first, or last modified first. */
+const sortedFacilities = computed(() => {
+  const list = [...facilities.value]
+  if (sortOption.value === 'createdAt') return list.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  if (sortOption.value === 'updatedAt') return list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  return list.sort((a, b) => a.name.localeCompare(b.name, 'de'))
+})
+
 const selectedRevier = computed(() => reviere.value.find((revier) => revier.id === selectedRevierId.value) ?? null)
 const currentUserId = computed(() => {
   const token = localStorage.getItem('accessToken')
@@ -237,6 +255,11 @@ onMounted(loadReviere)
       <section class="page-banner">
         <div class="page-banner-inner">
           <div><h1>Reviereinrichtungen</h1><p v-if="selectedRevier">{{ selectedRevier.name }} · {{ selectedRevier.municipalityName }}</p></div>
+          <IonSelect :value="sortOption" label="Sortierung" label-placement="stacked" interface="popover" @ion-change="changeSortOption($event.detail.value)">
+            <IonSelectOption value="name">Name (A-Z)</IonSelectOption>
+            <IonSelectOption value="createdAt">Neu angelegt zuerst</IonSelectOption>
+            <IonSelectOption value="updatedAt">Zuletzt geändert zuerst</IonSelectOption>
+          </IonSelect>
           <IonSelect v-if="reviere.length > 1" :value="selectedRevierId" label="Revier" label-placement="stacked" interface="popover" @ion-change="selectRevier($event.detail.value)">
             <IonSelectOption v-for="revier in reviere" :key="revier.id" :value="revier.id">{{ revier.name }}</IonSelectOption>
           </IonSelect>
@@ -247,7 +270,7 @@ onMounted(loadReviere)
       <p v-else-if="errorMessage" class="error-message">{{ errorMessage }}</p>
       <IonNote v-else-if="!facilities.length">Noch keine Jagdeinrichtungen angelegt.</IonNote>
       <div v-else class="facility-list">
-        <article v-for="facility in facilities" :key="facility.id" class="facility-entry">
+        <article v-for="facility in sortedFacilities" :key="facility.id" class="facility-entry">
           <div class="facility-header"><div class="facility-title"><h2>{{ facility.name }}</h2><p>{{ facility.typ }}</p></div><IonBadge :color="facility.status === 'aktiv' ? 'success' : facility.status === 'defekt' ? 'defekt' : 'medium'">{{ facility.status }}</IonBadge><SatelliteThumbnail class="facility-thumbnail" :position="facility.position" :label="`Satellitenbild der Einrichtung ${facility.name}`" /><IonButton size="small" fill="clear" @click="openFacility(facility)">Öffnen</IonButton></div>
           <p v-if="facility.zustandsInfo" class="condition"><strong>Zustand:</strong> {{ facility.zustandsInfo }}</p>
           <p v-if="facility.notiz" class="note">{{ facility.notiz }}</p>
@@ -284,7 +307,7 @@ onMounted(loadReviere)
 .facilities-page { min-height: 100%; }
 .page-banner { background: #e8eddc; border-bottom: 1px solid #c5cfb3; }
 .page-banner-inner, .page-content { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
-.page-banner-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px 0; }
+.page-banner-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; padding: 20px 0; }
 .page-banner h1, .page-banner p, .facility-header h2, .facility-header p { margin: 0 0 4px; }
 .page-banner h1 { color: #2e3b22; }
 .page-banner p { color: #536142; }
