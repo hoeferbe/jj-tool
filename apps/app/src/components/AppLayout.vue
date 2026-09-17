@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonList, IonModal, IonNote, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
-import { addCircleOutline, chevronDownOutline, clipboardOutline, constructOutline, logOutOutline, mapOutline, peopleOutline, personCircleOutline, settingsOutline, trailSignOutline } from 'ionicons/icons'
+import { IonBadge, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonModal, IonNote, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
+import { addCircleOutline, chevronDownOutline, clipboardOutline, constructOutline, logOutOutline, mapOutline, notificationsOutline, peopleOutline, personCircleOutline, settingsOutline, trailSignOutline } from 'ionicons/icons'
 
 const router = useRouter()
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
@@ -12,11 +12,16 @@ const profile = ref({ username: '', displayName: '', email: '' })
 const profileSaving = ref(false)
 const profileError = ref('')
 
+interface NewsItem { id: string; type: string; revierId: string; revierName: string; text: string; createdAt: string }
+const newsItems = ref<NewsItem[]>([])
+const newsCount = ref(0)
+
 const uuid =
   globalThis.crypto?.randomUUID?.() ??
   `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
 const userMenuTriggerId = `user-menu-trigger-${uuid}`
+const newsMenuTriggerId = `news-menu-trigger-${uuid}`
 
 //const userMenuTriggerId = `user-menu-trigger-${crypto.randomUUID()}`
 
@@ -42,7 +47,37 @@ function refreshTokenInfo() {
   tokenInfo.value = decodeTokenInfo()
 }
 
+async function loadNews() {
+  const token = localStorage.getItem('accessToken')
+  if (!token) return
+  try {
+    const response = await fetch(`${apiUrl}/neuigkeiten`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    if (!response.ok) return
+    const data = await response.json() as { items: NewsItem[]; count: number }
+    newsItems.value = data.items
+    newsCount.value = data.count
+  } catch {
+    // best effort – badge just keeps its previous value on network failure
+  }
+}
+
+async function markNewsSeen() {
+  if (!newsItems.value.length && !newsCount.value) return
+  newsCount.value = 0
+  const token = localStorage.getItem('accessToken')
+  try {
+    await fetch(`${apiUrl}/neuigkeiten/gesehen`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+  } catch {
+    // best effort – badge stays cleared locally even if the request fails
+  }
+}
+
+function formatNewsTime(value: string) {
+  return new Intl.DateTimeFormat('de-DE', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+}
+
 onMounted(() => window.addEventListener('auth-changed', refreshTokenInfo))
+onMounted(loadNews)
 onBeforeUnmount(() => window.removeEventListener('auth-changed', refreshTokenInfo))
 async function navigate(path: string) {
   await router.push(path)
@@ -113,12 +148,27 @@ async function logout() {
       <IonToolbar>
         <IonTitle>Mein Jagdrevier</IonTitle>
         <IonButtons slot="end">
+          <IonButton :id="newsMenuTriggerId" aria-label="Neuigkeiten" class="news-button">
+            <IonIcon slot="icon-only" :icon="notificationsOutline" />
+            <IonBadge v-if="newsCount" color="danger" class="news-badge">{{ newsCount }}</IonBadge>
+          </IonButton>
           <IonButton :id="userMenuTriggerId" aria-label="Benutzermenü">
             {{ displayName || 'Menü' }}
             <IonIcon slot="end" :icon="chevronDownOutline" />
           </IonButton>
         </IonButtons>
       </IonToolbar>
+      <IonPopover :trigger="newsMenuTriggerId" trigger-action="click" @did-present="markNewsSeen">
+        <IonList lines="full" class="news-list">
+          <IonNote v-if="!newsItems.length" class="news-empty">Keine neuen Ereignisse seit deinem letzten Besuch.</IonNote>
+          <IonItem v-for="item in newsItems" :key="item.id">
+            <IonLabel class="ion-text-wrap">
+              <p>{{ item.text }}</p>
+              <p class="news-meta">{{ item.revierName }} · {{ formatNewsTime(item.createdAt) }}</p>
+            </IonLabel>
+          </IonItem>
+        </IonList>
+      </IonPopover>
       <IonPopover :trigger="userMenuTriggerId" trigger-action="click" dismiss-on-select>
         <IonList lines="none">
           <IonItem button @click="navigate('/reviere/karte')">
@@ -192,5 +242,10 @@ async function logout() {
 <style scoped>
 .motd { padding: 7px 16px; border-bottom: 1px solid #d3d8c7; background: #eef1e7; color: #536142; font-size: 0.85rem; text-align: center; }
 .profile-form { display: grid; gap: 16px; max-width: 560px; margin: 0 auto; }
+.news-button { position: relative; }
+.news-badge { position: absolute; top: 2px; right: 2px; font-size: 0.6rem; padding: 2px 5px; }
+.news-empty { display: block; padding: 12px 16px; }
+.news-meta { color: var(--ion-color-medium-shade); font-size: 0.8rem; }
+:global(.news-list) { min-width: 280px; max-width: min(360px, 90vw); }
 :global(.user-menu-divider) { height: 1px; margin: 0; background: var(--ion-color-light-shade, #d7d8da); }
 </style>

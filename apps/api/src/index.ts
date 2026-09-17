@@ -20,6 +20,7 @@ import { registerReservationRoutes } from './routes/reservations.routes.js';
 import { registerKillEntryRoutes } from './routes/kill-entries.routes.js';
 import { registerAdminRoutes } from './routes/admin.routes.js';
 import { registerHuntingDistrictRoutes } from './routes/hunting-districts.routes.js';
+import { registerNewsRoutes } from './routes/news.routes.js';
 import { bootstrapApi } from './bootstrap.js';
 
 // Load .env from the api package root.
@@ -151,6 +152,15 @@ registerHuntingDistrictRoutes(app, {
    requireAuth,
    requireAdmin,
    canAdministerHuntingDistrict,
+});
+registerNewsRoutes(app, {
+   authStore,
+   facilityStore,
+   taskStore,
+   reservationStore,
+   huntingDistrictStore,
+   getAuthenticatedPayload,
+   requireAuth,
 });
 
 const port = Number(process.env.PORT ?? 8787);

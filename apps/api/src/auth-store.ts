@@ -34,6 +34,7 @@ export interface User {
    status: UserStatus;
    memberships: HuntingDistrictMembership[];
    lastLoginAt?: string;
+   lastNewsSeenAt?: string;
    createdAt: string;
    updatedAt: string;
 }
@@ -751,6 +752,22 @@ export class AuthStore {
          const previousLoginAt = user.lastLoginAt;
          user.lastLoginAt = new Date().toISOString();
          return previousLoginAt;
+      });
+   }
+
+   getLastNewsSeenAt(userId: string) {
+      return this.findUserById(userId)?.lastNewsSeenAt;
+   }
+
+   /**
+    * Marks all news as seen for the user and returns the new timestamp.
+    */
+   async markNewsSeen(userId: string) {
+      return this.enqueue(async () => {
+         const user = this.data.users.find((entry) => entry.id === userId);
+         if (!user) throw new Error('USER_NOT_FOUND');
+         user.lastNewsSeenAt = new Date().toISOString();
+         return user.lastNewsSeenAt;
       });
    }
 

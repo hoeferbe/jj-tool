@@ -78,7 +78,8 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 | Gewünschte Funktion | Status | Vorhanden und Fundstelle | Noch zu erledigen |
 | --- | --- | --- | --- |
 | Aufgaben an Einrichtungen | Fertig | Anlegen, Zuweisen, Übernehmen und Erledigen in `facility-tasks-store.ts`, `tasks.routes.ts` und `NewJagdeinrichtungDialog.vue` | Optionale Lösch- und Wiedereröffnungsabläufe prüfen |
-| Allgemeine Revieraufgaben | Fertig | Eigene Ansicht mit Titel, Beschreibung, Fälligkeit, Priorität, Zuständigkeit, Übernehmen, Bearbeiten und Erledigen | Optionale Kategorien und Benachrichtigungen können später ergänzt werden |
+| Allgemeine Revieraufgaben | Fertig | Eigene Ansicht mit Titel, Beschreibung, Fälligkeit, Priorität, Zuständigkeit, Übernehmen, Bearbeiten und Erledigen | Optionale Kategorien können später ergänzt werden |
+| Neuigkeiten seit letztem Besuch | Fertig | Badge mit Panel in `AppLayout.vue`, aggregiert neue Einrichtungen, Revier- und Einrichtungsaufgaben, Reservierungen und neue Mitglieder seit `lastNewsSeenAt` (`news-service.ts`, `news.routes.ts`) | "Gesehen" gilt aktuell global pro Nutzer, nicht pro Revier |
 | Allgemeine Revierinformationen | Offen | Aufgaben sind umgesetzt, reine Informationsmeldungen noch nicht | Informationskategorien, Gültigkeitszeitraum und Sichtbarkeit fachlich festlegen |
 | Einrichtungen reservieren | Fertig | Reservieren, Ändern, Stornieren sowie Ein- und Auschecken | Keine wesentliche MVP-Lücke |
 | Einheitliches Zeitraster | Fertig | Start und Dauer werden in 30-Minuten-Schritten gewählt; voreingestellt sind drei Stunden, möglich sind 30 Minuten bis 12 Stunden; die API validiert Start und Ende | Keine bekannte MVP-Lücke |
