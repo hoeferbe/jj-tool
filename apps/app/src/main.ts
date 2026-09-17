@@ -8,6 +8,7 @@ import MemberWelcome from './views/MemberWelcome.vue';
 import EinrichtungenView from './views/EinrichtungenView.vue';
 import StreckeneintraegeView from './views/StreckeneintraegeView.vue';
 import AufgabenView from './views/AufgabenView.vue';
+import { loadNews } from './composables/useNews';
 
 import 'leaflet/dist/leaflet.css';
 import '@ionic/vue/css/core.css';
@@ -131,7 +132,38 @@ router.beforeEach((to) => {
    return true;
 });
 
+// IonRouterOutlet keeps previously visited pages mounted, so a component's own onMounted
+// hook doesn't reliably fire on every menu click – refresh the news feed on every navigation instead.
+router.afterEach(() => { loadNews(); });
+
+// Poll periodically to pick up changes made by other members, but only while the tab/app
+// is actually in the foreground – browsers don't reliably pause background timers on their own.
+let newsPollInterval: ReturnType<typeof setInterval> | null = null;
+
+function startNewsPolling() {
+   if (newsPollInterval) return;
+   newsPollInterval = setInterval(loadNews, 60_000);
+}
+
+function stopNewsPolling() {
+   if (!newsPollInterval) return;
+   clearInterval(newsPollInterval);
+   newsPollInterval = null;
+}
+
+document.addEventListener('visibilitychange', () => {
+   if (document.visibilityState === 'visible') {
+      loadNews();
+      startNewsPolling();
+   } else {
+      stopNewsPolling();
+   }
+});
+
+if (document.visibilityState === 'visible') startNewsPolling();
+
 // Refresh the token before mounting so the first render has a valid JWT.
 refreshTokenOnStartup().then(() => {
    createApp(App).use(IonicVue).use(router).mount('#app');
+   loadNews();
 });
