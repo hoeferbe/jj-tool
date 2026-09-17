@@ -114,14 +114,17 @@ const canEditFacility = computed(() => {
 })
 const canDeleteFacility = computed(() => Boolean(props.facility) && canEditFacility.value)
 
+/** Whether this facility type supports reservations/check-in at all (Kanzel/Bock/Leiter only). */
 const reservable = () => props.facility && ['Kanzel', 'Bock', 'Leiter'].includes(props.facility.typ)
 const facilityUsable = computed(() => props.facility?.status === 'aktiv')
+/** Reads the current user's id out of the JWT stored in localStorage (no signature verification). */
 const currentUserId = () => {
   const token = localStorage.getItem('accessToken')
   if (!token) return ''
   try { return (JSON.parse(atob(token.split('.')[1])) as { sub?: string }).sub ?? '' } catch { return '' }
 }
 
+/** Resets all form and usage state from `props.facility`/`props.position` (called whenever the dialog opens). */
 function reset() {
   name.value = props.facility?.name ?? ''
   typ.value = props.facility?.typ ?? 'Kanzel'
@@ -141,6 +144,7 @@ function reset() {
   showTaskHistory.value = false
 }
 
+/** Converts an ISO timestamp to the local `datetime-local` input format (`YYYY-MM-DDTHH:mm`). */
 function toLocalDateTime(value?: string) {
   if (!value) return undefined
   const date = new Date(value)
@@ -149,12 +153,14 @@ function toLocalDateTime(value?: string) {
   return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16)
 }
 
+/** Default reservation start: now, rounded up to the next 30-minute slot. */
 function defaultReservationStart() {
   const date = new Date(Date.now() + 30 * 60000)
   date.setMinutes(date.getMinutes() - (date.getMinutes() % 30), 0, 0)
   return toLocalDateTime(date.toISOString()) ?? ''
 }
 
+/** Sets the reservation start (and split date/time fields) and recomputes the end from the duration. */
 function setReservationStart(start: string, end?: string) {
   reservationStart.value = start
   const [date = '', time = ''] = start.split('T')
@@ -167,6 +173,7 @@ function setReservationStart(start: string, end?: string) {
   updateReservationEnd()
 }
 
+/** Recombines the date/time picker fields into `reservationStart` after either one changes. */
 function handleReservationStartChange() {
   if (!reservationDate.value || !reservationTime.value) {
     reservationStart.value = ''
@@ -177,6 +184,7 @@ function handleReservationStartChange() {
   updateReservationEnd()
 }
 
+/** Recomputes `reservationEnd` from the current start and selected duration. */
 function updateReservationEnd() {
   if (!reservationStart.value) {
     reservationEnd.value = ''
@@ -187,6 +195,7 @@ function updateReservationEnd() {
   reservationEnd.value = toLocalDateTime(date.toISOString()) ?? ''
 }
 
+/** Builds the request body for creating/updating a reservation from the form fields. */
 function reservationPayload() {
   return {
     startAt: new Date(reservationStart.value).toISOString(),
@@ -194,6 +203,7 @@ function reservationPayload() {
   }
 }
 
+/** Formats a reservation's start/end as a human-readable German date/time range. */
 function formatReservationPeriod(reservation: FacilityReservation) {
   if (!reservation.startAt) return 'Sofort'
   const start = new Date(reservation.startAt)
@@ -209,12 +219,14 @@ function formatReservationPeriod(reservation: FacilityReservation) {
   return `${startText} bis ${endText}`
 }
 
+/** Label for a past reservation in the history list. */
 function reservationHistoryStatus(reservation: FacilityReservation) {
   if (reservation.checkedOutAt) return 'Ausgecheckt'
   if (reservation.releasedAt) return 'Storniert oder freigegeben'
   return 'Abgelaufen'
 }
 
+/** Loads this facility's active reservations and history, and resets the reservation form. */
 async function loadUsage() {
   if (!props.facility || !reservable()) return
   const token = localStorage.getItem('accessToken')
@@ -232,6 +244,7 @@ async function loadUsage() {
   setReservationStart(defaultReservationStart())
 }
 
+/** Loads this facility's tasks and the Revier's members (for the assignee dropdown). */
 async function loadTasks() {
   if (!props.facility) return
   const token = localStorage.getItem('accessToken')
@@ -257,6 +270,7 @@ function memberName(id?: string) {
   return members.value.find((member) => member.id === id)?.displayName ?? 'Alle Mitglieder'
 }
 
+/** Creates a new task attached to this facility. */
 async function createTask() {
   if (!props.facility || taskTitle.value.trim().length < 2) return
   taskSaving.value = true
@@ -277,6 +291,7 @@ async function createTask() {
   } finally { taskSaving.value = false }
 }
 
+/** Applies a partial task update (status/assignee) and reloads the task list. */
 async function updateTask(task: FacilityTask, data: { status?: FacilityTask['status']; assignedTo?: string }) {
   const token = localStorage.getItem('accessToken')
   const response = await fetch(`${apiUrl}/reviere/${props.revierId}/jagdeinrichtungs-aufgaben/${task.id}`, {
@@ -289,6 +304,7 @@ async function updateTask(task: FacilityTask, data: { status?: FacilityTask['sta
   await loadTasks()
 }
 
+/** Sends a check-in/check-out request (`einchecken` POST/DELETE) and refreshes usage state. */
 async function changeUsage(path: string, method: 'POST' | 'DELETE') {
   if (!props.facility) return
   usageSaving.value = true
@@ -322,6 +338,7 @@ function beginReservationEdit(reservation: FacilityReservation) {
   setReservationStart(toLocalDateTime(reservation.startAt) ?? defaultReservationStart(), toLocalDateTime(reservation.endAt))
 }
 
+/** Saves changes to the reservation currently being edited. */
 async function updateReservation() {
   if (!props.facility || !editingReservation.value || !reservationStart.value) return
   await changeReservation('PATCH', reservationPayload(), editingReservation.value.id)
@@ -332,6 +349,7 @@ async function cancelReservation(reservation: FacilityReservation) {
   await changeReservation('DELETE', undefined, reservation.id)
 }
 
+/** Shared POST/PATCH/DELETE handler for creating, changing, or cancelling a reservation. */
 async function changeReservation(method: 'POST' | 'PATCH' | 'DELETE', body?: { startAt: string; endAt?: string }, reservationId?: string) {
   if (!props.facility) return
   usageSaving.value = true
@@ -354,6 +372,7 @@ async function changeReservation(method: 'POST' | 'PATCH' | 'DELETE', body?: { s
   } finally { usageSaving.value = false }
 }
 
+/** Creates a new facility (POST) or saves changes to the one being edited (PUT). */
 async function saveFacility() {
   if (name.value.trim().length < 2) return
   saving.value = true
@@ -381,6 +400,7 @@ async function saveFacility() {
   }
 }
 
+/** Deletes the facility after confirmation (cascades tasks/reservations on the server). */
 async function deleteFacility() {
   if (!props.facility || !canDeleteFacility.value) return
   const confirmed = window.confirm(`Soll „${props.facility.name}“ endgültig gelöscht werden? Alle zugehörigen Aufgaben und Reservierungen werden ebenfalls gelöscht.`)

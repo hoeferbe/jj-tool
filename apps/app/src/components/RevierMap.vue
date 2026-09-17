@@ -58,6 +58,7 @@ function updatePlacementButton() {
   placementButton?.classList.toggle('active', props.facilityPlacementMode === true)
 }
 
+/** Ray-casting point-in-polygon test for a single ring of coordinates. */
 function pointInRing(lat: number, lng: number, ring: number[][]) {
   let inside = false
   for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
@@ -71,6 +72,7 @@ function pointInRing(lat: number, lng: number, ring: number[][]) {
   return inside
 }
 
+/** Whether a point lies inside the Revier boundary (Polygon/MultiPolygon, honoring holes). */
 function pointInBoundary(lat: number, lng: number) {
   return props.boundary.features.some((feature) => {
     if (feature.geometry.type === 'Polygon') {
@@ -91,6 +93,7 @@ function handleEscape(event: KeyboardEvent) {
   if (event.key === 'Escape' && distancePlacementMode.value) cancelDistancePlacement()
 }
 
+/** Adds the "+" map control that toggles facility-placement mode. */
 function addFacilityPlacementControl() {
   if (!map) return
   const control = new L.Control({ position: 'topright' })
@@ -114,6 +117,10 @@ function focusFacility(facilityId?: string | null) {
   if (facility) map.setView([facility.position.lat, facility.position.lng], 17, { animate: true })
 }
 
+/**
+ * Toggles the distance-ring overlay: removes it if shown, cancels click-to-place mode if active,
+ * otherwise tries geolocation first and falls back to click-to-place if it's unavailable or denied.
+ */
 function toggleDistanceRings() {
   if (!map) return
   if (distanceLayer) {
@@ -143,6 +150,7 @@ function toggleDistanceRings() {
   }, { enableHighAccuracy: true, timeout: 8000 })
 }
 
+/** Arms the map so the next click places the distance rings there (crosshair cursor). */
 function startDistancePlacementMode() {
   if (!map) return
   distancePlacementMode.value = true
@@ -150,12 +158,14 @@ function startDistancePlacementMode() {
   map.getContainer().style.cursor = 'crosshair'
 }
 
+/** Leaves click-to-place mode for the distance rings without placing them. */
 function cancelDistancePlacement() {
   distancePlacementMode.value = false
   distanceButton?.classList.remove('placing')
   if (map) map.getContainer().style.cursor = ''
 }
 
+/** Renders the distance rings at a chosen center and keeps them in sync with zoom/resize. */
 function placeDistanceRings(latlng: L.LatLng, recenter = false) {
   if (!map) return
   distanceCenter = latlng
@@ -169,12 +179,14 @@ function placeDistanceRings(latlng: L.LatLng, recenter = false) {
 
 const DISTANCE_RING_STEPS = [50, 100, 150, 200, 300, 400]
 
+/** Approximate ground distance (in meters) covered by one screen pixel at the map's current center/zoom. */
 function metersPerPixel() {
   if (!map) return 0
   const center = map.getCenter()
   return (156543.03392 * Math.cos((center.lat * Math.PI) / 180)) / Math.pow(2, map.getZoom())
 }
 
+/** Picks which of the fixed ring distances (50–400m) still fit within the visible map area. */
 function ringDistancesForView() {
   if (!map) return DISTANCE_RING_STEPS.slice(0, 2)
   const size = map.getSize()
@@ -185,6 +197,7 @@ function ringDistancesForView() {
   return steps.length >= 2 ? steps : DISTANCE_RING_STEPS.slice(0, 2)
 }
 
+/** Draws the distance-ring overlay (center marker + rings with labels) around `distanceCenter`. */
 function renderDistanceRings() {
   if (!map || !distanceCenter) return
   distanceLayer?.remove()
@@ -209,6 +222,7 @@ function renderDistanceRings() {
   distanceLayer = layer
 }
 
+/** Adds the ◎ map control that toggles the distance-ring overlay. */
 function addDistanceControl() {
   if (!map) return
   const control = new L.Control({ position: 'topright' })
@@ -234,6 +248,7 @@ const statusMarkerStyles: Record<Jagdeinrichtung['status'], { background: string
   'ausser Betrieb': { background: '#92949c', color: '#ffffff', border: '#4d5058' },
 }
 
+/** (Re-)draws all facility markers, styled by status and highlighting the one being repositioned. */
 function addFacilitiesToMap() {
   if (!map) return
   facilityLayer?.removeFrom(map)
@@ -278,6 +293,7 @@ function clearFacilityMarkers() {
   facilityLayer?.remove()
 }
 
+/** Builds an inverted mask polygon (world rectangle with the Revier as a hole) to dim the area outside it. */
 function buildMask(boundary: GeoJsonFeatureCollection) {
   const holes: number[][][] = []
   for (const feature of boundary.features) {
@@ -304,6 +320,7 @@ function buildMask(boundary: GeoJsonFeatureCollection) {
   }
 }
 
+/** (Re-)creates the Leaflet map for the current boundary: base layers, mask, facility markers, and controls. */
 async function renderMap() {
   if (map && props.boundary === renderedBoundary) return
   savedView = null
