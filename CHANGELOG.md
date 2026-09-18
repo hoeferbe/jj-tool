@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.3](https://github.com/hoeferbe/jj-tool/compare/v1.1.2...v1.1.3) (2026-09-18)
+
+
+### Bug Fixes
+
+* avoid password-dependent keystore detection in Android release ([507c224](https://github.com/hoeferbe/jj-tool/commit/507c2245d19b2aeaa1ef36a301062c43a480849c))
+* combine JKS signature check with PKCS12 validation ([2ea4875](https://github.com/hoeferbe/jj-tool/commit/2ea48750de6629faab0231684bcca7f05d24ab23))
+* make Android keystore detection robust ([59911b4](https://github.com/hoeferbe/jj-tool/commit/59911b465bb1f5131efb14b1f8fd2714255c7e6b))
+* validate JKS passwords before APK signing ([5d934a7](https://github.com/hoeferbe/jj-tool/commit/5d934a7f77bb8bebe52a2d06595ec52d46f13914))
+* validate urlsafe Android keystore input strictly ([611da8b](https://github.com/hoeferbe/jj-tool/commit/611da8bac510be2ef8f4948c2f2bb23e5c713ace))
+
 ## [1.1.2](https://github.com/hoeferbe/jj-tool/compare/v1.1.1...v1.1.2) (2026-09-18)
 
 
