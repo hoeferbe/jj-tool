@@ -62,7 +62,6 @@ jobs:
         id: keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           test -n "$ANDROID_KEYSTORE_BASE64"
           python - <<'PY'
@@ -71,6 +70,26 @@ jobs:
           import os
           from pathlib import Path
 
+          def detect_keystore_type(data: bytes) -> str | None:
+              if data.startswith(b'\xfe\xed\xfe\xed'):
+                  return 'JKS'
+
+              if len(data) < 5 or data[0] != 0x30:
+                  return None
+
+              length_octet = data[1]
+              offset = 2
+              if length_octet & 0x80:
+                  length_size = length_octet & 0x7F
+                  if length_size == 0 or len(data) < offset + length_size + 3:
+                      return None
+                  offset += length_size
+
+              if data[offset:offset + 3] == b'\x02\x01\x03':
+                  return 'PKCS12'
+
+              return None
+
           encoded_keystore = ''.join(os.environ['ANDROID_KEYSTORE_BASE64'].split())
           padded_keystore = encoded_keystore + '=' * (-len(encoded_keystore) % 4)
 
@@ -78,33 +97,18 @@ jobs:
               keystore_bytes = base64.b64decode(padded_keystore, validate=True)
           except binascii.Error:
               try:
-                  normalized_keystore = padded_keystore.translate(str.maketrans('-_', '+/'))
-                  keystore_bytes = base64.b64decode(normalized_keystore, validate=True)
+                  keystore_bytes = base64.urlsafe_b64decode(padded_keystore)
               except binascii.Error as exc:
                   raise SystemExit(f'ANDROID_KEYSTORE_BASE64 ist kein gültiger Base64-String: {exc}')
 
+          keystore_type = detect_keystore_type(keystore_bytes)
+          if keystore_type is None:
+              raise SystemExit('Keystore-Format konnte aus ANDROID_KEYSTORE_BASE64 nicht erkannt werden.')
+
           Path(os.environ['RUNNER_TEMP'], 'jagdrevier.keystore').write_bytes(keystore_bytes)
+          Path(os.environ['GITHUB_OUTPUT']).write_text(f'store_type={keystore_type}\n', encoding='utf-8')
           PY
           chmod 600 "$RUNNER_TEMP/jagdrevier.keystore"
-          keystore_type=''
-          if python - <<'PY'
-          from pathlib import Path
-
-          keystore_path = Path(__import__('os').environ['RUNNER_TEMP']) / 'jagdrevier.keystore'
-          raise SystemExit(0 if keystore_path.read_bytes().startswith(b'\xfe\xed\xfe\xed') else 1)
-          PY
-          then
-            if keytool -list -storetype JKS -keystore "$RUNNER_TEMP/jagdrevier.keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
-              keystore_type='JKS'
-            fi
-          elif keytool -list -storetype PKCS12 -keystore "$RUNNER_TEMP/jagdrevier.keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
-            keystore_type='PKCS12'
-          fi
-          if [[ -z "$keystore_type" ]]; then
-            echo "Keystore konnte weder als JKS erkannt noch als PKCS12 mit dem hinterlegten Passwort gelesen werden." >&2
-            exit 1
-          fi
-          echo "store_type=$keystore_type" >> "$GITHUB_OUTPUT"
 
       - name: Build signed APK
         env:
