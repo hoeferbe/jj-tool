@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/hoeferbe/jj-tool/compare/v1.2.0...v1.3.0) (2026-09-18)
+
+
+### Features
+
+* persist section news and mark new entries ([28f84da](https://github.com/hoeferbe/jj-tool/commit/28f84da64193c727b71430faf1de28d9102b3c1d))
+
 ## [1.2.0](https://github.com/hoeferbe/jj-tool/compare/v1.1.4...v1.2.0) (2026-09-18)
 
 
