@@ -87,14 +87,19 @@ jobs:
           PY
           chmod 600 "$RUNNER_TEMP/jagdrevier.keystore"
           keystore_type=''
-          for candidate in PKCS12 JKS; do
-            if keytool -list -storetype "$candidate" -keystore "$RUNNER_TEMP/jagdrevier.keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
-              keystore_type="$candidate"
-              break
-            fi
-          done
+          if python - <<'PY'
+          from pathlib import Path
+
+          keystore_path = Path(__import__('os').environ['RUNNER_TEMP']) / 'jagdrevier.keystore'
+          raise SystemExit(0 if keystore_path.read_bytes().startswith(b'\xfe\xed\xfe\xed') else 1)
+          PY
+          then
+            keystore_type='JKS'
+          elif keytool -list -storetype PKCS12 -keystore "$RUNNER_TEMP/jagdrevier.keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
+            keystore_type='PKCS12'
+          fi
           if [[ -z "$keystore_type" ]]; then
-            echo "Keystore konnte weder als PKCS12 noch als JKS mit dem hinterlegten Passwort gelesen werden." >&2
+            echo "Keystore konnte weder als JKS erkannt noch als PKCS12 mit dem hinterlegten Passwort gelesen werden." >&2
             exit 1
           fi
           echo "store_type=$keystore_type" >> "$GITHUB_OUTPUT"
