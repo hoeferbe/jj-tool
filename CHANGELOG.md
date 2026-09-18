@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0](https://github.com/hoeferbe/jj-tool/compare/v1.1.4...v1.2.0) (2026-09-18)
+
+
+### Features
+
+* add hunting statistics and utilization tracking ([538ee64](https://github.com/hoeferbe/jj-tool/commit/538ee644a978dc420263aec871d78cbbaeacbd60))
+
+
+### Bug Fixes
+
+* handle quoted Android keystore secrets ([1e9e013](https://github.com/hoeferbe/jj-tool/commit/1e9e013d168a13cbf44e880b335edbc76efd2a64))
+* normalize Android keystore secrets in release workflow ([c79d86c](https://github.com/hoeferbe/jj-tool/commit/c79d86c11fcd8351f85b51558baa91cb3fd0d706))
+
 ## [1.1.4](https://github.com/hoeferbe/jj-tool/compare/v1.1.3...v1.1.4) (2026-09-18)
 
 
