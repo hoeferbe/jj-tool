@@ -97,7 +97,8 @@ jobs:
               keystore_bytes = base64.b64decode(padded_keystore, validate=True)
           except binascii.Error:
               try:
-                  keystore_bytes = base64.urlsafe_b64decode(padded_keystore)
+                  normalized_keystore = padded_keystore.translate(str.maketrans('-_', '+/'))
+                  keystore_bytes = base64.b64decode(normalized_keystore, validate=True)
               except binascii.Error as exc:
                   raise SystemExit(f'ANDROID_KEYSTORE_BASE64 ist kein gültiger Base64-String: {exc}')
 
