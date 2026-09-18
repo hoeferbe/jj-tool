@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/hoeferbe/jj-tool/compare/v1.1.1...v1.1.2) (2026-09-18)
+
+
+### Bug Fixes
+
+* handle PKCS12 Android signing in release builds ([dcac9f2](https://github.com/hoeferbe/jj-tool/commit/dcac9f2ff52df8d3ccdaeff35f5f4d382c0a1223))
+
 ## [1.1.1](https://github.com/hoeferbe/jj-tool/compare/v1.1.0...v1.1.1) (2026-09-18)
 
 
