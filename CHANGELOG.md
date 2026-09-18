@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.2](https://github.com/hoeferbe/jj-tool/compare/v1.3.1...v1.3.2) (2026-09-18)
+
+
+### Bug Fixes
+
+* allow Capacitor Android API requests ([b40b12b](https://github.com/hoeferbe/jj-tool/commit/b40b12b90aff0f549d2c033fccc4ad9ebd5e61ff))
+* android icons ([3c67d26](https://github.com/hoeferbe/jj-tool/commit/3c67d26a25ebac75963f8cd92044bf73abfeda41))
+
 ## [1.3.1](https://github.com/hoeferbe/jj-tool/compare/v1.3.0...v1.3.1) (2026-09-18)
 
 
