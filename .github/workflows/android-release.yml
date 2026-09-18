@@ -94,7 +94,9 @@ jobs:
           raise SystemExit(0 if keystore_path.read_bytes().startswith(b'\xfe\xed\xfe\xed') else 1)
           PY
           then
-            keystore_type='JKS'
+            if keytool -list -storetype JKS -keystore "$RUNNER_TEMP/jagdrevier.keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
+              keystore_type='JKS'
+            fi
           elif keytool -list -storetype PKCS12 -keystore "$RUNNER_TEMP/jagdrevier.keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
             keystore_type='PKCS12'
           fi
