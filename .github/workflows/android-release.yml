@@ -65,11 +65,55 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           test -n "$ANDROID_KEYSTORE_BASE64"
-          python - <<'PY'
+          keystore_type="$(python - <<'PY'
           import base64
           import binascii
           import os
           from pathlib import Path
+
+          def read_tlv(data: bytes, offset: int, expected_tag: int) -> tuple[int, int, int] | None:
+              if len(data) < offset + 2 or data[offset] != expected_tag:
+                  return None
+
+              length_octet = data[offset + 1]
+              value_offset = offset + 2
+              if length_octet & 0x80:
+                  length_size = length_octet & 0x7F
+                  if length_size == 0 or len(data) < value_offset + length_size:
+                      return None
+                  length = int.from_bytes(data[value_offset:value_offset + length_size], 'big')
+                  value_offset += length_size
+              else:
+                  length = length_octet
+
+              end_offset = value_offset + length
+              if len(data) < end_offset:
+                  return None
+
+              return value_offset, length, end_offset
+
+          def detect_keystore_type(data: bytes) -> str | None:
+              if data.startswith(b'\xfe\xed\xfe\xed'):
+                  return 'JKS'
+
+              outer_sequence = read_tlv(data, 0, 0x30)
+              if outer_sequence is None:
+                  return None
+
+              outer_value_offset, _, outer_end_offset = outer_sequence
+              version_integer = read_tlv(data, outer_value_offset, 0x02)
+              if version_integer is None:
+                  return None
+
+              integer_offset, integer_length, integer_end_offset = version_integer
+              if integer_length == 0 or int.from_bytes(data[integer_offset:integer_end_offset], 'big') != 3:
+                  return None
+
+              content_info = read_tlv(data, integer_end_offset, 0x30)
+              if content_info is None or content_info[2] > outer_end_offset:
+                  return None
+
+              return 'PKCS12'
 
           encoded_keystore = ''.join(os.environ['ANDROID_KEYSTORE_BASE64'].split())
           padded_keystore = encoded_keystore + '=' * (-len(encoded_keystore) % 4)
@@ -83,25 +127,17 @@ jobs:
               except binascii.Error as exc:
                   raise SystemExit(f'ANDROID_KEYSTORE_BASE64 ist kein gültiger Base64-String: {exc}')
 
-          Path(os.environ['RUNNER_TEMP'], 'jagdrevier.keystore').write_bytes(keystore_bytes)
-          PY
-          chmod 600 "$RUNNER_TEMP/jagdrevier.keystore"
-          keystore_type=''
-          if python - <<'PY'
-          from pathlib import Path
+          keystore_type = detect_keystore_type(keystore_bytes)
+          if keystore_type is None:
+              raise SystemExit('Keystore-Format konnte aus ANDROID_KEYSTORE_BASE64 nicht erkannt werden.')
 
-          keystore_path = Path(__import__('os').environ['RUNNER_TEMP']) / 'jagdrevier.keystore'
-          raise SystemExit(0 if keystore_path.read_bytes().startswith(b'\xfe\xed\xfe\xed') else 1)
+          Path(os.environ['RUNNER_TEMP'], 'jagdrevier.keystore').write_bytes(keystore_bytes)
+          print(keystore_type)
           PY
-          then
-            if keytool -list -storetype JKS -keystore "$RUNNER_TEMP/jagdrevier.keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
-              keystore_type='JKS'
-            fi
-          elif keytool -list -storetype PKCS12 -keystore "$RUNNER_TEMP/jagdrevier.keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
-            keystore_type='PKCS12'
-          fi
-          if [[ -z "$keystore_type" ]]; then
-            echo "Keystore konnte weder als JKS erkannt noch als PKCS12 mit dem hinterlegten Passwort gelesen werden." >&2
+          )"
+          chmod 600 "$RUNNER_TEMP/jagdrevier.keystore"
+          if ! keytool -list -storetype "$keystore_type" -keystore "$RUNNER_TEMP/jagdrevier.keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
+            echo "Keystore wurde als $keystore_type erkannt, konnte aber mit dem hinterlegten Passwort nicht gelesen werden." >&2
             exit 1
           fi
           echo "store_type=$keystore_type" >> "$GITHUB_OUTPUT"
