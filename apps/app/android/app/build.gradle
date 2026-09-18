@@ -6,9 +6,13 @@ android {
     def releaseVersionCode = (project.findProperty('versionCode') ?: '1').toInteger()
     def releaseVersionName = project.findProperty('versionName') ?: '1.0'
     def signingStoreFile = System.getenv('ANDROID_KEYSTORE_FILE')
+    def signingStoreType = System.getenv('ANDROID_KEYSTORE_TYPE')
     def signingStorePassword = System.getenv('ANDROID_KEYSTORE_PASSWORD')
     def signingKeyAlias = System.getenv('ANDROID_KEY_ALIAS')
     def signingKeyPassword = System.getenv('ANDROID_KEY_PASSWORD')
+    def effectiveSigningKeyPassword = signingStoreType?.equalsIgnoreCase('PKCS12')
+        ? signingStorePassword
+        : (signingKeyPassword ?: signingStorePassword)
 
     defaultConfig {
         applicationId "de.jjtool.jagdrevier"
@@ -26,9 +30,12 @@ android {
     signingConfigs {
         release {
             storeFile signingStoreFile ? file(signingStoreFile) : null
+            if (signingStoreType) {
+                storeType signingStoreType
+            }
             storePassword signingStorePassword
             keyAlias signingKeyAlias
-            keyPassword signingKeyPassword
+            keyPassword effectiveSigningKeyPassword
         }
     }
 
@@ -36,7 +43,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            if (signingStoreFile && signingStorePassword && signingKeyAlias && signingKeyPassword) {
+            if (signingStoreFile && signingStorePassword && signingKeyAlias && effectiveSigningKeyPassword) {
                 signingConfig signingConfigs.release
             }
         }

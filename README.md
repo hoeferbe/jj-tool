@@ -58,7 +58,7 @@ Android-Releases werden über GitHub Actions erstellt. Der Workflow `release-ple
 
 Die Release-Version wird ausschließlich aus dem Git-Tag abgeleitet: `v1.2.3` ergibt Android `versionName 1.2.3` und einen daraus berechneten monotonen `versionCode`. `feat` erzeugt eine Minor-Version, `fix`/`refactor` eine Patch-Version; `BREAKING CHANGE` im Commit-Body oder ein `!` hinter dem Typ erzeugt eine Major-Version. `docs`, `test` und `chore` lösen normalerweise keinen Release aus.
 
-Für ein Update muss derselbe Keystore verwendet werden; der Keystore und die vier Actions-Secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`) dürfen nicht ins Repository gelangen. Vor dem ersten Release müssen alle vier Secrets im Repository eingerichtet sein.
+Für ein Update muss derselbe Keystore verwendet werden; der Keystore und die vier Actions-Secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`) dürfen nicht ins Repository gelangen. Vor dem ersten Release müssen alle vier Secrets im Repository eingerichtet sein. Der Release-Workflow erkennt den Keystore-Typ (`PKCS12` oder `JKS`) automatisch. Bei `PKCS12` verwendet Android intern das Keystore-Passwort auch für den privaten Schlüssel; ein abweichendes `ANDROID_KEY_PASSWORD` ist dort wirkungslos und würde den Signatur-Build scheitern lassen.
 
 ## Registrierung und E-Mail
 
