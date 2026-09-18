@@ -115,8 +115,6 @@ jobs:
 
               return 'PKCS12'
 
-              return None
-
           encoded_keystore = ''.join(os.environ['ANDROID_KEYSTORE_BASE64'].split())
           padded_keystore = encoded_keystore + '=' * (-len(encoded_keystore) % 4)
 
