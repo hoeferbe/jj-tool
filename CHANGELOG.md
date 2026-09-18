@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.4](https://github.com/hoeferbe/jj-tool/compare/v1.1.3...v1.1.4) (2026-09-18)
+
+
+### Bug Fixes
+
+* append Android keystore output safely ([7121ebe](https://github.com/hoeferbe/jj-tool/commit/7121ebe5fe4a4ab53981474d878cd7b57ed2c8c0))
+* capture Android keystore type within workflow step ([5d4064e](https://github.com/hoeferbe/jj-tool/commit/5d4064e2e4d4b9dbb91d06a2720112619aa7387a))
+* keep strict validation for Android keystore secrets ([94e2530](https://github.com/hoeferbe/jj-tool/commit/94e25306e37b5475d7a68840be18ba26f1b4b3b4))
+* parse PKCS12 structure in Android workflow ([f404f58](https://github.com/hoeferbe/jj-tool/commit/f404f580a83e068007d7e1a0e66fe3dc5bf376e2))
+* parse PKCS12 version field in Android workflow ([ebca59b](https://github.com/hoeferbe/jj-tool/commit/ebca59bec0ff91dc013d10848b0591616a6fe593))
+* remove dead return in Android workflow ([e9c3042](https://github.com/hoeferbe/jj-tool/commit/e9c30425ee0df8b97d02dedb35108b4ea4e33588))
+* require PKCS12 content info in Android workflow ([8a86afc](https://github.com/hoeferbe/jj-tool/commit/8a86afc3f862d8d4c4760cc93d0e8ad4818f6e77))
+* restore password-independent Android keystore detection ([c3d8bfd](https://github.com/hoeferbe/jj-tool/commit/c3d8bfde038b2fd8b366d330b33bffbfd27a71b3))
+* validate detected Android keystore type before signing ([1e9cae5](https://github.com/hoeferbe/jj-tool/commit/1e9cae5fd6f4d0613d88464685eaf2d8bc4ac3e4))
+
 ## [1.1.3](https://github.com/hoeferbe/jj-tool/compare/v1.1.2...v1.1.3) (2026-09-18)
 
 
