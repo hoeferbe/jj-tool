@@ -71,6 +71,19 @@ jobs:
           import os
           from pathlib import Path
 
+          def normalize_base64_secret(value: str) -> str:
+              normalized_value = value.strip()
+              if len(normalized_value) >= 2 and normalized_value[0] == normalized_value[-1] and normalized_value[0] in {"'", '"'}:
+                  normalized_value = normalized_value[1:-1]
+              if normalized_value.startswith('data:') and ';base64,' in normalized_value:
+                  normalized_value = normalized_value.split(';base64,', 1)[1]
+              normalized_value = normalized_value.replace('\n', '').replace('\r', '')
+              normalized_value = normalized_value.replace('\\n', '').replace('\\r', '')
+              normalized_value = ''.join(normalized_value.split())
+              if not normalized_value:
+                  raise SystemExit('ANDROID_KEYSTORE_BASE64 enthält nach der Normalisierung keine Daten mehr.')
+              return normalized_value
+
           def read_tlv(data: bytes, offset: int, expected_tag: int) -> tuple[int, int, int] | None:
               if len(data) < offset + 2 or data[offset] != expected_tag:
                   return None
@@ -115,17 +128,14 @@ jobs:
 
               return 'PKCS12'
 
-          encoded_keystore = ''.join(os.environ['ANDROID_KEYSTORE_BASE64'].split())
-          padded_keystore = encoded_keystore + '=' * (-len(encoded_keystore) % 4)
+          encoded_keystore = normalize_base64_secret(os.environ['ANDROID_KEYSTORE_BASE64'])
+          normalized_keystore = encoded_keystore.translate(str.maketrans('-_', '+/')).rstrip('=')
+          padded_keystore = normalized_keystore + '=' * (-len(normalized_keystore) % 4)
 
           try:
               keystore_bytes = base64.b64decode(padded_keystore, validate=True)
-          except binascii.Error:
-              try:
-                  normalized_keystore = padded_keystore.translate(str.maketrans('-_', '+/'))
-                  keystore_bytes = base64.b64decode(normalized_keystore, validate=True)
-              except binascii.Error as exc:
-                  raise SystemExit(f'ANDROID_KEYSTORE_BASE64 ist kein gültiger Base64-String: {exc}')
+          except binascii.Error as exc:
+              raise SystemExit(f'ANDROID_KEYSTORE_BASE64 ist kein gültiger Base64-String: {exc}')
 
           keystore_type = detect_keystore_type(keystore_bytes)
           if keystore_type is None:
