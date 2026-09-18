@@ -103,7 +103,12 @@ jobs:
               if integer_length == 0 or len(data) < integer_offset + integer_length:
                   return None
 
-              if int.from_bytes(data[integer_offset:integer_offset + integer_length], 'big') == 3:
+              content_info_offset = integer_offset + integer_length
+              if (
+                  int.from_bytes(data[integer_offset:integer_offset + integer_length], 'big') == 3
+                  and len(data) > content_info_offset
+                  and data[content_info_offset] == 0x30
+              ):
                   return 'PKCS12'
 
               return None
