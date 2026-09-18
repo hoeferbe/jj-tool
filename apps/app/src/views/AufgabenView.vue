@@ -21,6 +21,8 @@ interface Task {
   assignedBy: string
   jagdeinrichtungId?: string
   createdAt: string
+  updatedAt?: string
+  completedAt?: string
 }
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
@@ -51,7 +53,9 @@ const openTasks = computed(() => tasks.value
   .filter((task) => task.status !== 'erledigt')
   .sort((left, right) => priorityRank(right.prioritaet) - priorityRank(left.prioritaet)
     || (left.faelligAm ?? '9999-12-31').localeCompare(right.faelligAm ?? '9999-12-31')))
-const completedTasks = computed(() => tasks.value.filter((task) => task.status === 'erledigt'))
+const completedTasks = computed(() => tasks.value
+  .filter((task) => task.status === 'erledigt')
+  .sort((left, right) => (right.completedAt ?? right.updatedAt ?? right.createdAt).localeCompare(left.completedAt ?? left.updatedAt ?? left.createdAt)))
 
 /** Sort weight for priority ordering (higher = shown first among open tasks). */
 function priorityRank(priority?: Task['prioritaet']) {

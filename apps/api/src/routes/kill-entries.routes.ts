@@ -3,6 +3,7 @@ import type { Hono, MiddlewareHandler } from 'hono';
 import { type AuthStore, type User } from '../auth-store.js';
 import { type KillEntryStore } from '../kill-entry-store.js';
 import { type ImageStore } from '../image-store.js';
+import { createKillEntryReport } from '../kill-entry-reporting-service.js';
 import type { AuthPayload } from '../middleware/auth.middleware.js';
 import { killEntrySchema, updateKillEntrySchema } from '../schemas/kill-entry.schemas.js';
 
@@ -22,6 +23,30 @@ export function registerKillEntryRoutes(app: Hono, dependencies: KillEntryRouteD
    const withCreatorName = <T extends { createdBy: string }>(entry: T) => ({
       ...entry,
       createdByName: authStore.findUserById(entry.createdBy)?.displayName ?? 'Unbekanntes Mitglied',
+   });
+
+   app.get('/reviere/:revierId/streckeneintraege/auswertung', requireAuth, async (context) => {
+      const payload = await getAuthenticatedPayload(context);
+      const user = payload?.sub ? authStore.findUserById(payload.sub) : undefined;
+      const revierId = context.req.param('revierId');
+      if (!revierId || !user || !canAccessHuntingDistrict(user, revierId)) return context.json({ message: 'Kein Zugriff auf dieses Revier.' }, 403);
+
+      const from = context.req.query('von');
+      const to = context.req.query('bis');
+      const yearsValue = context.req.query('jagdjahre');
+      const huntingYears = yearsValue
+         ? yearsValue.split(',').map((value) => Number(value.trim())).filter((value) => Number.isInteger(value))
+         : undefined;
+      try {
+         const report = createKillEntryReport(
+            await killEntryStore.getByHuntingDistrictId(revierId),
+            authStore.getAllUsers(),
+            { from, to, huntingYears },
+         );
+         return context.json({ auswertung: report });
+      } catch (error) {
+         return context.json({ message: error instanceof Error ? error.message : 'Auswertung konnte nicht erstellt werden.' }, 400);
+      }
    });
 
    app.get('/reviere/:revierId/streckeneintraege', requireAuth, async (context) => {

@@ -7,6 +7,7 @@ import AdminDashboard from './views/AdminDashboard.vue';
 import MemberWelcome from './views/MemberWelcome.vue';
 import EinrichtungenView from './views/EinrichtungenView.vue';
 import StreckeneintraegeView from './views/StreckeneintraegeView.vue';
+import StreckenauswertungView from './views/StreckenauswertungView.vue';
 import AufgabenView from './views/AufgabenView.vue';
 import { loadNews } from './composables/useNews';
 import { flushOfflineQueue } from './composables/useOfflineQueue';
@@ -96,6 +97,11 @@ const router = createRouter({
       {
          path: '/reviere/strecke',
          component: StreckeneintraegeView,
+         meta: { requiresAuth: true },
+      },
+      {
+         path: '/reviere/strecke/auswertung',
+         component: StreckenauswertungView,
          meta: { requiresAuth: true },
       },
       {

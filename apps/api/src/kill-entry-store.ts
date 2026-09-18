@@ -8,6 +8,8 @@ export interface KillEntryPosition {
 }
 
 export type KillEntryGender = 'maennlich' | 'weiblich' | 'unbekannt';
+export type KillEntryUtilization = 'eigenverwertung' | 'verkauf_gemeinde' | 'verkauf_ausserhalb_gemeinde' | 'jagdgemeinschaft_verkauf' | 'keine_verwertung';
+export type KillEntryFeeExemption = 'verkehrsopfer' | 'hegeabschuss';
 
 export interface KillEntry {
    id: string;
@@ -17,6 +19,8 @@ export interface KillEntry {
    wildart: string;
    unterart?: string;
    geschlecht?: KillEntryGender;
+   verwertung?: KillEntryUtilization;
+   kostenfreiArt?: KillEntryFeeExemption;
    istVerkehrsopfer?: boolean;
    bescheinigung?: boolean;
    ortName?: string;
@@ -36,6 +40,8 @@ export interface CreateKillEntryInput {
    wildart: string;
    unterart?: string;
    geschlecht?: KillEntryGender;
+   verwertung: KillEntryUtilization;
+   kostenfreiArt?: KillEntryFeeExemption;
    istVerkehrsopfer?: boolean;
    bescheinigung?: boolean;
    ortName?: string;

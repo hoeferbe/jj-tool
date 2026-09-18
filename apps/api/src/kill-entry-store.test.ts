@@ -14,9 +14,9 @@ describe('KillEntryStore', () => {
       tempDirectories.push(directory);
       const store = new KillEntryStore(directory);
       await store.initialize();
-      await store.create({ revierId: 'revier-1', datum: '2026-01-01', uhrzeit: '08:00', wildart: 'Reh', createdBy: 'user-1' });
-      await store.create({ revierId: 'revier-1', datum: '2026-01-01', uhrzeit: '18:30', wildart: 'Fuchs', createdBy: 'user-2' });
-      await store.create({ revierId: 'revier-1', datum: '2026-02-01', uhrzeit: '06:15', wildart: 'Wildschwein', createdBy: 'user-1' });
+      await store.create({ revierId: 'revier-1', datum: '2026-01-01', uhrzeit: '08:00', wildart: 'Reh', verwertung: 'eigenverwertung', createdBy: 'user-1' });
+      await store.create({ revierId: 'revier-1', datum: '2026-01-01', uhrzeit: '18:30', wildart: 'Fuchs', verwertung: 'verkauf_gemeinde', createdBy: 'user-2' });
+      await store.create({ revierId: 'revier-1', datum: '2026-02-01', uhrzeit: '06:15', wildart: 'Wildschwein', verwertung: 'jagdgemeinschaft_verkauf', createdBy: 'user-1' });
       const entries = await store.getByHuntingDistrictId('revier-1');
       assert.deepEqual(entries.map((entry) => entry.wildart), ['Wildschwein', 'Fuchs', 'Reh']);
    });
@@ -33,6 +33,8 @@ describe('KillEntryStore', () => {
          wildart: 'Reh',
          unterart: 'Bock',
          geschlecht: 'maennlich',
+         verwertung: 'verkauf_ausserhalb_gemeinde',
+         kostenfreiArt: 'verkehrsopfer',
          istVerkehrsopfer: true,
          bescheinigung: true,
          ortName: 'Waldrand',
@@ -63,8 +65,8 @@ describe('KillEntryStore', () => {
       tempDirectories.push(directory);
       const store = new KillEntryStore(directory);
       await store.initialize();
-      await store.create({ revierId: 'revier-1', datum: '2026-09-16', wildart: 'Reh', createdBy: 'user-1' });
-      await store.create({ revierId: 'revier-2', datum: '2026-09-16', wildart: 'Fuchs', createdBy: 'user-1' });
+      await store.create({ revierId: 'revier-1', datum: '2026-09-16', wildart: 'Reh', verwertung: 'keine_verwertung', createdBy: 'user-1' });
+      await store.create({ revierId: 'revier-2', datum: '2026-09-16', wildart: 'Fuchs', verwertung: 'keine_verwertung', createdBy: 'user-1' });
 
       assert.equal(await store.deleteByHuntingDistrictId('revier-1'), 1);
       assert.deepEqual(await store.getByHuntingDistrictId('revier-1'), []);

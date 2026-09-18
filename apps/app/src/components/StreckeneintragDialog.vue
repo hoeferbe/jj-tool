@@ -17,6 +17,8 @@ interface GeoJsonFeatureCollection {
 }
 
 export type KillEntryGender = 'maennlich' | 'weiblich' | 'unbekannt'
+export type KillEntryUtilization = 'eigenverwertung' | 'verkauf_gemeinde' | 'verkauf_ausserhalb_gemeinde' | 'jagdgemeinschaft_verkauf' | 'keine_verwertung'
+export type KillEntryFeeExemption = 'verkehrsopfer' | 'hegeabschuss'
 
 export interface Streckeneintrag {
   id: string
@@ -26,6 +28,8 @@ export interface Streckeneintrag {
   wildart: string
   unterart?: string
   geschlecht?: KillEntryGender
+  verwertung?: KillEntryUtilization
+  kostenfreiArt?: KillEntryFeeExemption
   istVerkehrsopfer?: boolean
   bescheinigung?: boolean
   ortName?: string
@@ -74,6 +78,8 @@ const uhrzeit = ref(getCurrentTimeStr())
 const wildart = ref('')
 const unterart = ref('')
 const geschlecht = ref<KillEntryGender | ''>('')
+const verwertung = ref<KillEntryUtilization | ''>('eigenverwertung')
+const kostenfreiArt = ref<KillEntryFeeExemption | ''>('')
 const istVerkehrsopfer = ref(false)
 const keineBescheinigung = ref(false)
 const ortName = ref('')
@@ -113,6 +119,11 @@ const isRotwildOrDamwild = computed(() => {
 const isFuchs = computed(() => {
   const w = wildart.value.toLowerCase().trim()
   return w.includes('fuchs')
+})
+
+watch(istVerkehrsopfer, (isVo) => {
+  if (isVo && !kostenfreiArt.value) kostenfreiArt.value = 'verkehrsopfer'
+  if (!isVo && kostenfreiArt.value === 'verkehrsopfer') kostenfreiArt.value = ''
 })
 
 /** Builds the red drop-pin marker icon used for the kill entry position. */
@@ -182,6 +193,8 @@ function reset() {
     wildart.value = props.entry.wildart
     unterart.value = props.entry.unterart ?? ''
     geschlecht.value = props.entry.geschlecht ?? ''
+    verwertung.value = props.entry.verwertung ?? ''
+    kostenfreiArt.value = props.entry.kostenfreiArt ?? (props.entry.istVerkehrsopfer ? 'verkehrsopfer' : '')
     istVerkehrsopfer.value = Boolean(props.entry.istVerkehrsopfer)
     keineBescheinigung.value = Boolean(props.entry.istVerkehrsopfer && props.entry.bescheinigung === false)
     ortName.value = props.entry.ortName ?? ''
@@ -195,6 +208,8 @@ function reset() {
     wildart.value = ''
     unterart.value = ''
     geschlecht.value = ''
+    verwertung.value = 'eigenverwertung'
+    kostenfreiArt.value = ''
     istVerkehrsopfer.value = false
     keineBescheinigung.value = false
     ortName.value = ''
@@ -355,7 +370,7 @@ function close() {
 
 /** Creates a new kill entry or saves changes to the one being edited. Queues the request if there's no connectivity. */
 async function saveEntry() {
-  if (datum.value.length !== 10 || wildart.value.trim().length < 2) return
+  if (datum.value.length !== 10 || wildart.value.trim().length < 2 || !verwertung.value) return
   saving.value = true
   message.value = ''
   try {
@@ -378,6 +393,8 @@ async function saveEntry() {
       wildart: wildart.value.trim(),
       unterart: unterart.value.trim() || undefined,
       geschlecht: geschlecht.value || undefined,
+      verwertung: verwertung.value,
+      kostenfreiArt: kostenfreiArt.value || undefined,
       istVerkehrsopfer: isVo,
       bescheinigung: hasBescheinigung,
       ortName: ortName.value.trim() || undefined,
@@ -595,6 +612,32 @@ watch(() => props.isOpen, (isOpen) => {
         </section>
 
         <section class="form-section">
+          <h3>Verwertung & Abrechnung</h3>
+          <div class="form-row">
+            <label class="field-label flex-1">
+              <span>Verwertung *</span>
+              <select v-model="verwertung" class="form-control" required>
+                <option value="" disabled>Bitte auswählen</option>
+                <option value="eigenverwertung">Eigenverwertung</option>
+                <option value="verkauf_gemeinde">Verkauf innerhalb Gemeinde</option>
+                <option value="verkauf_ausserhalb_gemeinde">Verkauf außerhalb Gemeinde</option>
+                <option value="jagdgemeinschaft_verkauf">Jagdgemeinschaft übernimmt Verkauf</option>
+                <option value="keine_verwertung">Keine Verwertung</option>
+              </select>
+            </label>
+            <label class="field-label flex-1">
+              <span>Kostenfrei-Art</span>
+              <select v-model="kostenfreiArt" class="form-control">
+                <option value="">Keine</option>
+                <option value="verkehrsopfer">Verkehrsopfer (VO)</option>
+                <option value="hegeabschuss">Hegeabschuss</option>
+              </select>
+            </label>
+          </div>
+          <p class="help-text">VO-Wild und Hegeabschüsse werden nicht als kostenpflichtige Verwertung behandelt.</p>
+        </section>
+
+        <section class="form-section">
           <h3>Ort & GPS</h3>
           <label class="field-label">
             <span>Ortsbezeichnung / Revierbereich</span>
@@ -654,7 +697,7 @@ watch(() => props.isOpen, (isOpen) => {
 
         <div class="dialog-actions">
           <IonButton fill="clear" :disabled="saving" @click="close">Abbrechen</IonButton>
-          <IonButton :disabled="saving || datum.length !== 10 || wildart.trim().length < 2" @click="saveEntry">
+          <IonButton :disabled="saving || datum.length !== 10 || wildart.trim().length < 2 || !verwertung" @click="saveEntry">
             {{ saving ? 'Speichern...' : 'Speichern' }}
           </IonButton>
         </div>

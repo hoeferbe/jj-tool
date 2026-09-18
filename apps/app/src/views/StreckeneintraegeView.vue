@@ -69,6 +69,16 @@ function formatGewicht(gewicht?: number) {
   return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(gewicht) + ' kg'
 }
 
+function utilizationLabel(value: NonNullable<Streckeneintrag['verwertung']>) {
+  return {
+    eigenverwertung: 'Eigenverwertung',
+    verkauf_gemeinde: 'Verkauf innerhalb Gemeinde',
+    verkauf_ausserhalb_gemeinde: 'Verkauf außerhalb Gemeinde',
+    jagdgemeinschaft_verkauf: 'Jagdgemeinschaft übernimmt Verkauf',
+    keine_verwertung: 'Keine Verwertung',
+  }[value]
+}
+
 /** Sorts kill entries by date, time, then creation time, newest first. */
 function sortEntries(list: Streckeneintrag[]) {
   return [...list].sort((first, second) =>
@@ -244,6 +254,7 @@ onMounted(loadReviere)
                       <span v-if="entry.bescheinigung !== false" class="badge badge-info" title="Versicherungsbescheinigung ausgestellt">📜 Bescheinigung</span>
                       <span v-else class="badge badge-neutral" title="Keine Versicherungsbescheinigung ausgestellt">Ohne Bescheinigung</span>
                     </template>
+                    <span v-if="entry.kostenfreiArt === 'hegeabschuss'" class="badge badge-neutral" title="Hegeabschuss">Hegeabschuss</span>
                   </div>
                 </div>
                 <span class="entry-date">{{ formatDateTime(entry.datum, entry.uhrzeit) }}</span>
@@ -251,6 +262,9 @@ onMounted(loadReviere)
 
               <div class="entry-details">
                 <span class="detail-pill">Erfasst von {{ entry.createdByName ?? 'Unbekanntes Mitglied' }}</span>
+                <span v-if="entry.verwertung" class="detail-pill">Verwertung: {{ utilizationLabel(entry.verwertung) }}</span>
+                <span v-else class="detail-pill">Verwertung: Nicht erfasst</span>
+                <span v-if="entry.kostenfreiArt === 'hegeabschuss'" class="detail-pill">Kostenfrei: Hegeabschuss</span>
                 <span v-if="entry.gewicht" class="detail-pill">⚖️ {{ formatGewicht(entry.gewicht) }}</span>
                 <span v-if="entry.geschaetztesAlter" class="detail-pill">⏳ Alter: {{ entry.geschaetztesAlter }}</span>
                 <span v-if="entry.ortName" class="detail-pill">📍 {{ entry.ortName }}</span>

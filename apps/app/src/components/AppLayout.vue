@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { IonBadge, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonModal, IonNote, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
-import { addCircleOutline, chevronDownOutline, clipboardOutline, constructOutline, logOutOutline, mapOutline, notificationsOutline, peopleOutline, personCircleOutline, settingsOutline, trailSignOutline } from 'ionicons/icons'
+import { addCircleOutline, chevronDownOutline, clipboardOutline, constructOutline, logOutOutline, mapOutline, notificationsOutline, peopleOutline, personCircleOutline, settingsOutline, statsChartOutline, trailSignOutline } from 'ionicons/icons'
 import { useNews } from '../composables/useNews'
 import { useOfflineQueue } from '../composables/useOfflineQueue'
 
@@ -169,6 +169,10 @@ async function logout() {
           <IonItem button @click="navigate('/reviere/strecke')">
             <IonIcon slot="start" :icon="trailSignOutline" />
             Streckeneinträge
+          </IonItem>
+          <IonItem button @click="navigate('/reviere/strecke/auswertung')">
+            <IonIcon slot="start" :icon="statsChartOutline" />
+            Streckenauswertung
           </IonItem>
           <IonItem button @click="navigate('/reviere/aufgaben')">
             <IonIcon slot="start" :icon="clipboardOutline" />

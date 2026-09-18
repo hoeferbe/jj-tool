@@ -79,6 +79,15 @@ function formatGewicht(gewicht?: number) {
   return new Intl.NumberFormat('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(gewicht) + ' kg'
 }
 
+function utilizationLabel(value?: Streckeneintrag['verwertung']) {
+  if (value === 'eigenverwertung') return 'Eigenverwertung'
+  if (value === 'verkauf_gemeinde') return 'Verkauf innerhalb Gemeinde'
+  if (value === 'verkauf_ausserhalb_gemeinde') return 'Verkauf außerhalb Gemeinde'
+  if (value === 'jagdgemeinschaft_verkauf') return 'Jagdgemeinschaft übernimmt Verkauf'
+  if (value === 'keine_verwertung') return 'Keine Verwertung'
+  return 'Nicht erfasst'
+}
+
 /** Renders the small Leaflet preview map centered on the entry's position, with the Revier boundary and a marker. */
 function initDetailMap() {
   if (!mapContainer.value || !props.entry?.position) return
@@ -186,6 +195,7 @@ watch(() => props.isOpen, (isOpen) => {
             <span v-if="props.entry.bescheinigung !== false" class="badge badge-info">📜 Versicherungsbescheinigung</span>
             <span v-else class="badge badge-neutral">Keine Versicherungsbescheinigung</span>
           </template>
+          <span v-if="props.entry.kostenfreiArt === 'hegeabschuss'" class="badge badge-neutral">Hegeabschuss</span>
         </div>
 
         <!-- Info Cards Grid -->
@@ -203,6 +213,14 @@ watch(() => props.isOpen, (isOpen) => {
             <div class="info-text">
               <span class="info-label">Erfasst von</span>
               <span class="info-value">{{ props.entry.createdByName ?? 'Unbekanntes Mitglied' }}</span>
+            </div>
+          </div>
+
+          <div class="info-card">
+            <div class="info-icon"><IonIcon :icon="documentTextOutline" /></div>
+            <div class="info-text">
+              <span class="info-label">Verwertung</span>
+              <span class="info-value">{{ utilizationLabel(props.entry.verwertung) }}</span>
             </div>
           </div>
 
