@@ -86,7 +86,24 @@ jobs:
                       return None
                   offset += length_size
 
-              if data[offset:offset + 3] == b'\x02\x01\x03':
+              if len(data) < offset + 3 or data[offset] != 0x02:
+                  return None
+
+              integer_length_octet = data[offset + 1]
+              integer_offset = offset + 2
+              if integer_length_octet & 0x80:
+                  length_size = integer_length_octet & 0x7F
+                  if length_size == 0 or len(data) < integer_offset + length_size + 1:
+                      return None
+                  integer_length = int.from_bytes(data[integer_offset:integer_offset + length_size], 'big')
+                  integer_offset += length_size
+              else:
+                  integer_length = integer_length_octet
+
+              if integer_length == 0 or len(data) < integer_offset + integer_length:
+                  return None
+
+              if int.from_bytes(data[integer_offset:integer_offset + integer_length], 'big') == 3:
                   return 'PKCS12'
 
               return None
