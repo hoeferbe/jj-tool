@@ -21,7 +21,7 @@ jobs:
           RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
         run: |
           if [ -z "$RELEASE_PLEASE_TOKEN" ]; then
-            echo "RELEASE_PLEASE_TOKEN fehlt. Release Please braucht ein PAT oder GitHub-App-Token, weil das Standard-GITHUB_TOKEN hier keine Release-PRs erstellen darf." >&2
+            echo "RELEASE_PLEASE_TOKEN fehlt. Konfiguriere für diesen Workflow ein PAT oder GitHub-App-Token mit Schreibrechten auf Inhalte und Pull Requests." >&2
             exit 1
           fi
       - name: Create or update release PR
