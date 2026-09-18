@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/hoeferbe/jj-tool/compare/v1.1.0...v1.1.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* harden Android keystore restore in release workflow ([f2e3e37](https://github.com/hoeferbe/jj-tool/commit/f2e3e371502da2ecc319993bf7bd1d8b05ef5771))
+
 ## [1.1.0](https://github.com/hoeferbe/jj-tool/compare/v1.0.0...v1.1.0) (2026-09-18)
 
 
