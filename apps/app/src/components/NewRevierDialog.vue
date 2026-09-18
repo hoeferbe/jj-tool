@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import * as L from 'leaflet'
+import { getDeviceLocation } from '../composables/useDeviceLocation'
 import { IonButton, IonContent, IonInput, IonItem, IonList, IonModal, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
 import BkgAttribution from './BkgAttribution.vue'
 
@@ -115,18 +116,16 @@ function setSelectionMode(active: boolean) {
 
 /** Centers the map on the user's location, unless they already moved/zoomed the map themselves. */
 function locateUser() {
-  if (!navigator.geolocation || !map) return
+  if (!map) return
   locating.value = true
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
+  getDeviceLocation({ enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 })
+    .then((position) => {
       if (!userChangedMapView) {
-        map?.setView([position.coords.latitude, position.coords.longitude], 10)
+        map?.setView([position.lat, position.lng], 10)
       }
-      locating.value = false
-    },
-    () => { locating.value = false },
-    { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 },
-  )
+    })
+    .catch(() => undefined)
+    .finally(() => { locating.value = false })
 }
 
 /** Jumps the map to a federal state's predefined center/zoom, or back to the Germany overview. */

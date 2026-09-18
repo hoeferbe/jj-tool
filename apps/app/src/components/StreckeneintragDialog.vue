@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { IonButton, IonContent, IonModal, IonNote } from '@ionic/vue'
 import * as L from 'leaflet'
+import { getDeviceLocation } from '../composables/useDeviceLocation'
 import ImageGallery from './ImageGallery.vue'
 import { submitOrQueue } from '../composables/useOfflineQueue'
 
@@ -226,43 +227,27 @@ function reset() {
 
 /** Silently pre-fills the position from GPS for a new entry (no error message on failure). */
 function tryAutoGps() {
-  if (!navigator.geolocation) return
   gpsLoading.value = true
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      position.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-      gpsLoading.value = false
-    },
-    () => {
-      gpsLoading.value = false
-    },
-    { timeout: 5000, enableHighAccuracy: true },
-  )
+  getDeviceLocation({ timeout: 5000, enableHighAccuracy: true })
+    .then((location) => { position.value = location })
+    .catch(() => undefined)
+    .finally(() => { gpsLoading.value = false })
 }
 
 /** Explicitly requests the device's GPS position and updates the form/map marker, showing errors. */
 function requestGpsLocation() {
-  if (!navigator.geolocation) {
-    message.value = 'GPS wird von diesem Gerät/Browser nicht unterstützt.'
-    return
-  }
   gpsLoading.value = true
   message.value = ''
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      position.value = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-      gpsLoading.value = false
+  getDeviceLocation({ timeout: 10000, enableHighAccuracy: true })
+    .then((location) => {
+      position.value = location
       if (showMapPicker.value && mapInstance && markerInstance) {
-        markerInstance.setLatLng([pos.coords.latitude, pos.coords.longitude])
-        mapInstance.panTo([pos.coords.latitude, pos.coords.longitude])
+        markerInstance.setLatLng([location.lat, location.lng])
+        mapInstance.panTo([location.lat, location.lng])
       }
-    },
-    (err) => {
-      gpsLoading.value = false
-      message.value = `GPS-Signal konnte nicht empfangen werden: ${err.message}`
-    },
-    { timeout: 10000, enableHighAccuracy: true },
-  )
+    })
+    .catch((error: unknown) => { message.value = `GPS-Signal konnte nicht empfangen werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}` })
+    .finally(() => { gpsLoading.value = false })
 }
 
 /** Shows or hides the map position picker, initializing/tearing down the Leaflet map as needed. */

@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as L from 'leaflet'
 import BkgAttribution from './BkgAttribution.vue'
+import { getDeviceLocation } from '../composables/useDeviceLocation'
 
 interface GeoJsonFeatureCollection {
   type: 'FeatureCollection'
@@ -136,18 +137,14 @@ function toggleDistanceRings() {
     cancelDistancePlacement()
     return
   }
-  if (!navigator.geolocation) {
-    startDistancePlacementMode()
-    return
-  }
   distanceButton?.classList.add('locating')
-  navigator.geolocation.getCurrentPosition((position) => {
+  getDeviceLocation({ enableHighAccuracy: true, timeout: 8000 }).then((position) => {
     distanceButton?.classList.remove('locating')
-    placeDistanceRings(L.latLng(position.coords.latitude, position.coords.longitude), true)
-  }, () => {
+    placeDistanceRings(L.latLng(position.lat, position.lng), true)
+  }).catch(() => {
     distanceButton?.classList.remove('locating')
     startDistancePlacementMode()
-  }, { enableHighAccuracy: true, timeout: 8000 })
+  })
 }
 
 /** Arms the map so the next click places the distance rings there (crosshair cursor). */
