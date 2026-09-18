@@ -71,45 +71,49 @@ jobs:
           import os
           from pathlib import Path
 
+          def read_tlv(data: bytes, offset: int, expected_tag: int) -> tuple[int, int, int] | None:
+              if len(data) < offset + 2 or data[offset] != expected_tag:
+                  return None
+
+              length_octet = data[offset + 1]
+              value_offset = offset + 2
+              if length_octet & 0x80:
+                  length_size = length_octet & 0x7F
+                  if length_size == 0 or len(data) < value_offset + length_size:
+                      return None
+                  length = int.from_bytes(data[value_offset:value_offset + length_size], 'big')
+                  value_offset += length_size
+              else:
+                  length = length_octet
+
+              end_offset = value_offset + length
+              if len(data) < end_offset:
+                  return None
+
+              return value_offset, length, end_offset
+
           def detect_keystore_type(data: bytes) -> str | None:
               if data.startswith(b'\xfe\xed\xfe\xed'):
                   return 'JKS'
 
-              if len(data) < 5 or data[0] != 0x30:
+              outer_sequence = read_tlv(data, 0, 0x30)
+              if outer_sequence is None:
                   return None
 
-              length_octet = data[1]
-              offset = 2
-              if length_octet & 0x80:
-                  length_size = length_octet & 0x7F
-                  if length_size == 0 or len(data) < offset + length_size + 3:
-                      return None
-                  offset += length_size
-
-              if len(data) < offset + 3 or data[offset] != 0x02:
+              outer_value_offset, _, outer_end_offset = outer_sequence
+              version_integer = read_tlv(data, outer_value_offset, 0x02)
+              if version_integer is None:
                   return None
 
-              integer_length_octet = data[offset + 1]
-              integer_offset = offset + 2
-              if integer_length_octet & 0x80:
-                  length_size = integer_length_octet & 0x7F
-                  if length_size == 0 or len(data) < integer_offset + length_size + 1:
-                      return None
-                  integer_length = int.from_bytes(data[integer_offset:integer_offset + length_size], 'big')
-                  integer_offset += length_size
-              else:
-                  integer_length = integer_length_octet
-
-              if integer_length == 0 or len(data) < integer_offset + integer_length:
+              integer_offset, integer_length, integer_end_offset = version_integer
+              if integer_length == 0 or int.from_bytes(data[integer_offset:integer_end_offset], 'big') != 3:
                   return None
 
-              content_info_offset = integer_offset + integer_length
-              if (
-                  int.from_bytes(data[integer_offset:integer_offset + integer_length], 'big') == 3
-                  and len(data) > content_info_offset
-                  and data[content_info_offset] == 0x30
-              ):
-                  return 'PKCS12'
+              content_info = read_tlv(data, integer_end_offset, 0x30)
+              if content_info is None or content_info[2] > outer_end_offset:
+                  return None
+
+              return 'PKCS12'
 
               return None
 
