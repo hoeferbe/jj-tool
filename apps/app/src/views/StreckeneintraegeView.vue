@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { IonButton, IonItem, IonList, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
+import { IonBadge, IonButton, IonItem, IonList, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
 import AppLayout from '../components/AppLayout.vue'
 import SatelliteThumbnail from '../components/SatelliteThumbnail.vue'
 import StreckeneintragDialog, { type Streckeneintrag } from '../components/StreckeneintragDialog.vue'
 import StreckeneintragDetailDialog from '../components/StreckeneintragDetailDialog.vue'
+import { useNews } from '../composables/useNews'
 
 interface GeoJsonFeatureCollection {
   type: 'FeatureCollection'
@@ -43,12 +44,15 @@ const isDetailOpen = ref(false)
 const editingEntry = ref<Streckeneintrag | null>(null)
 const selectedEntryForDetail = ref<Streckeneintrag | null>(null)
 const deletingId = ref<string | null>(null)
+const { getSectionSeenAt, markSectionSeen } = useNews()
+const newSince = getSectionSeenAt('strecke')
 
 const selectedRevier = computed(() => reviere.value.find((revier) => revier.id === selectedRevierId.value) ?? null)
 const canAdministerSelectedRevier = computed(() => currentUser.value?.accountType === 'systemAdmin'
   || currentUser.value?.memberships.some((membership) =>
     membership.revierId === selectedRevierId.value && membership.status === 'active' && membership.isAdmin,
   ) === true)
+const isNewEntry = (entry: Streckeneintrag) => entry.createdBy !== currentUser.value?.id && entry.createdAt > newSince
 
 /** Whether the current user may edit/delete a kill entry: creator or Revier-/Systemadmin. */
 function canModifyEntry(entry: Streckeneintrag) {
@@ -209,7 +213,10 @@ async function deleteEntry(entry: Streckeneintrag) {
   }
 }
 
-onMounted(loadReviere)
+onMounted(async () => {
+  await loadReviere()
+  await markSectionSeen('strecke')
+})
 </script>
 
 <template>
@@ -245,6 +252,7 @@ onMounted(loadReviere)
                   <h2 class="wildart-title">
                     {{ entry.wildart }}
                     <span v-if="entry.unterart" class="unterart-text">({{ entry.unterart }})</span>
+                    <IonBadge v-if="isNewEntry(entry)" color="tertiary" class="new-badge">Neu</IonBadge>
                   </h2>
                   <div class="badge-row">
                     <span v-if="entry.geschlecht === 'maennlich'" class="badge badge-male" title="Männlich">♂ M</span>
@@ -340,6 +348,7 @@ onMounted(loadReviere)
 .badge-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
 .badge-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
 .badge-neutral { background: #f5f5f5; color: #616161; border: 1px solid #e0e0e0; }
+.new-badge { margin-left: 8px; vertical-align: middle; font-size: 0.65rem; }
 
 .entry-details { display: flex; flex-wrap: wrap; gap: 8px; }
 .detail-pill { font-size: 0.82rem; background: var(--ion-color-light, #f4f5f8); border: 1px solid var(--ion-color-light-shade, #e0e0e0); padding: 2px 8px; border-radius: 4px; color: var(--ion-text-color, #333); }

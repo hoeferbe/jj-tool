@@ -3,8 +3,9 @@ import { type FacilityStore } from './facility-store.js';
 import { type FacilityTasksStore } from './facility-tasks-store.js';
 import { type FacilityReservationsStore } from './facility-reservations-store.js';
 import { type HuntingDistrictStore } from './hunting-district-store.js';
+import { type KillEntryStore } from './kill-entry-store.js';
 
-export type NewsItemType = 'facility' | 'revierAufgabe' | 'einrichtungsAufgabe' | 'reservierung' | 'mitglied';
+export type NewsItemType = 'facility' | 'revierAufgabe' | 'einrichtungsAufgabe' | 'reservierung' | 'mitglied' | 'streckeneintrag';
 
 export interface NewsItem {
    id: string;
@@ -26,6 +27,7 @@ interface NewsServiceDependencies {
    taskStore: FacilityTasksStore;
    reservationStore: FacilityReservationsStore;
    huntingDistrictStore: HuntingDistrictStore;
+   killEntryStore: KillEntryStore;
 }
 
 // Cap how far back news reach for users who never checked before, so old accounts don't get a huge backlog.
@@ -112,6 +114,19 @@ export async function buildNewsFeed(user: User, dependencies: NewsServiceDepende
             revierName,
             text: `${otherUser.displayName} ist dem Revier ${revierName} beigetreten`,
             createdAt: membership.createdAt,
+         });
+      }
+
+      const killEntries = await dependencies.killEntryStore.getByHuntingDistrictId(revierId);
+      for (const killEntry of killEntries) {
+         if (killEntry.createdBy === user.id || Date.parse(killEntry.createdAt) <= sinceMs) continue;
+         items.push({
+            id: `kill-entry-${killEntry.id}`,
+            type: 'streckeneintrag',
+            revierId,
+            revierName,
+            text: `Neuer Streckeneintrag: ${killEntry.wildart}`,
+            createdAt: killEntry.createdAt,
          });
       }
    }

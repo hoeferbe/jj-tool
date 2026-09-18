@@ -115,7 +115,7 @@ const router = createRouter({
 
 /**
  * Global navigation guard.
- * - Redirects authenticated users away from '/' to their home route.
+ * - Redirects authenticated users away from '/' to the Revierkarte.
  * - Blocks unauthenticated/expired users from protected routes.
  * - Admin dashboard requires a system account or an active Revieradmin membership.
  */
@@ -127,9 +127,7 @@ router.beforeEach((to) => {
       ? payload.accountType === 'systemAdmin' || payload.hasRevierAdminAccess === true
       : false;
    // Redirect already-authenticated users away from the auth page.
-   if (to.path === '/' && payload && Date.now() / 1000 < payload.exp) {
-      return isAdminUser ? '/dashboard' : '/reviere/karte';
-   }
+   if (to.path === '/' && payload && Date.now() / 1000 < payload.exp) return '/reviere/karte';
    if (requiresRole === 'admin') {
       if (!payload || Date.now() / 1000 > payload.exp) return '/';
       if (!isAdminUser) return '/';
@@ -184,6 +182,7 @@ if ('serviceWorker' in navigator) {
 
 // Refresh the token before mounting so the first render has a valid JWT.
 refreshTokenOnStartup().then(() => {
-   createApp(App).use(IonicVue).use(router).mount('#app');
-   loadNews();
+   loadNews().finally(() => {
+      createApp(App).use(IonicVue).use(router).mount('#app');
+   });
 });

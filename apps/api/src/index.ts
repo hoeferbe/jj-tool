@@ -164,6 +164,7 @@ registerNewsRoutes(app, {
    taskStore,
    reservationStore,
    huntingDistrictStore,
+   killEntryStore,
    getAuthenticatedPayload,
    requireAuth,
 });

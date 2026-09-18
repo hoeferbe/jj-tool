@@ -8,6 +8,7 @@ import { HuntingDistrictStore } from './hunting-district-store.js';
 import { FacilityStore } from './facility-store.js';
 import { FacilityTasksStore } from './facility-tasks-store.js';
 import { FacilityReservationsStore } from './facility-reservations-store.js';
+import { KillEntryStore } from './kill-entry-store.js';
 import { buildNewsFeed } from './news-service.js';
 
 const tempDirs: string[] = [];
@@ -23,12 +24,14 @@ async function setup() {
    const facilityStore = new FacilityStore(directory);
    const taskStore = new FacilityTasksStore(directory);
    const reservationStore = new FacilityReservationsStore(directory);
+   const killEntryStore = new KillEntryStore(directory);
    await Promise.all([
       authStore.initialize(),
       huntingDistrictStore.initialize(),
       facilityStore.initialize(),
       taskStore.initialize(),
       reservationStore.initialize(),
+      killEntryStore.initialize(),
    ]);
 
    const owner = await authStore.createUser({ username: 'owner', email: 'owner@example.com', displayName: 'Revierbesitzer', status: 'active' });
@@ -39,12 +42,12 @@ async function setup() {
    const member = await authStore.createUser({ username: 'member', email: 'member@example.com', displayName: 'Mitglied Eins', status: 'active' });
    await authStore.upsertMembership(member.id, { revierId: revier.id, status: 'active', memberType: 'bgs', isAdmin: false });
 
-   return { directory, authStore, huntingDistrictStore, facilityStore, taskStore, reservationStore, owner, member, revier };
+   return { directory, authStore, huntingDistrictStore, facilityStore, taskStore, reservationStore, killEntryStore, owner, member, revier };
 }
 
 describe('buildNewsFeed', () => {
    it('reports events by others since the last seen timestamp, excluding own actions', async () => {
-      const { authStore, huntingDistrictStore, facilityStore, taskStore, reservationStore, owner, member, revier } = await setup();
+      const { authStore, huntingDistrictStore, facilityStore, taskStore, reservationStore, killEntryStore, owner, member, revier } = await setup();
 
       // Baseline event before the member ever checks: falls into the 30-day fallback window and should show up.
       const facility = await facilityStore.create({
@@ -52,7 +55,7 @@ describe('buildNewsFeed', () => {
       });
 
       const memberUser = authStore.findUserById(member.id)!;
-      const firstFeed = await buildNewsFeed(memberUser, { authStore, facilityStore, taskStore, reservationStore, huntingDistrictStore });
+      const firstFeed = await buildNewsFeed(memberUser, { authStore, facilityStore, taskStore, reservationStore, huntingDistrictStore, killEntryStore });
       assert.equal(firstFeed.items.some((item) => item.type === 'facility' && item.text.includes('Kanzel Nord')), true);
 
       await authStore.markNewsSeen(member.id);
@@ -65,9 +68,10 @@ describe('buildNewsFeed', () => {
       await authStore.upsertMembership(otherMember.id, { revierId: revier.id, status: 'active', memberType: 'bgs', isAdmin: false });
       await taskStore.create({ revierId: revier.id, titel: 'Nur für andere', prioritaet: 'normal', status: 'offen', assignedBy: owner.id, assignedTo: otherMember.id });
       await reservationStore.reserve({ revierId: revier.id, jagdeinrichtungId: facility.id, reservedBy: owner.id });
+      await killEntryStore.create({ revierId: revier.id, datum: '2026-09-18', wildart: 'Reh', verwertung: 'eigenverwertung', createdBy: owner.id });
 
       const refreshedMember = authStore.findUserById(member.id)!;
-      const secondFeed = await buildNewsFeed(refreshedMember, { authStore, facilityStore, taskStore, reservationStore, huntingDistrictStore });
+      const secondFeed = await buildNewsFeed(refreshedMember, { authStore, facilityStore, taskStore, reservationStore, huntingDistrictStore, killEntryStore });
       const texts = secondFeed.items.map((item) => item.text);
 
       assert.equal(texts.some((text) => text.includes('Eigene Aufgabe')), false);
@@ -75,13 +79,14 @@ describe('buildNewsFeed', () => {
       assert.equal(texts.some((text) => text.includes('Nur für andere')), false);
       assert.equal(texts.some((text) => text.includes('reserviert')), true);
       assert.equal(texts.some((text) => text.includes('Anderes Mitglied')), true);
+      assert.equal(texts.some((text) => text.includes('Streckeneintrag: Reh')), true);
       assert.equal(texts.some((text) => text.includes('Neue Einrichtung')), false);
    });
 
    it('returns nothing for users without an active hunting district membership', async () => {
-      const { authStore, huntingDistrictStore, facilityStore, taskStore, reservationStore } = await setup();
+      const { authStore, huntingDistrictStore, facilityStore, taskStore, reservationStore, killEntryStore } = await setup();
       const loner = await authStore.createUser({ username: 'loner', email: 'loner@example.com', displayName: 'Ohne Revier', status: 'active' });
-      const feed = await buildNewsFeed(loner, { authStore, facilityStore, taskStore, reservationStore, huntingDistrictStore });
+      const feed = await buildNewsFeed(loner, { authStore, facilityStore, taskStore, reservationStore, huntingDistrictStore, killEntryStore });
       assert.deepEqual(feed, { items: [], count: 0 });
    });
 });

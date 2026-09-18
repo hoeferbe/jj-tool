@@ -11,6 +11,7 @@ export type UserStatus = 'active' | 'pending' | 'blocked';
 export type OrganizationalRole = 'revierleiter' | 'kassenwart' | 'schriftfuehrer';
 export type AccountType = 'systemAdmin' | 'member';
 export type MembershipStatus = 'active' | 'pending';
+export type NewsSection = 'karte' | 'mitglieder' | 'einrichtungen' | 'aufgaben' | 'strecke';
 
 export interface HuntingDistrictMembership {
    revierId: string;
@@ -35,6 +36,7 @@ export interface User {
    memberships: HuntingDistrictMembership[];
    lastLoginAt?: string;
    lastNewsSeenAt?: string;
+   sectionNewsSeenAt?: Partial<Record<NewsSection, string>>;
    createdAt: string;
    updatedAt: string;
 }
@@ -738,7 +740,7 @@ export class AuthStore {
       );
    }
 
-   /** Returns a data-minimal member list (name, type, position) for one hunting district's active members. */
+   /** Returns a data-minimal member list (name, type, position, joined time) for one hunting district's active members. */
    getMemberDirectory(revierId: string) {
       return this.data.users.flatMap((user) => {
          if (user.status !== 'active') return [];
@@ -751,6 +753,7 @@ export class AuthStore {
             displayName: user.displayName,
             memberType: membership.memberType,
             position: membership.position,
+            createdAt: membership.createdAt,
          }];
       });
    }
@@ -803,6 +806,18 @@ export class AuthStore {
          if (!user) throw new Error('USER_NOT_FOUND');
          user.lastNewsSeenAt = new Date().toISOString();
          return user.lastNewsSeenAt;
+      });
+   }
+
+   /** Marks one news section as seen for the user and returns its new timestamp. */
+   async markNewsSectionSeen(userId: string, section: NewsSection) {
+      return this.enqueue(async () => {
+         const user = this.data.users.find((entry) => entry.id === userId);
+         if (!user) throw new Error('USER_NOT_FOUND');
+         const seenAt = new Date().toISOString();
+         user.sectionNewsSeenAt ??= {};
+         user.sectionNewsSeenAt[section] = seenAt;
+         return seenAt;
       });
    }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { loadNews } from '../composables/useNews'
 import {
   IonButton,
   IonCard,
@@ -124,7 +125,7 @@ async function submit(action: () => Promise<string>) {
   }
 }
 
-/** Logs in, stores the session/token locally, and routes to the dashboard or Revierkarte based on admin access. */
+/** Logs in, stores the session/token locally, and opens the Revierkarte. */
 function submitLogin() {
   return submit(async () => {
     const result = await request('/auth/login', login.value)
@@ -137,9 +138,8 @@ function submitLogin() {
       } else {
         localStorage.removeItem('previousLoginAt')
       }
-      const hasAdminAccess = result.user.accountType === 'systemAdmin'
-        || result.user.memberships.some((membership) => membership.isAdmin)
-      await router.replace(hasAdminAccess ? '/dashboard' : '/reviere/karte')
+      await loadNews()
+      await router.replace('/reviere/karte')
     }
     return result.message ?? ''
   })

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { IonButton, IonItem, IonList, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
+import { IonButton, IonIcon, IonNote, IonSelect, IonSelectOption } from '@ionic/vue'
+import { printOutline } from 'ionicons/icons'
 import AppLayout from '../components/AppLayout.vue'
 
 interface Revier { id: string; name: string; municipalityName: string }
@@ -72,6 +73,12 @@ function utilizationLabel(value: string) {
     keine_verwertung: 'Keine Verwertung',
     nicht_erfasst: 'Nicht erfasst',
   }[value] ?? value
+}
+
+/** Opens the browser print dialog for saving the current report as a PDF. */
+function printReport() {
+  if (!report.value) return
+  window.print()
 }
 
 /** Builds the API query for the active report mode. */
@@ -159,9 +166,15 @@ onMounted(loadReviere)
           <h1>Streckenauswertung</h1>
           <p v-if="selectedRevier">{{ selectedRevier.name }} · {{ selectedRevier.municipalityName }}</p>
         </div>
-        <IonSelect v-if="reviere.length > 1" :value="selectedRevierId" label="Revier" label-placement="stacked" interface="popover" @ion-change="selectedRevierId = $event.detail.value">
-          <IonSelectOption v-for="revier in reviere" :key="revier.id" :value="revier.id">{{ revier.name }}</IonSelectOption>
-        </IonSelect>
+        <div class="heading-actions">
+          <IonSelect v-if="reviere.length > 1" :value="selectedRevierId" label="Revier" label-placement="stacked" interface="popover" @ion-change="selectedRevierId = $event.detail.value">
+            <IonSelectOption v-for="revier in reviere" :key="revier.id" :value="revier.id">{{ revier.name }}</IonSelectOption>
+          </IonSelect>
+          <IonButton fill="outline" :disabled="!report || loading" @click="printReport">
+            <IonIcon slot="start" :icon="printOutline" />
+            PDF drucken
+          </IonButton>
+        </div>
       </div>
 
       <section class="filter-panel">
@@ -194,6 +207,7 @@ onMounted(loadReviere)
       <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
       <IonNote v-if="loading">Auswertung wird geladen...</IonNote>
       <template v-else-if="report">
+        <p class="period-note print-title">{{ selectedRevier?.name ?? 'Revier' }} · Streckenauswertung</p>
         <p class="period-note">Zeitraum: {{ formatDate(report.from) }} bis {{ formatDate(report.to) }} · {{ report.gesamt }} Einträge</p>
 
         <section class="report-section">
@@ -228,6 +242,7 @@ onMounted(loadReviere)
 <style scoped>
 .page-content { padding: 20px; max-width: 1180px; margin: 0 auto; }
 .page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.heading-actions { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
 .page-heading h1 { margin: 0 0 4px; font-size: 1.75rem; }
 .page-heading p, .period-note { margin: 0; color: var(--ion-color-medium, #666); }
 .filter-panel { display: flex; align-items: end; flex-wrap: wrap; gap: 16px; padding: 16px; margin-bottom: 20px; border: 1px solid var(--ion-color-light-shade, #dfe3dc); background: var(--ion-color-light, #f7f8f4); border-radius: 8px; }
@@ -256,4 +271,29 @@ th:not(:first-child), td:not(:first-child) { text-align: right; }
 .sub-detail { display: block; color: var(--ion-color-medium, #666); font-size: .8rem; }
 .free-label { color: #8a6100; font-weight: 600; }
 @media (max-width: 760px) { .table-grid { grid-template-columns: 1fr; } .summary-grid { grid-template-columns: repeat(3, 1fr); } .data-table { display: block; overflow-x: auto; white-space: nowrap; } }
+
+.print-title { display: none; }
+
+@media print {
+  @page { size: A4 portrait; margin: 14mm; }
+  :global(body) { background: #fff !important; }
+  :global(ion-header), :global(.motd), :global(.offline-banner), .filter-panel, .error-message, :global(ion-note), .heading-actions { display: none !important; }
+  .page-content { max-width: none; padding: 0; margin: 0; }
+  .page-heading { display: block; margin: 0 0 14px; }
+  .page-heading h1 { font-size: 20pt; }
+  .page-heading p { color: #222; }
+  .print-title { display: block; color: #222; font-size: 12pt; font-weight: 600; margin-top: 10px; }
+  .period-note { color: #222; font-size: 9pt; }
+  .report-section { margin-top: 16px; break-inside: avoid; }
+  .report-section h2 { font-size: 13pt; }
+  .table-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .summary-grid { gap: 8px; }
+  .summary-grid div { padding: 8px; }
+  .summary-grid strong { font-size: 13pt; }
+  th, td { padding: 5px 6px; font-size: 8pt; }
+  th { background: #eef1e7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .data-table { break-inside: auto; }
+  .data-table tr { break-inside: avoid; }
+  .data-table thead { display: table-header-group; }
+}
 </style>

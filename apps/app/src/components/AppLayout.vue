@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { IonBadge, IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonModal, IonNote, IonPage, IonPopover, IonTitle, IonToolbar } from '@ionic/vue'
-import { addCircleOutline, chevronDownOutline, clipboardOutline, constructOutline, logOutOutline, mapOutline, notificationsOutline, peopleOutline, personCircleOutline, settingsOutline, statsChartOutline, trailSignOutline } from 'ionicons/icons'
+import { addCircleOutline, chevronDownOutline, clipboardOutline, constructOutline, downloadOutline, logOutOutline, mapOutline, notificationsOutline, peopleOutline, personCircleOutline, settingsOutline, statsChartOutline, trailSignOutline } from 'ionicons/icons'
 import { useNews } from '../composables/useNews'
 import { useOfflineQueue } from '../composables/useOfflineQueue'
 
@@ -13,6 +13,8 @@ const showProfile = ref(false)
 const profile = ref({ username: '', displayName: '', email: '' })
 const profileSaving = ref(false)
 const profileError = ref('')
+const androidRelease = ref<{ version: string; downloadUrl: string } | null>(null)
+const androidReleaseError = ref('')
 
 const { newsItems, newsCount, loadNews, markAllNewsSeen, sectionHasNews } = useNews()
 const { pendingCount, flushOfflineQueue } = useOfflineQueue()
@@ -66,16 +68,35 @@ async function navigate(path: string) {
 /** Loads the current user's profile fields into the edit modal. */
 async function openProfile() {
   profileError.value = ''
+  androidRelease.value = null
+  androidReleaseError.value = ''
   const token = localStorage.getItem('accessToken')
-  const response = await fetch(`${apiUrl}/auth/me`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
-  const data = await response.json() as { user?: { username: string; displayName: string; email: string }; message?: string }
-  if (!response.ok || !data.user) {
-    profileError.value = data.message ?? 'Profildaten konnten nicht geladen werden.'
-    showProfile.value = true
-    return
-  }
-  profile.value = data.user
   showProfile.value = true
+  try {
+    const [profileResponse, releaseResponse] = await Promise.all([
+      fetch(`${apiUrl}/auth/me`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }),
+      fetch('https://api.github.com/repos/hoeferbe/jj-tool/releases/latest', { cache: 'no-store' }),
+    ])
+    const data = await profileResponse.json() as { user?: { username: string; displayName: string; email: string }; message?: string }
+    if (!profileResponse.ok || !data.user) {
+      profileError.value = data.message ?? 'Profildaten konnten nicht geladen werden.'
+    } else {
+      profile.value = data.user
+    }
+    if (releaseResponse.ok) {
+      const release = await releaseResponse.json() as { tag_name?: string; assets?: Array<{ browser_download_url: string; name: string }> }
+      const apk = release.assets?.find((asset) => asset.name.endsWith('.apk'))
+      if (release.tag_name && apk) {
+        androidRelease.value = { version: release.tag_name.replace(/^v/, ''), downloadUrl: apk.browser_download_url }
+      } else {
+        androidReleaseError.value = 'Für die aktuelle Android-Version steht noch kein Download bereit.'
+      }
+    } else {
+      androidReleaseError.value = 'Die aktuelle Android-Version konnte nicht geladen werden.'
+    }
+  } catch {
+    profileError.value = 'Profildaten konnten nicht geladen werden.'
+  }
 }
 
 /** Saves the edited display name/e-mail and updates the cached display name shown in the toolbar. */
@@ -169,6 +190,7 @@ async function logout() {
           <IonItem button @click="navigate('/reviere/strecke')">
             <IonIcon slot="start" :icon="trailSignOutline" />
             Streckeneinträge
+            <IonBadge v-if="sectionHasNews('strecke')" color="danger" class="menu-item-badge">•</IonBadge>
           </IonItem>
           <IonItem button @click="navigate('/reviere/strecke/auswertung')">
             <IonIcon slot="start" :icon="statsChartOutline" />
@@ -221,6 +243,14 @@ async function logout() {
           <IonItem><IonInput :value="profile.username" label="Login-Name" label-placement="stacked" readonly /></IonItem>
           <IonItem><IonInput v-model="profile.displayName" label="Name" label-placement="stacked" autocomplete="name" required /></IonItem>
           <IonItem><IonInput v-model="profile.email" type="email" label="E-Mail" label-placement="stacked" autocomplete="email" required /></IonItem>
+          <IonItem v-if="androidRelease">
+            <IonLabel>Android-App {{ androidRelease.version }}</IonLabel>
+            <IonButton slot="end" :href="androidRelease.downloadUrl" target="_blank" rel="noopener">
+              <IonIcon slot="start" :icon="downloadOutline" />
+              Download
+            </IonButton>
+          </IonItem>
+          <IonNote v-else-if="androidReleaseError" color="medium">{{ androidReleaseError }}</IonNote>
           <IonNote v-if="profileError" color="danger">{{ profileError }}</IonNote>
           <IonButton type="submit" expand="block" :disabled="profileSaving">
             {{ profileSaving ? 'Speichern...' : 'Speichern' }}

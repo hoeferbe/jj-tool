@@ -100,12 +100,14 @@ describe('AuthStore Revier assignments', () => {
             displayName: 'Admin A',
             memberType: 'paechter',
             position: undefined,
+            createdAt: store.findUserById(administrator.id)?.memberships[0]?.createdAt,
          },
          {
             id: visible.id,
             displayName: 'Visible',
             memberType: 'bgs',
             position: undefined,
+            createdAt: store.findUserById(visible.id)?.memberships[0]?.createdAt,
          },
       ]);
       assert.equal('email' in store.getMemberDirectory('revier-a')[0]!, false);

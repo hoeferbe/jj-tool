@@ -6,8 +6,9 @@ import AppLayout from '../components/AppLayout.vue'
 import NewJagdeinrichtungDialog from '../components/NewJagdeinrichtungDialog.vue'
 import NewRevierDialog from '../components/NewRevierDialog.vue'
 import RevierMap from '../components/RevierMap.vue'
+import { useNews } from '../composables/useNews'
 
-defineProps<{ section: 'map' | 'members' }>()
+const props = defineProps<{ section: 'map' | 'members' }>()
 
 interface Revier {
   id: string
@@ -30,9 +31,11 @@ interface RevierMember {
   displayName: string
   memberType: 'paechter' | 'bgs' | 'guest' | 'member'
   position?: 'revierleiter' | 'kassenwart' | 'schriftfuehrer'
+  createdAt: string
 }
 
 interface CurrentUser {
+  id: string
   accountType: 'systemAdmin' | 'member'
   memberships: Array<{
     revierId: string
@@ -83,10 +86,13 @@ const positioningFacilityId = ref<string | null>(null)
 const preservePositioningMode = ref(false)
 const placementMessage = ref('')
 const positionWasSelected = ref(false)
+const { getSectionSeenAt, markSectionSeen } = useNews()
+const newMembersSince = getSectionSeenAt('mitglieder')
 const selectedRevier = computed(() =>
   reviere.value.find((revier) => revier.id === selectedRevierId.value) ?? null,
 )
 const focusedFacilityId = computed(() => typeof route.query.facility === 'string' ? route.query.facility : null)
+const isNewMember = (member: RevierMember) => member.id !== currentUser.value?.id && member.createdAt > newMembersSince
 const canCreateFacilities = computed(() => {
   if (currentUser.value?.accountType === 'systemAdmin') return true
   return currentUser.value?.memberships.some((membership) =>
@@ -270,6 +276,7 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  if (props.section === 'members') await markSectionSeen('mitglieder')
 })
 </script>
 
@@ -363,7 +370,7 @@ onMounted(async () => {
         <IonNote v-else-if="!members.length">Keine aktiven Mitglieder vorhanden.</IonNote>
         <div v-else class="member-list">
           <div v-for="member in members" :key="member.id" class="member-entry">
-            <strong>{{ member.displayName }}</strong>
+            <strong>{{ member.displayName }}<IonBadge v-if="isNewMember(member)" color="tertiary" class="new-badge">Neu</IonBadge></strong>
             <div class="member-labels">
               <IonBadge color="medium">{{ MEMBER_TYPE_LABELS[member.memberType] }}</IonBadge>
               <IonBadge v-if="member.position" color="light">{{ POSITION_LABELS[member.position] }}</IonBadge>
@@ -438,6 +445,12 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.new-badge {
+  margin-left: 8px;
+  vertical-align: middle;
+  font-size: 0.65rem;
 }
 
 @media (max-width: 560px) {

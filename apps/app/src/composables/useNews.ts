@@ -8,6 +8,7 @@ export const NEWS_SECTIONS: Record<string, { path: string; types: string[] }> = 
   mitglieder: { path: '/reviere/mitglieder', types: ['mitglied'] },
   einrichtungen: { path: '/reviere/einrichtungen', types: ['facility', 'einrichtungsAufgabe', 'reservierung'] },
   aufgaben: { path: '/reviere/aufgaben', types: ['revierAufgabe', 'einrichtungsAufgabe'] },
+  strecke: { path: '/reviere/strecke', types: ['streckeneintrag'] },
 }
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
@@ -27,11 +28,22 @@ export async function loadNews() {
   const token = localStorage.getItem('accessToken')
   if (!token) return
   try {
-    const response = await fetch(`${apiUrl}/neuigkeiten`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
-    if (!response.ok) return
-    const data = await response.json() as { items: NewsItem[]; count: number }
-    newsItems.value = data.items
-    newsCount.value = data.count
+    const headers = { Authorization: `Bearer ${token}` }
+    const [response, sectionsResponse] = await Promise.all([
+      fetch(`${apiUrl}/neuigkeiten`, { headers, cache: 'no-store' }),
+      fetch(`${apiUrl}/neuigkeiten/bereiche`, { headers, cache: 'no-store' }),
+    ])
+    if (response.ok) {
+      const data = await response.json() as { items: NewsItem[]; count: number }
+      newsItems.value = data.items
+      newsCount.value = data.count
+    }
+    if (sectionsResponse.ok) {
+      const data = await sectionsResponse.json() as { gesehenSeit: Record<string, string> }
+      for (const [section, seenAt] of Object.entries(data.gesehenSeit)) {
+        localStorage.setItem(sectionSeenStorageKey(section), seenAt)
+      }
+    }
   } catch {
     // best effort – badge just keeps its previous value on network failure
   }
@@ -55,8 +67,22 @@ function getSectionSeenAt(section: string) {
 }
 
 /** Marks a section as visited now, so its menu badge and "neu"-highlights clear on the next check. */
-function markSectionSeen(section: string) {
-  localStorage.setItem(sectionSeenStorageKey(section), new Date().toISOString())
+async function markSectionSeen(section: string) {
+  const seenAt = new Date().toISOString()
+  localStorage.setItem(sectionSeenStorageKey(section), seenAt)
+  const token = localStorage.getItem('accessToken')
+  if (!token) return
+  try {
+    const response = await fetch(`${apiUrl}/neuigkeiten/bereiche/${encodeURIComponent(section)}/gesehen`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!response.ok) return
+    const data = await response.json() as { seenAt: string }
+    localStorage.setItem(sectionSeenStorageKey(section), data.seenAt)
+  } catch {
+    // best effort – preserve the local timestamp until the next successful load
+  }
 }
 
 /** Whether a menu section has any fetched news item newer than the section's last visit. */
