@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
   pull-requests: write
 
 jobs:
@@ -15,9 +16,17 @@ jobs:
     name: Create or update release PR
     runs-on: ubuntu-latest
     steps:
+      - name: Validate release token
+        env:
+          RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          if [ -z "$RELEASE_PLEASE_TOKEN" ]; then
+            echo "RELEASE_PLEASE_TOKEN fehlt. Konfiguriere für diesen Workflow ein PAT oder GitHub-App-Token mit Schreibrechten auf Inhalte und Pull Requests." >&2
+            exit 1
+          fi
       - name: Create or update release PR
         uses: googleapis/release-please-action@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json

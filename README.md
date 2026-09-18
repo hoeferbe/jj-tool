@@ -54,7 +54,7 @@ Dabei wird ein einmaliger Passwortlink per E-Mail versendet. Ohne vollständige 
 
 ## Android-Releases
 
-Android-Releases werden über GitHub Actions erstellt. Der Workflow `release-please.yml` wertet Conventional Commits auf `master` aus und erstellt beziehungsweise aktualisiert eine Release-PR. Erst beim Merge dieser PR wird automatisch ein Tag im Format `vMAJOR.MINOR.PATCH` erzeugt. Dieser Tag startet anschließend `android-release.yml`; die signierte APK wird als Asset am GitHub-Release veröffentlicht.
+Android-Releases werden über GitHub Actions erstellt. Der Workflow `release-please.yml` wertet Conventional Commits auf `master` aus und erstellt beziehungsweise aktualisiert eine Release-PR. Dafür braucht das Repository zusätzlich das Secret `RELEASE_PLEASE_TOKEN` mit einem PAT oder GitHub-App-Token, weil das Standard-`GITHUB_TOKEN` in diesem Repository keine Release-PRs erstellen darf. Erst beim Merge dieser PR wird automatisch ein Tag im Format `vMAJOR.MINOR.PATCH` erzeugt. Dieser Tag startet anschließend `android-release.yml`; die signierte APK wird als Asset am GitHub-Release veröffentlicht.
 
 Die Release-Version wird ausschließlich aus dem Git-Tag abgeleitet: `v1.2.3` ergibt Android `versionName 1.2.3` und einen daraus berechneten monotonen `versionCode`. `feat` erzeugt eine Minor-Version, `fix`/`refactor` eine Patch-Version; `BREAKING CHANGE` im Commit-Body oder ein `!` hinter dem Typ erzeugt eine Major-Version. `docs`, `test` und `chore` lösen normalerweise keinen Release aus.
 
