@@ -21,7 +21,7 @@ Diese Übersicht vergleicht den Produkt- und Entwicklungsplan mit dem tatsächli
 | Zuverlässige lokale Persistenz | Fertig | JSON-Stores mit Schreibwarteschlange und atomischem Umbenennen, unter anderem `auth-store.ts`, `hunting-district-store.ts` und `kill-entry-store.ts` | Mittelfristig Migration zu SQLite bewerten |
 | Betrieb auf Raspberry Pi | Teilweise | Dockerfiles, `docker-compose.yml` und `deploy.sh` vorhanden | Wiederherstellung, automatisierte Backups, Monitoring und Update-Prozess testen und dokumentieren |
 | Externer sicherer Zugang | Offen | Im Zielbild als Cloudflare Tunnel vorgesehen | Tunnel, Domain, TLS und Betriebszugang einrichten und testen |
-| Android-App und iPhone-PWA | Teilweise | `manifest.webmanifest`, Icons (inkl. maskable) und minimaler Service Worker (`apps/app/public/sw.js`) für Installierbarkeit vorhanden; Capacitor-Android-Grundgerüst (`capacitor.config.ts`, `android/`-Projekt) eingerichtet | Signierte APK, Offline-Asset-Caching im Service Worker und Gerätetests fehlen |
+| Android-App und iPhone-PWA | Teilweise | `manifest.webmanifest`, Icons (inkl. maskable) und minimaler Service Worker (`apps/app/public/sw.js`) für Installierbarkeit vorhanden; Capacitor-Android-Grundgerüst (`capacitor.config.ts`, `android/`-Projekt) eingerichtet; Release-PR/Tag-Workflow in `release-please.yml` und signierter APK-Workflow in `android-release.yml` vorhanden | Keystore-Secrets im Repository konfigurieren, erster Release-Tag testen, Offline-Asset-Caching im Service Worker und Gerätetests fehlen |
 | Tailwind als CSS-Ergänzung | Offen | Nicht installiert | Nur integrieren, wenn für kommende Oberflächen tatsächlich benötigt |
 
 ## 2. Anmeldung und Benutzerkonten

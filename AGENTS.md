@@ -22,6 +22,9 @@ Diese Datei gilt für den gesamten Monorepo (`apps/api`, `apps/app`) und fasst R
 - Keine automatischen Commits, außer der Nutzer fordert das Committen explizit an.
 - Nach Abschluss eines Auftrags stattdessen eine passende Commit-Message vorschlagen, damit der Nutzer selbst committen kann.
 - Bei mehreren Aufträgen in einer Session die vorgeschlagene Commit-Message jeweils an den aktuellen Stand anpassen (nicht die alte Message unverändert wiederholen).
+- Commit-Messages folgen Conventional Commits: `feat` für neue Funktionen, `fix` für Fehlerbehebungen, `docs` für Dokumentation, `refactor` für interne Umbauten, `test` für Tests und `chore` für Wartung.
+- Breaking Changes werden mit `BREAKING CHANGE:` im Commit-Body oder einem `!` hinter dem Typ markiert, zum Beispiel `feat!:`. Release Please verwendet diese Informationen für die nächste Major-/Minor-/Patch-Version.
+- Releases laufen über `.github/workflows/release-please.yml`: Erst eine Release-PR mergen, danach baut der Tag-basierte Android-Workflow die signierte APK.
 
 ## Code-Konventionen
 

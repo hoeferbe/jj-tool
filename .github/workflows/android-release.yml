@@ -1,0 +1,91 @@
+name: Android release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build signed Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Derive Android version from tag
+        id: version
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [[ ! "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Tag muss dem Format vMAJOR.MINOR.PATCH entsprechen, z. B. v1.2.3" >&2
+            exit 1
+          fi
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          patch="${BASH_REMATCH[3]}"
+          version_code=$((major * 1000000 + minor * 1000 + patch))
+          if (( version_code > 2100000000 )); then
+            echo "Berechneter versionCode ist zu groß: $version_code" >&2
+            exit 1
+          fi
+          echo "version_name=$version" >> "$GITHUB_OUTPUT"
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+
+      - name: Build web app and sync Capacitor
+        run: |
+          npm run build --workspace=@jj-tool/app
+          npx cap sync android
+        working-directory: apps/app
+
+      - name: Restore signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/jagdrevier.keystore"
+          chmod 600 "$RUNNER_TEMP/jagdrevier.keystore"
+
+      - name: Build signed APK
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/jagdrevier.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          ./gradlew assembleRelease \
+            -PversionName="${{ steps.version.outputs.version_name }}" \
+            -PversionCode="${{ steps.version.outputs.version_code }}"
+        working-directory: apps/app/android
+
+      - name: Prepare APK asset
+        run: cp apps/app/android/app/build/outputs/apk/release/app-release.apk "apps/app/android/app/build/outputs/apk/release/jagdrevier-${{ steps.version.outputs.version_name }}.apk"
+
+      - name: Create GitHub release and upload APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Mein Jagdrevier ${{ steps.version.outputs.version_name }}
+          generate_release_notes: true
+          make_latest: true
+          files: apps/app/android/app/build/outputs/apk/release/jagdrevier-${{ steps.version.outputs.version_name }}.apk

@@ -52,6 +52,14 @@ npm run reset-admin --workspace=@jj-tool/api -- admin admin@example.com Administ
 
 Dabei wird ein einmaliger Passwortlink per E-Mail versendet. Ohne vollständige SMTP-Konfiguration gibt die Entwicklungs-Mailer-Konfiguration den Link lokal aus.
 
+## Android-Releases
+
+Android-Releases werden über GitHub Actions erstellt. Der Workflow `release-please.yml` wertet Conventional Commits auf `master` aus und erstellt beziehungsweise aktualisiert eine Release-PR. Erst beim Merge dieser PR wird automatisch ein Tag im Format `vMAJOR.MINOR.PATCH` erzeugt. Dieser Tag startet anschließend `android-release.yml`; die signierte APK wird als Asset am GitHub-Release veröffentlicht.
+
+Die Release-Version wird ausschließlich aus dem Git-Tag abgeleitet: `v1.2.3` ergibt Android `versionName 1.2.3` und einen daraus berechneten monotonen `versionCode`. `feat` erzeugt eine Minor-Version, `fix`/`refactor` eine Patch-Version; `BREAKING CHANGE` im Commit-Body oder ein `!` hinter dem Typ erzeugt eine Major-Version. `docs`, `test` und `chore` lösen normalerweise keinen Release aus.
+
+Für ein Update muss derselbe Keystore verwendet werden; der Keystore und die vier Actions-Secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`) dürfen nicht ins Repository gelangen. Vor dem ersten Release müssen alle vier Secrets im Repository eingerichtet sein.
+
 ## Registrierung und E-Mail
 
 - Registrierende können ein Revier auswählen. Der Antrag wird dessen Revieradmins angezeigt.

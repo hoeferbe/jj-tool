@@ -138,6 +138,7 @@ Diese Konvention gilt fuer Jagdeinrichtungen, Aufgaben, Streckeneintraege, Nachs
 - Tailwind CSS als Ergänzung zu Ionic integrieren (für eigene Layouts außerhalb der Ionic-Komponenten).
 - Optionales Offline-Kartenmanagement und Cache-Konzept für den Gemeindebereich vorbereiten.
 - Service Worker um echtes Offline-Asset-Caching erweitern; Capacitor-Android-Build signieren und auf einem echten Gerät testen.
+- GitHub-Actions-Releases vervollständigen: Release Please wertet Conventional Commits aus und erstellt eine Release-PR; nach deren Merge wird ein SemVer-Tag erzeugt, der die signierte Android-APK baut und als GitHub-Release-Asset veröffentlicht (Keystore/Passwörter als verschlüsselte GitHub Secrets). `versionCode`/`versionName` werden aus dem Tag abgeleitet, damit Android Updates auf dem Gerät korrekt erkennt.
 
 ### Noch nicht umgesetzt
 
