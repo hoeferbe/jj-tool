@@ -77,6 +77,7 @@ jobs:
                   normalized_value = normalized_value[1:-1]
               if normalized_value.startswith('data:') and ';base64,' in normalized_value:
                   normalized_value = normalized_value.split(';base64,', 1)[1]
+              normalized_value = normalized_value.replace('\n', '').replace('\r', '')
               normalized_value = normalized_value.replace('\\n', '').replace('\\r', '')
               normalized_value = ''.join(normalized_value.split())
               if not normalized_value:
