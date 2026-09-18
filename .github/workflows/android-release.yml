@@ -130,7 +130,8 @@ jobs:
               raise SystemExit('Keystore-Format konnte aus ANDROID_KEYSTORE_BASE64 nicht erkannt werden.')
 
           Path(os.environ['RUNNER_TEMP'], 'jagdrevier.keystore').write_bytes(keystore_bytes)
-          Path(os.environ['GITHUB_OUTPUT']).write_text(f'store_type={keystore_type}\n', encoding='utf-8')
+          with Path(os.environ['GITHUB_OUTPUT']).open('a', encoding='utf-8') as output_file:
+              output_file.write(f'store_type={keystore_type}\n')
           PY
           chmod 600 "$RUNNER_TEMP/jagdrevier.keystore"
           keystore_type="$(awk -F= '/^store_type=/{print $2; exit}' "$GITHUB_OUTPUT")"
