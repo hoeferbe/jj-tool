@@ -63,7 +63,21 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           test -n "$ANDROID_KEYSTORE_BASE64"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/jagdrevier.keystore"
+          python - <<'PY'
+          import base64
+          import os
+          from pathlib import Path
+
+          encoded_keystore = ''.join(os.environ['ANDROID_KEYSTORE_BASE64'].split())
+          padded_keystore = encoded_keystore + '=' * (-len(encoded_keystore) % 4)
+
+          try:
+              keystore_bytes = base64.b64decode(padded_keystore, validate=True)
+          except ValueError:
+              keystore_bytes = base64.urlsafe_b64decode(padded_keystore)
+
+          Path(os.environ['RUNNER_TEMP'], 'jagdrevier.keystore').write_bytes(keystore_bytes)
+          PY
           chmod 600 "$RUNNER_TEMP/jagdrevier.keystore"
 
       - name: Build signed APK
