@@ -65,7 +65,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           test -n "$ANDROID_KEYSTORE_BASE64"
-          python - <<'PY'
+          keystore_type="$(python - <<'PY'
           import base64
           import binascii
           import os
@@ -130,15 +130,15 @@ jobs:
               raise SystemExit('Keystore-Format konnte aus ANDROID_KEYSTORE_BASE64 nicht erkannt werden.')
 
           Path(os.environ['RUNNER_TEMP'], 'jagdrevier.keystore').write_bytes(keystore_bytes)
-          with Path(os.environ['GITHUB_OUTPUT']).open('a', encoding='utf-8') as output_file:
-              output_file.write(f'store_type={keystore_type}\n')
+          print(keystore_type)
           PY
+          )"
           chmod 600 "$RUNNER_TEMP/jagdrevier.keystore"
-          keystore_type="$(awk -F= '/^store_type=/{print $2; exit}' "$GITHUB_OUTPUT")"
           if ! keytool -list -storetype "$keystore_type" -keystore "$RUNNER_TEMP/jagdrevier.keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" >/dev/null 2>&1; then
             echo "Keystore wurde als $keystore_type erkannt, konnte aber mit dem hinterlegten Passwort nicht gelesen werden." >&2
             exit 1
           fi
+          echo "store_type=$keystore_type" >> "$GITHUB_OUTPUT"
 
       - name: Build signed APK
         env:
