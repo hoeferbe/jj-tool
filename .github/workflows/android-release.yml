@@ -59,8 +59,10 @@ jobs:
         working-directory: apps/app
 
       - name: Restore signing keystore
+        id: keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           test -n "$ANDROID_KEYSTORE_BASE64"
           python - <<'PY'
@@ -79,10 +81,25 @@ jobs:
           Path(os.environ['RUNNER_TEMP'], 'jagdrevier.keystore').write_bytes(keystore_bytes)
           PY
           chmod 600 "$RUNNER_TEMP/jagdrevier.keystore"
+          keystore_type="$(keytool -list -keystore "$RUNNER_TEMP/jagdrevier.keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" 2>/dev/null | awk -F': ' '/^Keystore type: / { print $2; exit }')"
+          if [[ -z "$keystore_type" ]]; then
+            echo "Keystore konnte mit dem hinterlegten Passwort nicht gelesen werden." >&2
+            exit 1
+          fi
+          case "$keystore_type" in
+            PKCS12|JKS)
+              echo "store_type=$keystore_type" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Nicht unterstützter Keystore-Typ: $keystore_type" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Build signed APK
         env:
           ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/jagdrevier.keystore
+          ANDROID_KEYSTORE_TYPE: ${{ steps.keystore.outputs.store_type }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
